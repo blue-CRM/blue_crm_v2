@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.blue.customer.all.mapper.CustomerAllMapper">
+
+    <!-- 로그인 사용자 컨텍스트 -->
+    <select id="findUserContextByEmail" resultType="com.blue.customer.all.dto.UserContextDto">
+        SELECT
+            u.user_id    AS userId,
+            u.user_role  AS role,
+            u.center_id  AS centerId,
+            u.user_email AS email,
+            u.manager_phone_access AS visible
+        FROM users u
+        WHERE u.user_email = #{email}
+        LIMIT 1
+    </select>
+
+    <!-- Admin 공통 필터/정렬 -->
+    <sql id="ADMIN_FILTERS">
+        <if test="keyword != null and keyword != ''">
+            <choose>
+                <!-- 가시권한 N: 전화번호 검색은 앞3/뒤4 "정확일치"만 허용 + 이름 검색-->
+                <when test='visible == "N"'>
+                    AND (
+                    t.name LIKE CONCAT('%', #{keyword}, '%')
+                    OR t.staff LIKE CONCAT('%', #{keyword}, '%')
+                    OR RIGHT(
+                    /* MySQL 8+: 비숫자 제거 */
+                    REGEXP_REPLACE(t.phone, '[^0-9]', ''),
+                    4
+                    ) = REGEXP_REPLACE(#{keyword}, '[^0-9]', '')
+                    OR SUBSTRING(
+                    REGEXP_REPLACE(t.phone, '[^0-9]', ''),
+                    1, 3
+                    ) = REGEXP_REPLACE(#{keyword}, '[^0-9]', '')
+                    OR SUBSTRING(
+                    REGEXP_REPLACE(t.phone, '[^0-9]', ''),
+                    1, 2
+                    ) = REGEXP_REPLACE(#{keyword}, '[^0-9]', '')  <!-- '02' 지역번호 대응 -->
+                    )
+                </when>
+                <!-- 기본: 이름/전화 전체 LIKE -->
+                <otherwise>
+                    AND (
+                    t.name  LIKE CONCAT('%', #{keyword}, '%')
+                    OR t.staff LIKE CONCAT('%', #{keyword}, '%')
+                    OR t.phone LIKE CONCAT('%', #{keyword}, '%')
+                    )
+                </otherwise>
+            </choose>
+        </if>
+<!--        <if test="dateFrom != null and dateFrom != ''">-->
+<!--            AND t.createdAt &gt;= #{dateFrom}-->
+<!--        </if>-->
+<!--        <if test="dateTo != null and dateTo != ''">-->
+<!--            AND t.createdAt &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)-->
+<!--        </if>-->
+<!--        <if test="category != null and category != ''">-->
+<!--            AND t.category = #{category}-->
+<!--        </if>-->
+        <if test="division != null and division != ''">
+            AND t.division = #{division}
+        </if>
+        <if test="status != null and status != ''">
+            AND t.status = #{status}
+        </if>
+    </sql>
+
+    <sql id="ADMIN_ORDER">
+        <bind name="hasStatus"   value="sort != null and sort.contains('status')" />
+        <bind name="hasDivision" value="sort != null and sort.contains('division')" />
+        <bind name="isRecall"    value="status != null and status.equals('재콜')" />
+
+        <choose>
+            <!-- status=재콜이면 재콜 전용 정렬 강제 -->
+            <when test="isRecall">
+                ORDER BY
+                (t.promiseAt IS NULL) ASC,   -- 예약 있는 것 먼저
+                t.promiseAt ASC              -- 빠른 예약일 먼저
+            </when>
+
+            <!-- 구분 + 상태: 1) 구분 2) 상태 3) (재콜:예약↑ / 그외:생성일↓) -->
+            <when test="hasDivision and hasStatus">
+                ORDER BY
+                FIELD(t.division, '최초','유효','중복'),
+                FIELD(t.status,
+                '부재1','부재2','부재3','부재4','부재5',
+                '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
+                /* 재콜 묶음 내부: 예약 없는 것 뒤로, 예약 빠른 순 */
+                CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
+                CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
+                /* 재콜 이외: 최신 생성일 우선 */
+                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END DESC
+            </when>
+
+            <!-- 상태만: 1) 상태 2) (재콜:예약↑ / 그외:생성일↓) -->
+            <when test="hasStatus">
+                ORDER BY
+                FIELD(t.status,
+                '부재1','부재2','부재3','부재4','부재5',
+                '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
+                CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
+                CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
+                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END DESC
+            </when>
+
+            <!-- 구분만: 1) 구분 2) 생성일 최신 -->
+            <when test="hasDivision">
+                ORDER BY
+                FIELD(t.division, '최초','유효','중복'),
+                t.createdAt DESC
+            </when>
+
+            <!-- 아무 것도 안 켜짐: 최신순 -->
+            <otherwise>
+                ORDER BY t.createdAt DESC
+            </otherwise>
+        </choose>
+    </sql>
+
+    <!-- SUPERADMIN: customers + customers_duplicate(display=1) -->
+    <select id="findAllForAdmin" resultType="com.blue.customer.all.dto.AllDbRowDto">
+        SELECT
+        t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
+        t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation
+        FROM (
+        /* ===== customers 분기 ===== */
+        SELECT
+        c.customer_id           AS id,
+        'CUSTOMER'              AS origin,
+        c.customer_created_at   AS createdAt,
+        u.user_name             AS staff,
+        c.customer_division     AS division,
+        c.customer_category     AS category,
+        c.customer_name         AS name,
+        c.customer_phone        AS phone,
+        c.customer_source       AS source,
+        c.customer_content      AS content,
+        c.customer_memo         AS memo,
+        c.customer_status       AS status,
+        c.customer_promise_time AS promiseAt,
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        FROM customers c
+        LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE 1=1
+        <!-- 날짜 푸시다운 -->
+        <if test="dateFrom != null and dateFrom != ''">
+            AND c.customer_created_at &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
+        </if>
+        <if test="division != null and division != ''">
+            AND c.customer_division = #{division}
+        </if>
+        <if test="status != null and status != ''">
+            AND c.customer_status = #{status}
+        </if>
+
+        UNION ALL
+
+        /* ===== customers_duplicate 분기 ===== */
+        SELECT
+        d.duplicate_id          AS id,
+        'DUPLICATE'             AS origin,
+        d.duplicate_created_at  AS createdAt,
+        u2.user_name            AS staff,
+        '중복'                  AS division,
+        d.duplicate_category    AS category,
+        d.duplicate_name        AS name,
+        c2.customer_phone       AS phone,
+        d.duplicate_source      AS source,
+        d.duplicate_content     AS content,
+        d.duplicate_memo        AS memo,
+        '없음'                  AS status,
+        NULL                    AS promiseAt,
+        NULL                    AS reservation
+        FROM customers_duplicate d
+        JOIN customers c2 ON c2.customer_id = d.customer_id
+        LEFT JOIN users u2 ON u2.user_id = c2.user_id
+        WHERE d.duplicate_display = 1
+        <!-- 날짜 푸시다운 -->
+        <if test="dateFrom != null and dateFrom != ''">
+            AND d.duplicate_created_at &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND d.duplicate_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
+        </if>
+        <!-- division/status는 외부 필터에서 처리: division='중복' 고정, status='없음' 고정 -->
+        ) t
+        WHERE 1=1
+        <include refid="ADMIN_FILTERS"/>
+        <include refid="ADMIN_ORDER"/>
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAllForAdmin" resultType="int">
+        SELECT COUNT(*) FROM (
+        /* ===== customers 분기 ===== */
+        SELECT
+        c.customer_id AS id,
+        'CUSTOMER'    AS origin,
+        c.customer_created_at AS createdAt,
+        u.user_name   AS staff,
+        c.customer_division  AS division,
+        c.customer_category  AS category,
+        c.customer_name      AS name,
+        c.customer_phone     AS phone,
+        c.customer_source    AS source,
+        c.customer_content   AS content,
+        c.customer_memo      AS memo,
+        c.customer_status    AS status,
+        c.customer_promise_time AS promiseAt,
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        FROM customers c
+        LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE 1=1
+        <!-- 날짜 푸시다운 -->
+        <if test="dateFrom != null and dateFrom != ''">
+            AND c.customer_created_at &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
+        </if>
+        <if test="division != null and division != ''">
+            AND c.customer_division = #{division}
+        </if>
+        <if test="status != null and status != ''">
+            AND c.customer_status = #{status}
+        </if>
+
+        UNION ALL
+
+        /* ===== customers_duplicate 분기 ===== */
+        SELECT
+        d.duplicate_id AS id,
+        'DUPLICATE'    AS origin,
+        d.duplicate_created_at AS createdAt,
+        u2.user_name   AS staff,
+        '중복'         AS division,
+        d.duplicate_category AS category,
+        d.duplicate_name     AS name,
+        c2.customer_phone    AS phone,
+        d.duplicate_source   AS source,
+        d.duplicate_content  AS content,
+        d.duplicate_memo     AS memo,
+        '없음'               AS status,
+        NULL                   AS promiseAt,
+        CAST(NULL AS CHAR(20)) AS reservation
+        FROM customers_duplicate d
+        JOIN customers c2 ON c2.customer_id = d.customer_id
+        LEFT JOIN users u2 ON u2.user_id = c2.user_id
+        WHERE d.duplicate_display = 1
+        <!-- 날짜 푸시다운 -->
+        <if test="dateFrom != null and dateFrom != ''">
+            AND d.duplicate_created_at &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND d.duplicate_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
+        </if>
+        <!-- division/status는 이 분기에서 고정값이라 내부 추가 조건 불필요 -->
+        ) t
+        WHERE 1=1
+        <!-- 키워드/가시권한/추가 외부 조건 유지 -->
+        <include refid="ADMIN_FILTERS"/>
+    </select>
+
+
+    <!-- 고객 전용 공통 필터/정렬 (MANAGER/STAFF) -->
+    <sql id="CUSTOMER_ONLY_FILTERS">
+        <if test="keyword != null and keyword != ''">
+            AND (c.customer_name LIKE CONCAT('%', #{keyword}, '%')
+            OR u.user_name LIKE CONCAT('%', #{keyword}, '%')
+            OR  c.customer_phone LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="dateFrom != null and dateFrom != ''">
+            AND c.customer_created_at &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
+        </if>
+<!--        <if test="category != null and category != ''">-->
+<!--            AND c.customer_category = #{category}-->
+<!--        </if>-->
+        <if test="division != null and division != ''">
+            AND c.customer_division = #{division}  <!-- '최초','유효' -->
+        </if>
+        <if test="pStatus != null and pStatus != ''">
+            AND c.customer_status = #{pStatus}
+        </if>
+    </sql>
+
+    <sql id="CUSTOMER_ONLY_ORDER">
+        <bind name="isRecall" value="pStatus != null and pStatus.equals('재콜')" />
+
+        <choose>
+            <!-- 재콜 필터면 전용 정렬 -->
+            <when test="isRecall">
+                ORDER BY
+                (c.customer_promise_time IS NULL) ASC,
+                c.customer_promise_time ASC
+            </when>
+
+            <when test="sort == 'status'">
+                ORDER BY
+                    FIELD(c.customer_status,
+                    '부재1','부재2','부재3','부재4','부재5',
+                    '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
+                    CASE WHEN c.customer_status='재콜' THEN (c.customer_promise_time IS NULL) END ASC,
+                    CASE WHEN c.customer_status='재콜' THEN c.customer_promise_time END ASC,
+                    CASE WHEN c.customer_status&lt;&gt;'재콜' THEN c.customer_created_at END DESC
+            </when>
+            <otherwise>
+                ORDER BY c.customer_created_at DESC
+            </otherwise>
+        </choose>
+    </sql>
+
+    <!-- MANAGER: 자기 센터 소속 직원 담당 고객 -->
+    <select id="findAllForManager" resultType="com.blue.customer.all.dto.AllDbRowDto">
+        SELECT
+        c.customer_id           AS id,
+        'CUSTOMER'              AS origin,
+        c.customer_created_at   AS createdAt,
+        u.user_name             AS staff,
+        c.customer_division     AS division,
+        c.customer_category     AS category,
+        c.customer_name         AS name,
+        c.customer_phone        AS phone,
+        c.customer_source       AS source,
+        c.customer_content      AS content,
+        c.customer_memo         AS memo,
+        c.customer_status       AS status,
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        FROM customers c
+        JOIN users u ON u.user_id = c.user_id
+
+        WHERE c.user_id IN (SELECT user_id FROM users WHERE center_id = #{centerId})
+            AND c.customer_status != '없음'
+
+        <include refid="CUSTOMER_ONLY_FILTERS"/>
+        <include refid="CUSTOMER_ONLY_ORDER"/>
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAllForManager" resultType="int">
+        SELECT COUNT(*)
+        FROM customers c
+        JOIN users u ON u.user_id = c.user_id
+
+        WHERE c.user_id IN (SELECT user_id FROM users WHERE center_id = #{centerId})
+            AND c.customer_status != '없음'
+
+        <include refid="CUSTOMER_ONLY_FILTERS"/>
+    </select>
+
+    <!-- STAFF: 본인 담당 고객 -->
+    <select id="findAllForStaff" resultType="com.blue.customer.all.dto.AllDbRowDto">
+        SELECT
+        c.customer_id           AS id,
+        'CUSTOMER'              AS origin,
+        c.customer_created_at   AS createdAt,
+        u.user_name             AS staff,
+        c.customer_division     AS division,
+        c.customer_category     AS category,
+        c.customer_name         AS name,
+        c.customer_phone        AS phone,
+        c.customer_source       AS source,
+        c.customer_content      AS content,
+        c.customer_memo         AS memo,
+        c.customer_status       AS status,
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        FROM customers c
+        LEFT JOIN users u ON u.user_id = c.user_id
+
+        WHERE c.user_id = #{userId}
+            AND c.customer_status != '없음'
+
+        <include refid="CUSTOMER_ONLY_FILTERS"/>
+        <include refid="CUSTOMER_ONLY_ORDER"/>
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAllForStaff" resultType="int">
+        SELECT COUNT(*)
+        FROM customers c
+        JOIN users u ON u.user_id = c.user_id
+
+        WHERE c.user_id = #{userId}
+            AND c.customer_status != '없음'
+
+        <include refid="CUSTOMER_ONLY_FILTERS"/>
+    </select>
+
+    <!-- 검사/권한 -->
+    <select id="existsCustomerById" resultType="int">
+        SELECT COUNT(*) FROM customers WHERE customer_id = #{customerId}
+    </select>
+
+    <select id="customerOwnedByCenter" resultType="int">
+        SELECT COUNT(*)
+        FROM customers c
+                 JOIN users u ON u.user_id = c.user_id
+        WHERE c.customer_id = #{customerId}
+          AND u.center_id = #{centerId}
+    </select>
+
+    <select id="customerOwnedByUser" resultType="int">
+        SELECT COUNT(*)
+        FROM customers
+        WHERE customer_id = #{customerId}
+          AND user_id = #{userId}
+    </select>
+
+    <!-- 수정 -->
+    <update id="updateCustomerReservation">
+        UPDATE customers
+        SET customer_promise_time = #{when}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <update id="updateCustomerStatus">
+        UPDATE customers
+        SET customer_status = #{status}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <!-- 중복 숨김 -->
+    <update id="hideDuplicates">
+        UPDATE customers_duplicate
+        SET duplicate_display = 0
+        WHERE duplicate_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>

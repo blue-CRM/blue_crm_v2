@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.blue.customer.common.center.mapper.CenterMapper">
+
+    <!-- 센터 목록 조회 -->
+    <select id="findAll" resultType="com.blue.customer.common.center.dto.CenterDto">
+        SELECT
+        center_id AS centerId,
+        center_name AS centerName
+        FROM centers
+        <!-- 본사 제외 -->
+        WHERE center_id &lt;&gt; 1
+        ORDER BY center_id ASC
+    </select>
+
+</mapper>
