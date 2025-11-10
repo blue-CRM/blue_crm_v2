@@ -139,119 +139,127 @@
             </div>
 
             <!-- 비밀번호 변경 -->
-            <div class="col-span-2">
-              <div class="flex items-center justify-between">
-                <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호 변경</h3>
-                <div class="flex gap-2">
-                  <button
-                      v-if="!pwEditing"
-                      type="button"
-                      class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
-                      :disabled="changingPw"
-                      @click="onPwEdit"
-                  >수정</button>
+            <form @submit.prevent  class="contents">
+              <!-- id-password의 안정적인 구조를 만들어 경고 제거 -->
+              <input type="text" name="username" autocomplete="username" hidden />
 
-                  <template v-else>
+              <div class="col-span-2">
+                <div class="flex items-center justify-between">
+                  <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호 변경</h3>
+                  <div class="flex gap-2">
                     <button
+                        v-if="!pwEditing"
                         type="button"
                         class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
                         :disabled="changingPw"
-                        @click="onPwCancel"
-                    >취소</button>
-                    <button
-                        type="button"
-                        class="h-9 rounded-lg bg-brand-500 px-3 text-white hover:bg-brand-600 disabled:opacity-50"
-                        :disabled="changingPw"
-                        @click="changePassword"
-                    >{{ changingPw ? '변경 중...' : '변경' }}</button>
-                  </template>
+                        @click="onPwEdit"
+                    >수정</button>
+
+                    <template v-else>
+                      <button
+                          type="button"
+                          class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
+                          :disabled="changingPw"
+                          @click="onPwCancel"
+                      >취소</button>
+                      <button
+                          type="button"
+                          class="h-9 rounded-lg bg-brand-500 px-3 text-white hover:bg-brand-600 disabled:opacity-50"
+                          :disabled="changingPw"
+                          @click="changePassword"
+                      >{{ changingPw ? '변경 중...' : '변경' }}</button>
+                    </template>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 현재 비밀번호 -->
-            <div class="text-sm font-medium text-gray-700 dark:text-gray-300">현재 비밀번호</div>
-            <div class="col-start-2">
-              <div class="relative">
-                <input
-                    v-model="currentPassword"
-                    :type="showCurrentPw ? 'text' : 'password'"
-                    placeholder="현재 비밀번호"
-                    :disabled="!pwEditing || changingPw"
-                    class="h-11 w-full rounded-lg border px-3
-                       bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
-                       disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
-                       dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
-                    @blur="validateCurrentPassword"
-                />
-                <span
-                    @click="pwEditing && !changingPw ? toggleCurrentPwVisibility() : null"
-                    :class="['absolute right-4 top-1/2 -translate-y-1/2',
-               (!pwEditing || changingPw) ? 'pointer-events-none opacity-50' : 'cursor-pointer']"
-                >
-                  <EyeIcon v-if="showCurrentPw" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                  <EyeSlashIcon v-else class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                </span>
+              <!-- 현재 비밀번호 -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">현재 비밀번호</div>
+              <div class="col-start-2">
+                <div class="relative">
+                  <input
+                      v-model="currentPassword"
+                      :type="showCurrentPw ? 'text' : 'password'"
+                      placeholder="현재 비밀번호"
+                      :disabled="!pwEditing || changingPw"
+                      autocomplete="current-password"
+                      class="h-11 w-full rounded-lg border px-3
+                         bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                         dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
+                         disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
+                         dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
+                      @blur="validateCurrentPassword"
+                  />
+                  <span
+                      @click="pwEditing && !changingPw ? toggleCurrentPwVisibility() : null"
+                      :class="['absolute right-4 top-1/2 -translate-y-1/2',
+                 (!pwEditing || changingPw) ? 'pointer-events-none opacity-50' : 'cursor-pointer']"
+                  >
+                    <EyeIcon v-if="showCurrentPw" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    <EyeSlashIcon v-else class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </span>
+                </div>
+                <p v-if="currentPwError" class="text-sm text-error-500">{{ currentPwError }}</p>
               </div>
-              <p v-if="currentPwError" class="text-sm text-error-500">{{ currentPwError }}</p>
-            </div>
 
-            <!-- 새 비밀번호 -->
-            <div class="text-sm font-medium text-gray-700 dark:text-gray-300">새 비밀번호</div>
-            <div class="col-start-2">
-              <div class="relative">
-                <input
-                    v-model="newPassword"
-                    :type="showNewPw ? 'text' : 'password'"
-                    placeholder="새 비밀번호 (6자 이상)"
-                    :disabled="!pwEditing || changingPw"
-                    class="h-11 w-full rounded-lg border px-3
-                       bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
-                       disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
-                       dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
-                    @blur="validateNewPassword"
-                />
-                <span
-                    @click="pwEditing && !changingPw ? togglePasswordVisibility() : null"
-                    :class="['absolute right-4 top-1/2 -translate-y-1/2',
-               (!pwEditing || changingPw) ? 'pointer-events-none opacity-50' : 'cursor-pointer']"
-                >
-                  <EyeIcon v-if="showNewPw" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                  <EyeSlashIcon v-else class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                </span>
+              <!-- 새 비밀번호 -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">새 비밀번호</div>
+              <div class="col-start-2">
+                <div class="relative">
+                  <input
+                      v-model="newPassword"
+                      :type="showNewPw ? 'text' : 'password'"
+                      placeholder="새 비밀번호 (6자 이상)"
+                      :disabled="!pwEditing || changingPw"
+                      autocomplete="new-password"
+                      class="h-11 w-full rounded-lg border px-3
+                         bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                         dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
+                         disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
+                         dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
+                      @blur="validateNewPassword"
+                  />
+                  <span
+                      @click="pwEditing && !changingPw ? togglePasswordVisibility() : null"
+                      :class="['absolute right-4 top-1/2 -translate-y-1/2',
+                 (!pwEditing || changingPw) ? 'pointer-events-none opacity-50' : 'cursor-pointer']"
+                  >
+                    <EyeIcon v-if="showNewPw" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    <EyeSlashIcon v-else class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </span>
+                </div>
+                <p v-if="newPwError" class="text-sm text-error-500">{{ newPwError }}</p>
               </div>
-              <p v-if="newPwError" class="text-sm text-error-500">{{ newPwError }}</p>
-            </div>
 
-            <!-- 새 비밀번호 확인 -->
-            <div class="text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호 확인</div>
-            <div class="col-start-2">
-              <div class="relative">
-                <input
-                    v-model="newPassword2"
-                    :type="showNewPw2 ? 'text' : 'password'"
-                    placeholder="새 비밀번호 확인"
-                    :disabled="!pwEditing || changingPw"
-                    class="h-11 w-full rounded-lg border px-3
-                       bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
-                       disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
-                       dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
-                    @blur="validateNewPasswordConfirm"
-                />
-                <span
-                    @click="pwEditing && !changingPw ? togglePassword2Visibility() : null"
-                    :class="['absolute right-4 top-1/2 -translate-y-1/2',
-               (!pwEditing || changingPw) ? 'pointer-events-none opacity-50' : 'cursor-pointer']"
-                >
-                  <EyeIcon v-if="showNewPw2" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                  <EyeSlashIcon v-else class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                </span>
+              <!-- 새 비밀번호 확인 -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호 확인</div>
+              <div class="col-start-2">
+                <div class="relative">
+                  <input
+                      v-model="newPassword2"
+                      :type="showNewPw2 ? 'text' : 'password'"
+                      placeholder="새 비밀번호 확인"
+                      :disabled="!pwEditing || changingPw"
+                      autocomplete="new-password"
+                      class="h-11 w-full rounded-lg border px-3
+                         bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                         dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
+                         disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
+                         dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
+                      @blur="validateNewPasswordConfirm"
+                  />
+                  <span
+                      @click="pwEditing && !changingPw ? togglePassword2Visibility() : null"
+                      :class="['absolute right-4 top-1/2 -translate-y-1/2',
+                 (!pwEditing || changingPw) ? 'pointer-events-none opacity-50' : 'cursor-pointer']"
+                  >
+                    <EyeIcon v-if="showNewPw2" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    <EyeSlashIcon v-else class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </span>
+                </div>
+                <p v-if="newPw2Error" class="text-sm text-error-500">{{ newPw2Error }}</p>
               </div>
-              <p v-if="newPw2Error" class="text-sm text-error-500">{{ newPw2Error }}</p>
-            </div>
+            </form>
 
             <!-- SUPER 이메일 전용 -->
             <template v-if="isSuperEmail">
