@@ -30,6 +30,7 @@
                         type="email"
                         placeholder="info@gmail.com"
                         :disabled="verified"
+                        autocomplete="email"
                         class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-theme-xs
                              placeholder:text-gray-400 focus:outline-hidden focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10
                              dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
@@ -113,6 +114,7 @@
                       @blur="validatePhone"
                       type="tel"
                       placeholder="010-1234-5678"
+                      autocomplete="tel-national"
                       class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-theme-xs
                            placeholder:text-gray-400 focus:outline-hidden focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10
                            dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
@@ -133,6 +135,7 @@
                         :type="showPassword ? 'text' : 'password'"
                         placeholder="비밀번호 입력"
                         @blur="validatePassword"
+                        autocomplete="new-password"
                         class="h-11 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs
                              placeholder:text-gray-400 focus:outline-hidden focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10
                              dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
@@ -159,6 +162,7 @@
                         v-model="passwordConfirm"
                         :type="showPasswordConfirm ? 'text' : 'password'"
                         placeholder="비밀번호 재입력"
+                        autocomplete="new-password"
                         class="h-11 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs
                                placeholder:text-gray-400 focus:outline-hidden focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10
                                dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
