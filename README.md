@@ -453,16 +453,16 @@ CREATE INDEX idx_users_is_super ON users(is_super);
 
 INSERT INTO users
 (user_email,user_password,user_role,manager_phone_access,center_id,user_name,user_phone,user_approved,user_created_at, is_super) VALUES
-     ('cksccs4u@naver.com','$2a$10$dxDWEIRV30RPWuCicnv1.ecJ3WFfEouPzolKueI.pR7i2UkMfPFAC','SUPERADMIN','Y',1,'대표계정','010-8125-7257','Y',now(), 'Y'),
-     ('wm5256@naver.com','$2a$10$25AuM2onKQx5yPDF6J0lF.3i0Cz8z4dTO4ZMpehNlPskH7GAyJ8Fu','SUPERADMIN','Y',1,'박건희','010-8127-2572','Y',now(), 'N'),
-     ('ck2035@naver.com','$2a$10$y84vzw9XKdR8EFs26cCxbOWU5dKcaN3g5viXLNco7UeV41dlnz.66','SUPERADMIN','N',1,'정성민','010-5825-8580','Y',now(),'N'),
-     ('beabrand0001@gmail.com','$2a$10$KEFjfcO.Nm2vurfCaWWBt.CN8JdMBXvAzkMzx3m0jJ5sVOQtaOwrG','SUPERADMIN','N',1,'이길영','010-2306-0530','Y',now(),'N'),
-     ('nicebestsong@gmail.com','$2a$10$TZgUHVuf2jHMO/IsbXteTedO1opPIkqZPbN1GlwLbRbehpMOU4iUW','SUPERADMIN','N',1,'송규석','010-4182-8177','Y',now(),'N'),
-     ('leemy1857@naver.com','$2a$10$KNwRb2q.Jl9FwBuLoSg92.RpX28rNreW25FYxFTL0O99lrTo/NDFK','SUPERADMIN','N',1,'이민영','010-9628-1828','Y',now(),'N'),
-     ('manager1@naver.com','$2a$10$25AuM2onKQx5yPDF6J0lF.3i0Cz8z4dTO4ZMpehNlPskH7GAyJ8Fu','MANAGER','Y',2,'센터A-센터장','010-0000-0000','Y',now(), 'N'),
-     ('staff1@naver.com','$2a$10$25AuM2onKQx5yPDF6J0lF.3i0Cz8z4dTO4ZMpehNlPskH7GAyJ8Fu','STAFF','Y',2,'센터A-담당자','010-0000-0000','Y',now(), 'N'),
-     ('manager2@naver.com','$2a$10$25AuM2onKQx5yPDF6J0lF.3i0Cz8z4dTO4ZMpehNlPskH7GAyJ8Fu','MANAGER','Y',3,'센터B-센터장','010-0000-0000','Y',now(), 'N'),
-     ('staff2@naver.com','$2a$10$25AuM2onKQx5yPDF6J0lF.3i0Cz8z4dTO4ZMpehNlPskH7GAyJ8Fu','STAFF','Y',3,'센터B-담당자','010-0000-0000','Y',now(), 'N');
+     ('~~@naver.com','$~~UkMfPFAC','SUPERADMIN','Y',1,'대표계정','~~','Y',now(), 'Y'),
+     ('~~@naver.com','$2a$1~~u','SUPERADMIN','Y',1,'~~','~~','Y',now(), 'N'),
+     ('~~@naver.com','$2~~nz.66','SUPERADMIN','N',1,'~~','~~','Y',now(),'N'),
+     ('~~@gmail.com','$2a$1~~urfCa~~G','SUPERADMIN','N',1,'~~','~~','Y',now(),'N'),
+     ('~~@gmail.com','$2a~~MOU4iUW','SUPERADMIN','N',1,'~~','~~','Y',now(),'N'),
+     ('~~@naver.com','$2~~K','SUPERADMIN','N',1,'~~','~~','Y',now(),'N'),
+     ('~~@naver.com','$~~u','MANAGER','Y',2,'~~','010-0000-0000','Y',now(), 'N'),
+     ('~~@naver.com','$2a$~~yJ8Fu','STAFF','Y',2,'~~','010-0000-0000','Y',now(), 'N'),
+     ('~~@naver.com','$2a$~~8Fu','MANAGER','Y',3,'~~','010-0000-0000','Y',now(), 'N'),
+     ('~~@naver.com','$2a~~Fu','STAFF','Y',3,'~~','010-0000-0000','Y',now(), 'N');
 
 update users set is_super = 'Y'  where user_id = 1;
 
@@ -587,5 +587,5 @@ CREATE TABLE gsheet_sources (
 INSERT INTO gsheet_sources (
     source_id, spreadsheet_id, sheet_name, cursor_row, updated_at
 ) VALUES
-    (1, '1tD9AwbcTa9ik29JPMNgEHmsZNs2xoYIc1HNafpnb0gA', 'Sheet1', 1, now());
+    (1, '~~~', 'Sheet1', 1, now());
 ```

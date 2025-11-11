@@ -320,7 +320,7 @@ const doLogin = async () => {
   // 로그인 시도
   try {
     await auth.login({ email: email.value, password: password.value })
-    console.log('로그인 성공')
+    // console.log('로그인 성공')
     await router.push('/')
   } catch (err) {
     console.log('로그인 실패')
