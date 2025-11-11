@@ -28,7 +28,7 @@ public class SheetsSyncService {
   
   // ===== 운영 파라미터 =====
   private static final int BATCH_SIZE = 200;
-  private static final String END_COL = "I"; // A~I
+  private static final String END_COL = "J"; // A~J
   private static final int MANUAL_DEBOUNCE_SEC = 1; // 수동 1초
   private static final int MANUAL_MAX_PER_MIN = 59; // 수동 분당 상한
   private static final ZoneId Z_SEOUL = ZoneId.of("Asia/Seoul");
@@ -49,7 +49,7 @@ public class SheetsSyncService {
   }
   private static String jobLockKey(long sid) { return "gsync:job:" + sid; }
   
-  // ====== 유지보수창 ======
+  // ====== 유지보수 시간 확인 함수 ======
   private boolean inMaintenanceWindow() {
     LocalTime now = LocalTime.now(Z_SEOUL);
     return !now.isBefore(MAINT_START) && now.isBefore(MAINT_END);
@@ -338,6 +338,11 @@ public class SheetsSyncService {
     
     // I : 출처 -> customer_source
     dto.setCustomerSource(asStr(get(r, 8)));
+    
+    // J : 카테고리 -> customer_category (기본값 : 주식, 그 외 -> 입력된 그대로)
+    String category = asStr(get(r, 9));
+    dto.setCustomerCategory((category == null || category.isBlank()) ? "주식" : category);
+    
     return dto;
   }
   
@@ -432,7 +437,7 @@ public class SheetsSyncService {
         dup.setDuplicateMemo(row.getCustomerMemo());
         dup.setDuplicateContent(row.getCustomerContent());
         dup.setDuplicateSource(row.getCustomerSource());
-        dup.setDuplicateCategory("주식"); // 기본값 명시
+        dup.setDuplicateCategory(row.getCustomerCategory());
         dup.setDuplicateDisplay(1); // 기본값 명시
         mapper.insertDuplicateMinimal(dup);
         n++;
@@ -440,7 +445,7 @@ public class SheetsSyncService {
         boolean existed = mapper.existsAnyBaseCustomer(phoneDigits);
         row.setCustomerDivision(existed ? "유효" : "최초");
         row.setCustomerStatus("없음");
-        row.setCustomerCategory("주식");
+        row.setCustomerCategory(row.getCustomerCategory());
         mapper.insertCustomerMinimal(row);
         n++;
       }
