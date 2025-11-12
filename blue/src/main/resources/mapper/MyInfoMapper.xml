@@ -6,16 +6,33 @@
 <mapper namespace="com.blue.auth.mapper.MyInfoMapper">
 
     <!-- 내 정보 조회 (Response DTO 매핑, 패스워드 포함) -->
-    <select id="findByEmail" resultType="com.blue.auth.dto.MyInfoResponse">
+    <resultMap id="MyInfoResponseMap" type="com.blue.auth.dto.MyInfoResponse">
+        <result property="userId" column="userId"/>
+        <result property="userName" column="userName"/>
+        <result property="userEmail" column="userEmail"/>
+        <result property="userPhone" column="userPhone"/>
+        <result property="userPassword" column="userPassword"/>
+        <result property="centerName" column="centerName"/>
+
+        <association property="grants" javaType="com.blue.auth.dto.GrantsDto">
+            <result property="role" column="userRole"/>
+            <result property="isSuper" column="isSuper"/>
+            <result property="canAllocate" column="canAllocate"/>
+            <result property="canPhoneAccess" column="canPhoneAccess"/>
+        </association>
+    </resultMap>
+    <select id="findByEmail" resultMap="MyInfoResponseMap">
         SELECT
            u.user_id      AS userId,
            u.user_name     AS userName,
            u.user_email    AS userEmail,
            u.user_phone    AS userPhone,
-           u.user_role     AS userRole,
            u.user_password AS userPassword,
            c.center_name   AS centerName,
-           CASE WHEN u.is_super = 'Y' THEN true ELSE false END AS isSuper
+           u.user_role     AS userRole,
+           CASE WHEN u.is_super = 'Y' THEN true ELSE false END AS isSuper,
+           CASE WHEN u.can_allocate = 'Y' THEN TRUE ELSE FALSE END AS canAllocate,
+           CASE WHEN u.manager_phone_access = 'Y' THEN TRUE ELSE FALSE END AS canPhoneAccess
         FROM users u
                  LEFT JOIN centers c ON u.center_id = c.center_id
         WHERE u.user_email = #{userEmail}

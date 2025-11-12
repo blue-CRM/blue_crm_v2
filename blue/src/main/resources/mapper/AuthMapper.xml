@@ -18,7 +18,8 @@
             user_phone      AS userPhone,
             user_approved   AS userApproved,
             user_created_at AS userCreatedAt,
-            CASE WHEN is_super = 'Y' THEN TRUE ELSE FALSE END AS isSuper
+            CASE WHEN is_super = 'Y' THEN TRUE ELSE FALSE END AS isSuper,
+            can_allocate AS canAllocate
         FROM users
         WHERE user_email = #{email}
     </select>
@@ -36,7 +37,8 @@
             user_phone      AS userPhone,
             user_approved   AS userApproved,
             user_created_at AS userCreatedAt,
-            CASE WHEN is_super = 'Y' THEN TRUE ELSE FALSE END AS isSuper
+            CASE WHEN is_super = 'Y' THEN TRUE ELSE FALSE END AS isSuper,
+            can_allocate AS canAllocate
         FROM users
         WHERE user_phone = #{phone}
     </select>
@@ -44,11 +46,11 @@
     <!-- 회원가입 (회원 추가) -->
     <insert id="insertUser" parameterType="com.blue.auth.dto.UserDto">
         INSERT INTO users (
-            user_email, user_password, user_role, manager_phone_access,
+            user_email, user_password, user_role, manager_phone_access, can_allocate,
             center_id, user_name, user_phone, user_approved, user_created_at
         )
         VALUES (
-           #{userEmail}, #{userPassword}, #{userRole}, #{managerPhoneAccess},
+           #{userEmail}, #{userPassword}, #{userRole}, #{managerPhoneAccess}, #{canAllocate},
            #{centerId}, #{userName}, #{userPhone}, #{userApproved}, NOW()
         )
     </insert>

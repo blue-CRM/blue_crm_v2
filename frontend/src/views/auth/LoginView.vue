@@ -324,7 +324,7 @@ const doLogin = async () => {
     console.log(auth.name)
     console.log(auth.grants.isSuper)
     console.log(auth.grants.role)
-    console.log(auth.grants.perms)
+    console.log(JSON.stringify(auth.grants.perms, null, 2))
     await router.push('/')
   } catch (err) {
     console.log('로그인 실패')

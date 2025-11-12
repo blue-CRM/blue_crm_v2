@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.util.Map;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -89,16 +91,15 @@ public class AuthService {
     var grants = new GrantsDto(
         user.getUserRole(),
         user.isSuper(),
-        java.util.Collections.emptyMap() // TODO DB에서 읽어와야함
+        "Y".equals(user.getCanAllocate()),
+        "Y".equals(user.getManagerPhoneAccess())
     );
     
     return new AuthResponse(
         accessToken, null,
-        user.getUserRole(),
         user.getUserEmail(),
         user.getUserName(),
         refreshExp,
-        user.isSuper(),
         grants);
   }
   
@@ -123,16 +124,15 @@ public class AuthService {
       var grants = new GrantsDto(
           user.getUserRole(),
           user.isSuper(),
-          java.util.Collections.emptyMap() // TODO DB에서 읽어와야함
+          "Y".equals(user.getCanAllocate()),
+          "Y".equals(user.getManagerPhoneAccess())
       );
       
       return new AuthResponse(
           newAccessToken, null,
-          user.getUserRole(),
           user.getUserEmail(),
           user.getUserName(),
           refreshExp,
-          user.isSuper(),
           grants);
     } catch (ExpiredJwtException e) {
       // Refresh Token 자체가 만료된 경우
@@ -186,16 +186,15 @@ public class AuthService {
       var grants = new GrantsDto(
           user.getUserRole(),
           user.isSuper(),
-          java.util.Collections.emptyMap() // TODO DB에서 읽어와야함
+          "Y".equals(user.getCanAllocate()),
+          "Y".equals(user.getManagerPhoneAccess())
       );
       
       return new AuthResponse(
           newAccessToken, null,
-          user.getUserRole(),
           user.getUserEmail(),
           user.getUserName(),
           refreshExp,
-          user.isSuper(),
           grants);
     } catch (ExpiredJwtException e) {
       // Refresh Token 자체가 만료된 경우
@@ -292,15 +291,28 @@ public class AuthService {
     user.setUserApproved("N"); // 회원가입 시 무조건 회원상태 미승인
     
     // 권한에 따라 센터/가시권한 초기값 설정
-    if ("SUPERADMIN".equals(request.getRole()) // 본사관리자
-        || "CENTERHEAD".equals(request.getRole()) // 센터장
-        || "EXPERT".equals(request.getRole())) { // 전문가일 경우 -> 가시권한 X, 일단 본사소속으로
+    if ("SUPERADMIN".equals(request.getRole())) { // 본사관리자
       // TODO 본사 -> 본사 지점 / 본사 팀으로 분할 필요
-      user.setManagerPhoneAccess("N");
       user.setCenterId(1L); // 본사
-    } else {
-      user.setManagerPhoneAccess("Y");
-      user.setCenterId(null); // 미할당
+      user.setManagerPhoneAccess("N"); // 가시권한 X
+      user.setCanAllocate("Y"); // 분배권한 O
+    }
+    else if ("CENTERHEAD".equals(request.getRole()) // 센터장
+        || "EXPERT".equals(request.getRole())) { // 전문가일 경우
+      // TODO 본사 -> 본사 지점 / 본사 팀으로 분할 필요
+      user.setCenterId(1L); // 본사
+      user.setManagerPhoneAccess("N"); // 가시권한 X
+      user.setCanAllocate("Y"); // 분배권한 X
+    }
+    else if ("MANAGER".equals(request.getRole())) { // 팀장
+      user.setManagerPhoneAccess("Y"); // 가시권한 O
+      user.setCanAllocate("Y"); // 분배권한 O
+      user.setCenterId(null); // 팀 미할당
+    }
+    else { // 담당자
+      user.setManagerPhoneAccess("Y"); // 가시권한 O
+      user.setCanAllocate("N"); // 분배권한 X
+      user.setCenterId(null); // 팀 미할당
     }
     
     authMapper.insertUser(user);

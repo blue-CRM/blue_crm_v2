@@ -30,16 +30,28 @@ public class MyInfoService {
   private final MyInfoMapper myInfoMapper;
   private final PasswordEncoder passwordEncoder;
   
+  // GrantsDto 매핑을 위한 공통 함수
+  private GrantsDto normalizeGrants(GrantsDto g) {
+    if (g == null) {
+      return new GrantsDto("STAFF", false, false, false);
+    }
+    return new GrantsDto(
+        g.getRole() != null ? g.getRole() : "STAFF",
+        g.isSuper(),
+        g.isCanAllocate(),
+        g.isCanPhoneAccess()
+    );
+  }
+  
   public MyInfoResponse getMeByEmail(String email) {
     MyInfoResponse dto = myInfoMapper.findByEmail(email);
+    if (dto == null) throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    if (dto.getGrants() == null) throw new AuthException("권한 정보를 불러오지 못했습니다.", HttpStatus.NOT_FOUND);
+    
     dto.setUserPassword(""); // 보안상 비번 제거
     
     // 권한 최신값 조회
-    dto.setGrants(new GrantsDto(
-        dto.getUserRole(),
-        dto.isSuper(),
-        java.util.Collections.emptyMap()
-    ));
+    dto.setGrants(normalizeGrants(dto.getGrants()));
     return dto;
   }
   
@@ -221,7 +233,11 @@ public class MyInfoService {
   // 공통 함수
   private void ensureSuper(String email) {
     MyInfoResponse user = myInfoMapper.findByEmail(email);
-    if (user == null || !user.isSuper()) {
+    if (user == null) {
+      throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+    user.setGrants(normalizeGrants(user.getGrants()));
+    if (!user.getGrants().isSuper()) {
       throw new AuthException("접근 권한이 없습니다.", HttpStatus.FORBIDDEN);
     }
   }
