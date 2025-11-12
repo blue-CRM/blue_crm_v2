@@ -523,7 +523,7 @@ const badgeClass = (value) => {
     case "승인":
     case "최초":
       return "bg-[#D6E4FF] text-[#1E40AF] dark:bg-[#1A2B4C] dark:text-[#8AB4F8]"
-    case "센터장":
+    case "팀장":
     case "유효":
     case "재콜":
       return "bg-[#D1F2D6] text-[#2F855A] dark:bg-[#1B3A2E] dark:text-[#5FA97A]"

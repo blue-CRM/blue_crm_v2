@@ -29,7 +29,7 @@
 
 <!--          <p v-if="selectedCenter && !selectedCenter.hasManager"-->
 <!--             class="text-xs text-amber-600 mt-1">-->
-<!--            이 센터는 센터장이 없습니다. 센터 소속 직원을 선택해야 분배할 수 있어요.-->
+<!--            이 센터는 팀장이 없습니다. 센터 소속 직원을 선택해야 분배할 수 있어요.-->
 <!--          </p>-->
           <p v-if="centerId === null" class="text-xs text-gray-500 mt-1">
             먼저 센터를 선택하세요.
@@ -74,7 +74,7 @@
               >
                 <div class="text-sm text-gray-700 dark:text-gray-200">
                   <b>{{ u.userName }}</b>
-                  <span class="text-gray-400 ml-2">({{ u.role === 'MANAGER' ? '센터장' : '담당자' }})</span>
+                  <span class="text-gray-400 ml-2">({{ u.role === 'MANAGER' ? '팀장' : '담당자' }})</span>
 <!--                  <span class="text-gray-400 ml-2">{{ u.centerName }}</span>-->
                 </div>
 

@@ -7,54 +7,54 @@ export default [
     {
         path: '/',
         component: () => import('@/views/Dashboard.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF','CENTERHEAD','EXPERT'] }
     },
     // 내정보 수정
     {
         path: '/profile',
         component: () => import('@/views/Pages/MyInfo.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF','CENTERHEAD','EXPERT'] }
     },
     // DB분배
     {
         path: '/db/allocate',
         component: () => import('@/views/Pages/Customer/Allocate.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','CENTERHEAD','EXPERT'] }
     },
     // 센터DB
     {
         path: '/db/center',
         component: () => import('@/views/Pages/Customer/Center.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','CENTERHEAD','EXPERT'] }
     },
     // 전체DB
     {
         path: '/db/all',
         component: () => import('@/views/Pages/Customer/All.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF','CENTERHEAD','EXPERT'] }
     },
     // 중복DB
     {
         path: '/db/duplicate',
         component: () => import('@/views/Pages/Customer/Duplicate.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF','CENTERHEAD','EXPERT'] }
     },
     // DB회수
     {
         path: '/db/revoke',
         component: () => import('@/views/Pages/Customer/Revoke.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','CENTERHEAD','EXPERT'] }
     },
     // 소속정보
     {
         path: '/info',
         component: () => import('@/views/Pages/Info.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF','CENTERHEAD','EXPERT'] }
     },
     // 회원관리
     {
         path: '/user',
         component: () => import('@/views/Pages/User.vue'),
-        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF'] }
+        meta: { requiresAuth: true, role: ['SUPERADMIN'] }
     },
 ]

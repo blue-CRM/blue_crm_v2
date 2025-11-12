@@ -15,7 +15,7 @@ const policy = {
         'menu.info',         // 정보보기
         'menu.user',         // 회원관리
     ],
-    // 센터
+    // 팀장
     MANAGER: [
         // 사이드바
         'menu.dashboard',    // 대시보드
@@ -29,6 +29,22 @@ const policy = {
     STAFF: [
         // 사이드바
         'menu.dashboard',    // 대시보드
+        'menu.db.all',       // 전체 DB
+        'menu.db.duplicate', // 중복 DB
+        'menu.info',         // 정보보기
+    ],
+    // 센터장
+    CENTERHEAD: [
+        'menu.dashboard',    // 대시보드
+        'menu.db.center',    // 센터별 DB
+        'menu.db.all',       // 전체 DB
+        'menu.db.duplicate', // 중복 DB
+        'menu.info',         // 정보보기
+    ],
+    // 전문가
+    EXPERT: [
+        'menu.dashboard',    // 대시보드
+        'menu.db.center',    // 센터별 DB
         'menu.db.all',       // 전체 DB
         'menu.db.duplicate', // 중복 DB
         'menu.info',         // 정보보기

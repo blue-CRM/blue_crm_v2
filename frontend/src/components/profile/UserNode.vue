@@ -136,7 +136,7 @@ function toggle() {
   emit('toggle', { key: k, open: !expanded.value })
 }
 
-function roleLabel(r){ return r==='SUPERADMIN'?'관리자':r==='MANAGER'?'센터장':r==='STAFF'?'담당자':r }
+function roleLabel(r){ return r==='SUPERADMIN'?'관리자':r==='MANAGER'?'팀장':r==='STAFF'?'담당자':r }
 
 /** 프론트 UX 1차 차단 (서버가 최종 검증) */
 function canEdit(viewer, target) {

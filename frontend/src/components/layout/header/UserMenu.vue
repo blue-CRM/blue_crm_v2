@@ -9,21 +9,15 @@
       <span
           v-if="auth.role === 'STAFF'"
           class="text-blue-500 dark:text-blue-400"
-      >
-        [담당자]&nbsp;
-      </span>
-          <span
-              v-else-if="auth.role === 'MANAGER'"
-              class="text-green-600 dark:text-green-400"
-          >
-        [관리자]&nbsp;
-      </span>
-          <span
-              v-else-if="auth.role === 'SUPERADMIN'"
-              class="text-red-500 dark:text-red-400"
-          >
-        [본사]&nbsp;
-      </span>
+      > [담당자]&nbsp; </span>
+      <span
+          v-else-if="auth.role === 'MANAGER'"
+          class="text-green-600 dark:text-green-400"
+      > [팀장]&nbsp; </span>
+      <span
+          v-else-if="auth.role === 'SUPERADMIN'"
+          class="text-red-500 dark:text-red-400"
+      > [본사]&nbsp; </span>
 
       <!-- 사용자 이름 -->
       <span class="block mr-1 font-medium text-theme-sm">

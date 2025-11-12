@@ -27,7 +27,7 @@
           />
         </ComponentCard>
 
-        <!-- MANAGER (센터장) -->
+        <!-- MANAGER (팀장) -->
         <ComponentCard
             v-else-if="role === 'MANAGER'"
             :buttons="['회수하기']"
@@ -51,7 +51,7 @@
 
         <!-- STAFF 접근 시 경고 안내를 노출하려면 주석 해제
         <div v-else class="p-6 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-          이 페이지는 본사 또는 센터장만 사용할 수 있습니다.
+          이 페이지는 본사 또는 팀장만 사용할 수 있습니다.
         </div>
         -->
 

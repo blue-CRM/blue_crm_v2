@@ -712,7 +712,7 @@ async function loadMe() {
     phone.value = data.userPhone
 
     if (data.userRole === 'SUPERADMIN') roleLabel.value = '관리자'
-    else if (data.userRole === 'MANAGER') roleLabel.value = '센터장'
+    else if (data.userRole === 'MANAGER') roleLabel.value = '팀장'
     else if (data.userRole === 'STAFF') roleLabel.value = '담당자'
     else roleLabel.value = '-'
 
@@ -1172,9 +1172,9 @@ const candidate = ref(null) // { userId, userName, userEmail, userRole, centerNa
 
 const roleHuman = (role) =>
     role === 'SUPERADMIN' ? '관리자'
-        : role === 'MANAGER'  ? '센터장'
-            : role === 'STAFF'    ? '담당자'
-                : role
+        : role === 'MANAGER'  ? '팀장'
+        : role === 'STAFF'    ? '담당자'
+        : role
 
 async function lookupDelegate() {
   candidate.value = null

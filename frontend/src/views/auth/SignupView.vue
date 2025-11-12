@@ -191,8 +191,10 @@
                            focus:outline-hidden focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/30"
                   >
                     <option value="SUPERADMIN">본사</option>
-                    <option value="MANAGER">관리자</option>
+                    <option value="MANAGER">팀장</option>
                     <option value="STAFF">담당자</option>
+                    <option value="CENTERHEAD">센터장</option>
+                    <option value="EXPERT">전문가</option>
                   </select>
                 </div>
 

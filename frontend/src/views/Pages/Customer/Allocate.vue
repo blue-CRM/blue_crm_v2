@@ -28,7 +28,7 @@
           />
         </ComponentCard>
 
-        <!-- MANAGER (센터장) -->
+        <!-- MANAGER (팀장) -->
         <ComponentCard
             v-else-if="role === 'MANAGER'"
             :buttons="['분배하기']"
@@ -52,7 +52,7 @@
 
         <!--        &lt;!&ndash; STAFF 접근 X: 보안상 라우팅에서 막히겠지만 방어적으로 안내 &ndash;&gt;-->
         <!--        <div v-else class="p-6 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">-->
-        <!--          이 페이지는 본사 또는 센터장만 사용할 수 있습니다.-->
+        <!--          이 페이지는 본사 또는 팀장만 사용할 수 있습니다.-->
         <!--        </div>-->
 
         <AllocateModal
@@ -205,7 +205,7 @@ function closeModal(){ modal.value.open = false }
 async function onConfirmAllocate(payload: { centerId?:number|null, userId?:number|null }){
   const ids = needSelection(); if (!ids.length) return
   await runBusy(async () => {
-    // 관리자가 분배할 경우: 센터 + 대상자(센터장/담당자) 선택 필수
+    // 관리자가 분배할 경우: 센터 + 대상자(팀장/담당자) 선택 필수
     if (modal.value.mode === 'HQ' && (!payload.centerId)) {
       alert('센터를 선택하세요.')
       return

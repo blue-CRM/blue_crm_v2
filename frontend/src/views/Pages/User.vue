@@ -127,7 +127,7 @@ const {
         userId: u.userId,
         type:
             u.userRole === "SUPERADMIN" ? "관리자" :
-            u.userRole === "MANAGER"    ? "센터장" :
+            u.userRole === "MANAGER"    ? "팀장" :
             u.userRole === "STAFF"      ? "담당자" : u.userRole,
         name: u.userName,
         phone: u.userPhone,
@@ -175,7 +175,7 @@ onUnmounted(() => {
 const columns = computed(() => {
   const base = [
     { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
-    { key: "type", label: "구분", type: "badge", editable: canEdit, options: ["관리자", "센터장", "담당자"] },
+    { key: "type", label: "구분", type: "badge", editable: canEdit, options: ["관리자", "팀장", "담당자"] },
     { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
     { key: "name", label: "이름", type: "text", ellipsis: { width: 150 } },
     { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 180 } },
@@ -300,7 +300,7 @@ async function onBadgeUpdate(row, key, newValue) {
 
   // value → 한글
   if (newValue === "SUPERADMIN") displayValue = "관리자"
-  else if (newValue === "MANAGER") displayValue = "센터장"
+  else if (newValue === "MANAGER") displayValue = "팀장"
   else if (newValue === "STAFF") displayValue = "담당자"
 
   if (key === 'visible' && (newValue === '공개' || newValue === '차단')) {
@@ -320,33 +320,33 @@ async function onBadgeUpdate(row, key, newValue) {
     return;
   }
 
-  // === 센터장 1명 제한 가드 ===
+  // === 팀장 1명 제한 가드 ===
   try {
-    // 1) 구분을 '센터장'으로 바꾸려는 경우
-    if (key === "type" && newValue === "센터장") {
+    // 1) 구분을 '팀장'으로 바꾸려는 경우
+    if (key === "type" && newValue === "팀장") {
       const targetCenter = row.center; // 현재 소속
       if (targetCenter && targetCenter !== "본사") {
         const exists = await hasManager(targetCenter, row.userId);
         if (exists) {
-          alert(`'${targetCenter}'에는 이미 센터장이 있습니다. 기존 센터장을 해제한 뒤 진행하세요.`);
+          alert(`'${targetCenter}'에는 이미 팀장이 있습니다. 기존 팀장을 해제한 뒤 진행하세요.`);
           await fetchData();
           return;
         }
       }
     }
 
-    // 2) 소속을 변경하는데, 현재 계정이 '센터장'인 경우
-    if (key === "center" && row.type === "센터장" && newValue && newValue !== "본사") {
+    // 2) 소속을 변경하는데, 현재 계정이 '팀장'인 경우
+    if (key === "center" && row.type === "팀장" && newValue && newValue !== "본사") {
       const exists = await hasManager(newValue, row.userId);
       if (exists) {
-        alert(`'${newValue}'에는 이미 센터장이 있습니다. 기존 센터장을 해제한 뒤 진행하세요.`);
+        alert(`'${newValue}'에는 이미 팀장이 있습니다. 기존 팀장을 해제한 뒤 진행하세요.`);
         await fetchData();
         return;
       }
     }
   } catch (e) {
-    console.error("센터장 중복 확인 실패", e);
-    alert("센터장 중복 확인 중 오류가 발생했습니다.");
+    console.error("팀장 중복 확인 실패", e);
+    alert("팀장 중복 확인 중 오류가 발생했습니다.");
     return;
   }
 

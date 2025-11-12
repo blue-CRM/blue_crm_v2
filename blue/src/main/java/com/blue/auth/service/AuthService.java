@@ -264,7 +264,10 @@ public class AuthService {
     user.setUserApproved("N"); // 회원가입 시 무조건 회원상태 미승인
     
     // 권한에 따라 센터/가시권한 초기값 설정
-    if ("SUPERADMIN".equals(request.getRole())) {
+    if ("SUPERADMIN".equals(request.getRole()) // 본사관리자
+        || "CENTERHEAD".equals(request.getRole()) // 센터장
+        || "EXPERT".equals(request.getRole())) { // 전문가일 경우 -> 가시권한 X, 일단 본사소속으로
+      // TODO 본사 -> 본사 지점 / 본사 팀으로 분할 필요
       user.setManagerPhoneAccess("N");
       user.setCenterId(1L); // 본사
     } else {

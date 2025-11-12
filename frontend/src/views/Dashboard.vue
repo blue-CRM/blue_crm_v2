@@ -139,7 +139,7 @@
       </div>
     </div>
 
-    <!-- 센터장/담당자용 -->
+    <!-- 팀장/담당자용 -->
     <div v-else class="mt-2 grid grid-cols-12 gap-4 md:gap-6 items-stretch">
       <!-- KPI -->
       <div class="col-span-12 xl:col-span-4 space-y-4 xl:space-y-0 xl:grid xl:grid-rows-[1fr_1fr] xl:gap-4 xl:h-full xl:min-h-0" >
@@ -367,7 +367,7 @@ import { UserGroupIcon, HomeIcon } from '@/icons'
 const auth = useAuthStore()
 const roleLabel = (r) => {
   if (r === 'SUPERADMIN') return '관리자'
-  if (r === 'MANAGER')    return '센터장'
+  if (r === 'MANAGER')    return '팀장'
   return '담당자'
 }
 
@@ -634,7 +634,7 @@ async function loadCenterUsers(centerIds = []) {
   const params = {
     centerIds: centerIds.join(','), // 선택한 센터만
     excludeHq: true, // 본사 제외
-    role: 'STAFF', // 담당자만(센터장 제외)
+    role: 'STAFF', // 담당자만(팀장 제외)
   }
   // 필요시 권한 스코프
   if (auth.role !== 'SUPERADMIN' && auth.centerId) {
