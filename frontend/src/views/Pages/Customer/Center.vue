@@ -73,7 +73,7 @@ import { globalFilters, setGlobalFilters } from "@/composables/globalFilters.js"
 import { useTableQuery } from "@/composables/useTableQuery.js";
 
 const auth = useAuthStore();
-const role = computed(() => auth.role);
+const role = computed(() => auth.grants.role);
 
 // --- 센터 드롭다운 데이터 (본사 제외) ---
 type C = { centerId: number; centerName: string };

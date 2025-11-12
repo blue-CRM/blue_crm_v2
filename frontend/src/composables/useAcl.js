@@ -13,7 +13,7 @@ const policy = {
         'menu.db.revoke',    // DB회수하기
         'menu.db.duplicate', // 중복 DB
         'menu.info',         // 정보보기
-        'menu.user',         // 회원관리
+        'menu.user',         // 직원관리
     ],
     // 팀장
     MANAGER: [
@@ -61,11 +61,17 @@ export function useCan() {
         // perm이 없으면(=null, undefined) 기본적으로 허용
         if (!perm) return true
 
-        // 현재 유저의 role에 맞는 권한 리스트 가져오기
-        const list = policy[auth.role] || []
+        // 1. 현재 유저의 role에 맞는 디폴트 사이드바 권한 리스트 가져오기
+        const base = policy[auth.grants.role] || []
 
-        // 리스트에 해당 권한이 포함돼 있으면 true 반환
-        return list.includes(perm)
+        // 2. 유저 개인에게 동적으로 부과된 세부 권한 리스트 가져오기
+        const extraPermKeys = auth.grants?.perms ? Object.keys(auth.grants.perms) : []
+
+        // 3. 1번과 2번을 합친다
+        const allowed = new Set([...base, ...extraPermKeys])
+
+        // 4. 최종 리스트에 해당 권한이 포함돼 있으면 true 반환
+        return allowed.has(perm)
     }
 
     // 다른 곳에서 can() 함수를 사용할 수 있게 반환

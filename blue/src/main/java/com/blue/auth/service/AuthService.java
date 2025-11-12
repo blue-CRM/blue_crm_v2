@@ -85,12 +85,21 @@ public class AuthService {
       // 로깅 실패는 로그인 자체에는 영향 X
     }
     
-    return new AuthResponse(accessToken, null,
+    // 권한 목록 생성
+    var grants = new GrantsDto(
+        user.getUserRole(),
+        user.isSuper(),
+        java.util.Collections.emptyMap() // TODO DB에서 읽어와야함
+    );
+    
+    return new AuthResponse(
+        accessToken, null,
         user.getUserRole(),
         user.getUserEmail(),
         user.getUserName(),
         refreshExp,
-        user.isSuper());
+        user.isSuper(),
+        grants);
   }
   
   // 엑세스 토큰의 재발급
@@ -109,12 +118,22 @@ public class AuthService {
       long refreshExp = claims.getExpiration().getTime();
       
       String newAccessToken = jwtUtil.generateAccessToken(user);
-      return new AuthResponse(newAccessToken, null,
+      
+      // 권한 목록 생성
+      var grants = new GrantsDto(
+          user.getUserRole(),
+          user.isSuper(),
+          java.util.Collections.emptyMap() // TODO DB에서 읽어와야함
+      );
+      
+      return new AuthResponse(
+          newAccessToken, null,
           user.getUserRole(),
           user.getUserEmail(),
           user.getUserName(),
           refreshExp,
-          user.isSuper());
+          user.isSuper(),
+          grants);
     } catch (ExpiredJwtException e) {
       // Refresh Token 자체가 만료된 경우
       // 정상종료이므로 사용자의 재로그인이 필요함
@@ -163,12 +182,21 @@ public class AuthService {
       var newClaims = jwtUtil.validateRefreshToken(newRefreshToken);
       long refreshExp = newClaims.getExpiration().getTime();
       
-      return new AuthResponse(newAccessToken, null,
+      // 권한 목록 생성
+      var grants = new GrantsDto(
+          user.getUserRole(),
+          user.isSuper(),
+          java.util.Collections.emptyMap() // TODO DB에서 읽어와야함
+      );
+      
+      return new AuthResponse(
+          newAccessToken, null,
           user.getUserRole(),
           user.getUserEmail(),
           user.getUserName(),
           refreshExp,
-          user.isSuper());
+          user.isSuper(),
+          grants);
     } catch (ExpiredJwtException e) {
       // Refresh Token 자체가 만료된 경우
       // 정상종료이므로 사용자의 재로그인이 필요함

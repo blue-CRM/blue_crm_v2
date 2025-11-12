@@ -191,7 +191,7 @@ const props = defineProps({ row: Object })
 const emit  = defineEmits(["close", "saved"])
 
 const auth = useAuthStore()
-const isSuperAdmin = auth.role === "SUPERADMIN"
+const isSuperAdmin = auth.grants.role === "SUPERADMIN"
 
 // form states
 const nickname1   = ref("")

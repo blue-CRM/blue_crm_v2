@@ -109,7 +109,7 @@ import { globalFilters } from '@/composables/globalFilters'
 import axios from '@/plugins/axios'
 
 const auth = useAuthStore()
-const role = auth.role
+const role = auth.grants.role
 const pageTitle = ref('DB 분배하기')
 
 // ===== 테이블 & 페이징 =====

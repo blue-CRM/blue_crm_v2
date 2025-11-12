@@ -7,15 +7,23 @@
 
       <!-- role 표시 -->
       <span
-          v-if="auth.role === 'STAFF'"
+          v-if="auth.grants.role === 'STAFF'"
           class="text-blue-500 dark:text-blue-400"
       > [담당자]&nbsp; </span>
       <span
-          v-else-if="auth.role === 'MANAGER'"
+          v-else-if="auth.grants.role === 'MANAGER'"
           class="text-green-600 dark:text-green-400"
       > [팀장]&nbsp; </span>
       <span
-          v-else-if="auth.role === 'SUPERADMIN'"
+          v-if="auth.grants.role === 'EXPERT'"
+          class="text-purple-600 dark:text-purple-300"
+      > [전문가]&nbsp; </span>
+      <span
+          v-else-if="auth.grants.role === 'CENTERHEAD'"
+          class="text-amber-600 dark:text-amber-400"
+      > [센터장]&nbsp; </span>
+      <span
+          v-else-if="auth.grants.role === 'SUPERADMIN'"
           class="text-red-500 dark:text-red-400"
       > [본사]&nbsp; </span>
 

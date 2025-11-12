@@ -527,6 +527,7 @@ const badgeClass = (value) => {
     case "유효":
     case "재콜":
       return "bg-[#D1F2D6] text-[#2F855A] dark:bg-[#1B3A2E] dark:text-[#5FA97A]"
+    case "센터장":
     case "부재1":
     case "부재2":
     case "부재3":
@@ -537,6 +538,7 @@ const badgeClass = (value) => {
       return "bg-[#FFF3CD] text-[#B7791F] dark:bg-[#4A3A12]/60 dark:text-[#C9A94B]/80"
     case "자연풀":
       return "bg-[#D0F0F0] text-[#00796B] dark:bg-[#1B3C3C] dark:text-[#66C2A5]"
+    case "전문가":
     case "카피":
       return "bg-[#E0D7F8] text-[#5B4B9A] dark:bg-[#312C5C] dark:text-[#B6A9E3]"
     case "가망":

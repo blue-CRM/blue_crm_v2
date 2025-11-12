@@ -120,7 +120,7 @@ import { globalFilters } from "@/composables/globalFilters.js";
 import axios from "@/plugins/axios.js"
 
 const auth = useAuthStore();
-const role = auth.role;
+const role = auth.grants.role;
 const isManager = computed(() => role === 'MANAGER');
 const mineOnly = ref(false);
 

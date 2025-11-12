@@ -101,7 +101,7 @@ import axios from '@/plugins/axios'
 
 /** 권한/페이지 타이틀 */
 const auth = useAuthStore()
-const role = auth.role
+const role = auth.grants.role
 const pageTitle = ref('DB 회수하기')
 
 /** 목록 훅 (공용 필터: 날짜/카테고리/키워드) */

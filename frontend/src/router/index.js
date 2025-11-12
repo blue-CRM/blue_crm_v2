@@ -29,7 +29,7 @@ router.beforeEach(async (to, from, next) => {
   // 로딩화면 표시
   ui.setLoading(true)
 
-  // console.log('auth.role : ', auth.role)
+  // console.log('auth.grants.role : ', auth.grants.role)
   // console.log('auth.accessToken : ', auth.accessToken)
   // console.log('auth.refreshExp : ', auth.refreshExp)
   // console.log('auth.name : ', auth.name)
@@ -52,14 +52,14 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // 아직 로그인 정보가 없으면 refresh 시도
-  // console.log('auth.role : ', auth.role)
+  // console.log('auth.grants.role : ', auth.grants.role)
   // console.log('auth.accessToken : ', auth.accessToken)
   // console.log('auth.refreshExp : ', auth.refreshExp)
   // console.log('auth.name : ', auth.name)
   // console.log('auth.email : ', auth.email)
 
   // 2. 로그인 상태에서 /login 접근 차단
-  if (to.path === '/login' && auth.role) {
+  if (to.path === '/login' && auth.grants.role) {
     ui.setLoading(false)
     return next('/')
   }
@@ -67,14 +67,14 @@ router.beforeEach(async (to, from, next) => {
   // 3. 권한이 필요한 페이지 접근 제어
   if (to.meta.requiresAuth) {
     // 3-1. 로그인을 안한 경우
-    if (!auth.role) {
+    if (!auth.grants.role) {
       ui.setLoading(false)
       return next('/login')
     }
     // 3-2. role 제한 있는 경우
     if (to.meta.role) {
       const allowed = Array.isArray(to.meta.role) ? to.meta.role : [to.meta.role]
-      if (!allowed.includes(auth.role)) {
+      if (!allowed.includes(auth.grants.role)) {
         ui.setLoading(false)
         return next('/login')
       }

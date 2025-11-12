@@ -16,4 +16,6 @@ public class AuthResponse {
   
   @JsonProperty("isSuper")
   private boolean isSuper;
+  
+  private GrantsDto grants;
 }

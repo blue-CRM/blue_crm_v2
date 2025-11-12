@@ -17,4 +17,5 @@ public class MyInfoResponse {
   private String userPassword;
   private String centerName; // centerId 대신 센터 이름
   private boolean isSuper; // super계정 여부
+  private GrantsDto grants;
 }

@@ -8,17 +8,20 @@ export const useAuthStore = defineStore('auth', {
         refreshExp: null, // 서버에서 계산해온 refresh 토큰 만료시간
         email: null, // 사용자 email
         name: null, // 사용자 name
-        role: null, // 사용자 권한
-        isSuper: false, // 특별계정 여부 (DB users.is_super)
+        grants: { // 사용자에게 허가된 것 등
+            role: null, // 직급
+            isSuper: false, // 슈퍼계정 여부 (users.is_super)
+            perms: {} // 접근 가능 페이지
+        },
     }),
     actions: {
         async pingPong() {
-            // 수동 새로고침 (sid 기본값 1)
+            // 구글 스프레드시트 수동 새로고침 (sid 기본값 1)
             const { data } = await axios.post('/api/sheets/refresh?sid=1')
             return data
         },
 
-        // 사용자 정보 설정
+        // 사용자 정보 설정 (전달받은 그대로 대입, 기존 정보의 유지개념)
         setAuth(data) {
             // data.accessToken 없으면 바로 종료
             // (ex. 로그인 두번 연속 등 사고로 인해 data에 손상이 있을 경우 대물림을 막기 위함)
@@ -28,22 +31,45 @@ export const useAuthStore = defineStore('auth', {
             }
 
             this.accessToken = data.accessToken
+            this.refreshExp = data.refreshExp
             this.email = data.email
             this.name = data.name
-            this.role = data.role
-            this.isSuper = data.isSuper
-            this.refreshExp = data.refreshExp
+
+            // 권한(grants) 동기화
+            const g = data.grants ?? {}
+            this.grants = {
+                role: g.role,
+                isSuper: g.isSuper,
+                perms: g.perms && typeof g.perms === 'object' ? g.perms : {}
+            }
+
             // axios.defaults.headers.common['Authorization'] = `Bearer ${this.accessToken}`
+        },
+
+        // 사용자 정보 초기화 (기존 정보를 신뢰하지 않고 백엔드를 통해 신규 정보를 읽어옴)
+        async loadMe() {
+            const { data } = await axios.get('/api/me', { withCredentials: true })
+            this.email = data.email
+            this.name  = data.name
+
+            // 권한(grants) 동기화
+            const g = data.grants ?? {}
+            this.grants = {
+                role: g.role,
+                isSuper: g.isSuper,
+                perms: g.perms && typeof g.perms === 'object' ? g.perms : {}
+            }
         },
 
         // 사용자 정보 clear
         clearUser() {
-            this.email = null
-            this.name = null
-            this.role = null
             this.accessToken = null
             this.refreshExp = null
-            this.isSuper = false
+            this.email = null
+            this.name = null
+
+            // 권한 초기화
+            this.grants = { role: null, isSuper: false, perms: {} }
             delete axios.defaults.headers.common['Authorization']
         },
 

@@ -212,7 +212,7 @@ function canEdit(row) {
   // 1. 본인 계정이면 불가
   if (row.email === requesterEmail) return false
   // 2. super 계정 제외, 관리자 계정 수정 불가
-  return !((row.type === "관리자" || row.center === "본사") && !auth.isSuper);
+  return !((row.type === "관리자" || row.center === "본사") && !auth.grants.isSuper);
 }
 
 // super만 수정할 수 있는지 판단
@@ -221,7 +221,7 @@ function canEditVisible() {
 }
 
 // 프론트는 백엔드가 내려준 isSuper만 사용
-const isSuper = computed(() => !!auth.isSuper);
+const isSuper = computed(() => !!auth.grants.isSuper);
 
 async function hasManager(centerName, excludeUserId) {
   const { data } = await axios.get("/api/super/users/has-manager", {
@@ -314,7 +314,7 @@ async function onBadgeUpdate(row, key, newValue) {
   }
 
   // === 승인된 직원은 super계정 만 '관리자'로 변경 가능 ===
-  if (key === "type" && newValue === "관리자" && row.requestStatus === "승인" && !auth.isSuper) {
+  if (key === "type" && newValue === "관리자" && row.requestStatus === "승인" && !auth.grants.isSuper) {
     alert("수정 권한이 없습니다.");
     await fetchData();
     return;

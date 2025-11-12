@@ -371,7 +371,7 @@ const roleLabel = (r) => {
   return '담당자'
 }
 
-const isSuperAdmin = computed(() => auth.role === 'SUPERADMIN')
+const isSuperAdmin = computed(() => auth.grants.role === 'SUPERADMIN')
 const myCenterId = ref(null) // 내 센터ID를 한 번만 채워서 재사용
 const isScopedToCenter = computed(() => !isSuperAdmin.value && myCenterId.value != null)
 
@@ -609,7 +609,7 @@ async function loadUserDbs(userId) {
   const params = { userId } // 전체 기간으로 한 번에
 
   // 권한 스코프
-  if (auth.role !== 'SUPERADMIN' && auth.centerId) params.centerId = auth.centerId
+  if (auth.grants.role !== 'SUPERADMIN' && auth.centerId) params.centerId = auth.centerId
 
   const res = await axios.get('/api/common/dashboard/customers', { params })
   dbsUser.value = normDbs(res.data)
@@ -637,7 +637,7 @@ async function loadCenterUsers(centerIds = []) {
     role: 'STAFF', // 담당자만(팀장 제외)
   }
   // 필요시 권한 스코프
-  if (auth.role !== 'SUPERADMIN' && auth.centerId) {
+  if (auth.grants.role !== 'SUPERADMIN' && auth.centerId) {
     params.centerId = auth.centerId
   }
   const res = await axios.get('/api/common/dashboard/users', { params })
@@ -660,7 +660,7 @@ onMounted(async () => {
     kpiCenters.value = data.centers ?? 0
   } catch(e) { console.warn('KPI 로드 실패', e) }
 
-  if (auth.role === 'MANAGER' || auth.role === 'STAFF') {
+  if (auth.grants.role === 'MANAGER' || auth.grants.role === 'STAFF') {
     if (auth.name) {
       await searchUsersExactByName(auth.name)
     } else if (auth.email) {

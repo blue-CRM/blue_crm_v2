@@ -33,6 +33,13 @@ public class MyInfoService {
   public MyInfoResponse getMeByEmail(String email) {
     MyInfoResponse dto = myInfoMapper.findByEmail(email);
     dto.setUserPassword(""); // 보안상 비번 제거
+    
+    // 권한 최신값 조회
+    dto.setGrants(new GrantsDto(
+        dto.getUserRole(),
+        dto.isSuper(),
+        java.util.Collections.emptyMap()
+    ));
     return dto;
   }
   
