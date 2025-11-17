@@ -248,13 +248,13 @@ public class AuthService {
         if (sessionKey != null) {
           int n = loginLogMapper.updateLogoutLogBySession(sessionKey);
           if (n == 0) {
-            log.info("닫을 세션 로그가 없음 (이미 로그아웃 되었을 수 있음). sessionKey={}", sessionKey);
+            log.debug("닫을 세션 로그가 없음 (이미 로그아웃 되었을 수 있음). sessionKey={}", sessionKey);
           }
         } else {
-          log.info("refreshToken에서 jti를 추출할 수 없음 (만료/위조 가능). 이메일 기반 닫기는 생략.");
+          log.debug("refreshToken에서 jti를 추출할 수 없음 (만료/위조 가능). 이메일 기반 닫기는 생략.");
         }
       } else {
-        log.info("refreshToken 쿠키 없음. 이메일 기반 닫기는 생략.");
+        log.debug("refreshToken 쿠키 없음. 이메일 기반 닫기는 생략.");
       }
     } catch (Exception e) {
       log.warn("로그아웃 로그 기록 실패: {}", e.getMessage(), e);
