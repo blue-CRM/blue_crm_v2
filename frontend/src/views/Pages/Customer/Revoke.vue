@@ -22,6 +22,8 @@
               :showCheckbox="true"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @changePage="changePage"
           />
@@ -44,6 +46,8 @@
               :showCheckbox="true"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @changePage="changePage"
           />
@@ -106,7 +110,7 @@ const pageTitle = ref('DB 회수하기')
 
 /** 목록 훅 (공용 필터: 날짜/카테고리/키워드) */
 const {
-  items, page, totalPages, fetchData, changePage, setSize, setFilter, loading: tableLoading,
+  items, page, size, totalPages, fetchData, changePage, setSize, setFilter, loading: tableLoading,
 } = useTableQuery({
   url: '/api/work/revoke/list',
   externalFilters: globalFilters,

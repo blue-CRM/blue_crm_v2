@@ -22,6 +22,8 @@
               :rowSelectable="() => false"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @changePage="changePage"
           />
         </ComponentCard>

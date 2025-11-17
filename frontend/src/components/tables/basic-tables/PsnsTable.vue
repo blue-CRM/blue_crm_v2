@@ -1,11 +1,19 @@
 <template>
   <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-    <div class="max-w-full overflow-x-auto custom-scrollbar">
-      <table class="w-full table-auto" ref="tableScrollHost">
+    <div
+        ref="tableScrollHost"
+        class="max-w-full overflow-x-auto overflow-y-auto custom-scrollbar"
+        :style="{ maxHeight: scrollMaxHeight }"
+    >
+      <table class="w-full table-auto">
         <thead>
         <tr class="border-b border-gray-200 dark:border-gray-700">
           <th v-if="showCheckbox" class="px-5 py-3 w-10">
             <input type="checkbox" :checked="allSelected" @change="toggleAll" />
+          </th>
+
+          <th class="px-3 py-3 w-14 text-center">
+            <p class="font-medium text-gray-400 text-theme-xs">번호</p>
           </th>
 
           <th v-for="(col, idx) in columns" :key="idx" class="px-3 py-3 text-left">
@@ -14,16 +22,32 @@
         </tr>
         </thead>
 
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody>
         <!-- 데이터 있을 때 -->
-        <tr v-for="(row, rowIndex) in data"
-            key="getRowKey(row, rowIndex)"
-            class="border-t border-gray-100 dark:border-gray-800">
+        <tr
+            v-for="(row, rowIndex) in data"
+            :key="getRowKey(row, rowIndex)"
+            :class="[
+              'border-y border-gray-100 dark:border-gray-800',
+              rowIndex % 2 === 0
+                ? 'bg-white dark:bg-gray-900' // 홀수행 흰색
+                : 'bg-gray-50 dark:bg-gray-800/60' // 짝수행 회색
+            ]"
+        >
+<!--        <tr v-for="(row, rowIndex) in data"-->
+<!--            key="getRowKey(row, rowIndex)"-->
+<!--            class="border-t border-gray-100 dark:border-gray-800">-->
+
           <!-- 체크박스 -->
           <td v-if="showCheckbox" class="px-5 py-4 sm:px-6">
             <input type="checkbox"
                    :checked="selectedRows.includes(rowIndex)" @change="toggleRow(rowIndex)"
                    :disabled="rowSelectable ? !rowSelectable(row) : false"/>
+          </td>
+
+          <!-- 행번호 -->
+          <td class="px-3 py-4 text-center text-xs text-gray-400">
+            {{ rowNumber(rowIndex) }}
           </td>
 
           <!-- 동적 컬럼 -->
@@ -146,7 +170,7 @@
 
         <!-- 데이터 없을 때 -->
         <tr v-if="!data || data.length === 0">
-          <td :colspan="(columns.length + (showCheckbox ? 1 : 0))"
+          <td :colspan="(columns.length + (showCheckbox ? 1 : 0)) + 1"
               class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
             조회된 데이터가 없습니다.
           </td>
@@ -218,9 +242,20 @@ const props = defineProps({
   page: { type: Number, default: 1 },
   totalPages: { type: Number, default: 1 },
   rowSelectable: { type: Function, default: null },
-  rowKey: { type: [String, Function], default: 'id' }
+  rowKey: { type: [String, Function], default: 'id' },
+  pageSize: { type: Number, default: null },
+  loading: { type: Boolean, default: false }
 })
 const emit = defineEmits(["rowSelect", "badgeUpdate", "buttonClick", "changePage", "DateUpdate"])
+
+// 행번호 계산 함수
+const displayPage = ref(props.page)
+function rowNumber(rowIndex) {
+  if (props.pageSize) {
+    return (displayPage.value - 1) * props.pageSize + rowIndex + 1
+  }
+  return rowIndex + 1
+}
 
 // 툴팁 확장 관련 함수
 function getRowKey(row, idx) {
@@ -241,12 +276,29 @@ function isExpanded(row, idx, colKey) {
 }
 
 // 페이지 변경시 선택 초기화
-watch(() => props.page, () => {
-  selectedRows.value = []
-  emitSelected()
-  expandedCell.value = null
-  cancelEdit()
-})
+watch(
+    () => props.loading,
+    async (loading, prev) => {
+      // 페이지 로딩이 완료된 이후 초기화 진행
+      if (prev && !loading) {
+        displayPage.value = props.page
+
+        // 선택/확장/에딧 상태 초기화
+        selectedRows.value = []
+        emitSelected()
+        expandedCell.value = null
+        cancelEdit()
+
+        // 스크롤 위치 초기화
+        await nextTick()
+        const host = tableScrollHost.value
+        if (host) {
+          host.scrollTop = 0
+          host.scrollLeft = 0
+        }
+      }
+    }
+)
 
 /* 체크박스 */
 const selectedRows = ref([])
@@ -275,12 +327,11 @@ function toggleRow(idx) {
   }
   emitSelected()
 }
-watch(() => props.page, () => (selectedRows.value = []))
+
 function emitSelected() {
   const rows = selectedRows.value.map(i => props.data[i])
   emit("rowSelect", rows)
 }
-watch(() => props.page, () => { selectedRows.value = []; emitSelected() })
 
 /* 배지 수정 */
 const editState = ref({ row: null, col: null })
@@ -588,6 +639,41 @@ const closeAllPickersOnScroll = (e) => {
   }
 }
 
+// 표 높이 동적 계산 - 스크롤 사용을 위하여
+const scrollMaxHeight = ref('500px')
+function updateScrollHeight() {
+  const el = tableScrollHost.value
+  if (!el) return
+
+  const rect = el.getBoundingClientRect()
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+  const bottomPadding = 110// 카드 아래 여백 조금 남기기
+
+  let h = viewportHeight - rect.top - bottomPadding
+  if (h < 200) h = 200 // 너무 작아지지 않게 최소 높이
+
+  scrollMaxHeight.value = `${h}px`
+}
+
+// 컨트롤 키 + 휠로 가로 스크롤
+const handleHorizontalWheel = (e) => {
+  const el = tableScrollHost.value
+  if (!el) return
+
+  // 컨트롤 키 누른 상태여야지만 가로 스크롤 가능
+  if (!e.ctrlKey) return
+
+  // (if문 통과했음 -> 컨트롤 키 누른 상태란 뜻)
+  // 따라서 기본 세로 스크롤을 막아 줘야함
+  e.preventDefault()
+
+  // deltaMode == 1 이면 "줄" 단위라 조금 키워줌
+  const base = e.deltaY !== 0 ? e.deltaY : e.deltaX
+  const factor = e.deltaMode === 1 ? 20 : 1
+
+  el.scrollLeft += base * factor
+}
+
 onMounted(() => {
   // 윈도우 스크롤/휠/터치
   window.addEventListener('wheel',     closeAllPickersOnScroll, { passive: true, capture: true })
@@ -601,6 +687,14 @@ onMounted(() => {
     host.addEventListener('scroll',    closeAllPickersOnScroll, { passive: true, capture: true })
     host.addEventListener('touchmove', closeAllPickersOnScroll, { passive: true, capture: true })
   }
+
+  // 표 높이 동적 계산
+  updateScrollHeight()
+  window.addEventListener('resize', updateScrollHeight)
+  window.addEventListener('orientationchange', updateScrollHeight)
+
+  // 컨트롤 키 + 휠로 가로 스크롤
+  host.addEventListener('wheel', handleHorizontalWheel, { passive: false })
 })
 
 onBeforeUnmount(() => {
@@ -614,6 +708,11 @@ onBeforeUnmount(() => {
     host.removeEventListener('scroll',    closeAllPickersOnScroll, true)
     host.removeEventListener('touchmove', closeAllPickersOnScroll, true)
   }
+
+  window.removeEventListener('resize', updateScrollHeight)
+  window.removeEventListener('orientationchange', updateScrollHeight)
+
+  host.removeEventListener('wheel', handleHorizontalWheel)
 })
 
 </script>

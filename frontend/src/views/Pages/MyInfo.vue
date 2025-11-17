@@ -711,13 +711,16 @@ async function loadMe() {
     email.value = data.userEmail
     phone.value = data.userPhone
 
-    if (data.userRole === 'SUPERADMIN') roleLabel.value = '관리자'
-    else if (data.userRole === 'MANAGER') roleLabel.value = '팀장'
-    else if (data.userRole === 'STAFF') roleLabel.value = '담당자'
+    console.log(data)
+    if (data.grants.role === 'SUPERADMIN') roleLabel.value = '관리자'
+    else if (data.grants.role === 'MANAGER') roleLabel.value = '팀장'
+    else if (data.grants.role === 'STAFF') roleLabel.value = '담당자'
+    else if (data.grants.role === 'CENTERHEAD') roleLabel.value = '센터장'
+    else if (data.grants.role === 'EXPERT') roleLabel.value = '전문가'
     else roleLabel.value = '-'
 
     orgLabel.value   = data.centerName || '미할당'
-    isSuperEmail.value = !!data.super
+    isSuperEmail.value = !!data.grants.isSuper
 
     phoneInput.value = phone.value || ''
   } catch (_) {

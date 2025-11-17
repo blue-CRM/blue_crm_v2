@@ -23,6 +23,8 @@
               :showCheckbox="true"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @changePage="changePage"
           />
@@ -45,6 +47,8 @@
               :showCheckbox="true"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @changePage="changePage"
           />
@@ -113,7 +117,7 @@ const role = auth.grants.role
 const pageTitle = ref('DB 분배하기')
 
 // ===== 테이블 & 페이징 =====
-const { items, page, totalPages, fetchData, changePage, setSize, setFilter, loading: tableLoading } = useTableQuery({
+const { items, page, size, totalPages, fetchData, changePage, setSize, setFilter, loading: tableLoading } = useTableQuery({
   url: '/api/work/allocate/list',
   externalFilters: globalFilters,
   useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword' },

@@ -18,6 +18,8 @@
               :rowSelectable="isRowSelectable"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @changePage="changePage"
@@ -128,7 +130,9 @@ const {
         type:
             u.userRole === "SUPERADMIN" ? "관리자" :
             u.userRole === "MANAGER"    ? "팀장" :
-            u.userRole === "STAFF"      ? "담당자" : u.userRole,
+            u.userRole === "STAFF"      ? "담당자" :
+            u.userRole === "CENTERHEAD" ? "센터장" :
+            u.userRole === "EXPERT"     ? "전문가" : u.userRole,
         name: u.userName,
         phone: u.userPhone,
         email: u.userEmail,
@@ -195,7 +199,17 @@ const columns = computed(() => {
       // super가 볼 때만 노출, 그리고 "행의 권한이 관리자"인 경우에만 편집 허용 (자기 자신은 수정 불가)
       editable: (row) => isSuper.value && row.type === "관리자" && row.email !== auth.email,
       options: ["공개", "차단"]
-    }, { key: "",  label: "",   type: "text", ellipsis: { width: 20 } })
+    },
+    { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
+    {
+      key: "visible",
+      label: "분배권한",
+      type: "badge",
+      // super가 볼 때만 노출, 그리고 "행의 권한이 센터장 혹은 전문가"인 경우에만 편집 허용 (자기 자신은 수정 불가)
+      editable: (row) => isSuper.value && (row.type === "센터장" || row.type === "전문가") && row.email !== auth.email,
+      options: ["허용", "차단"]
+    },
+    { key: "",  label: "",   type: "text", ellipsis: { width: 20 } })
   }
   return base;
 });

@@ -48,7 +48,7 @@
           <ul class="divide-y divide-gray-200 rounded-xl border border-gray-200 overflow-hidden
                    dark:divide-white/10 dark:border-white/10">
             <li class="flex items-center justify-between px-4 py-3">
-              <span class="text-sm text-gray-600 dark:text-gray-300">총 담당자 수</span>
+              <span class="text-sm text-gray-600 dark:text-gray-300">총 직원 수</span>
               <b class="text-base text-gray-900 dark:text-gray-100">{{ centerAgg.totalUsers.toLocaleString() }}</b>
             </li>
             <li class="flex items-center justify-between px-4 py-3">
@@ -368,7 +368,9 @@ const auth = useAuthStore()
 const roleLabel = (r) => {
   if (r === 'SUPERADMIN') return '관리자'
   if (r === 'MANAGER')    return '팀장'
-  return '담당자'
+  if (r === 'STAFF')      return '담당자'
+  if (r === 'CENTERHEAD')    return '센터장'
+  if (r === 'EXPERT')    return '전문가'
 }
 
 const isSuperAdmin = computed(() => auth.grants.role === 'SUPERADMIN')
@@ -478,9 +480,9 @@ const centerAgg = computed(() => {
   const cs = pickedCenters.value
   if (cs.size === 0) return { totalUsers: 0, dbRangeWithDup: 0, dbRangeOnly: 0, dbAllWithDup: 0, dbAllOnly: 0 }
 
-  // 선택된 센터의 직원만(본사 제외, STAFF만) — 네트워크에서 이미 필터된 데이터
+  // 선택된 센터의 직원만(본사 제외, 담당자+팀장만 계산) — 네트워크에서 이미 필터된 데이터
   const staffInSelectedCenters = usersForCenters.value
-      .filter(u => cs.has(u.centerId) && u.role === 'STAFF')
+      .filter(u => cs.has(u.centerId) && (u.role === 'STAFF' || u.role === 'MANAGER'))
   const staffIds = new Set(staffInSelectedCenters.map(u => u.id))
 
   const r = dbsCenters.value.filter(x => cs.has(x.centerId) && inRange(x.created))
