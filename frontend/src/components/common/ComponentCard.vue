@@ -7,12 +7,12 @@
   >
     <!-- Card Header -->
     <div class="px-6 py-4">
-      <h3 class="text-base font-medium text-gray-800 dark:text-white/90">
-        {{ title }}
-      </h3>
-      <p v-if="desc" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {{ desc }}
-      </p>
+<!--      <h3 class="text-base font-medium text-gray-800 dark:text-white/90">-->
+<!--        {{ title }}-->
+<!--      </h3>-->
+<!--      <p v-if="desc" class="mt-1 text-sm text-gray-500 dark:text-gray-400">-->
+<!--        {{ desc }}-->
+<!--      </p>-->
 
       <!-- 옵션들 (좌측: 셀렉트/버튼, 우측: 새로고침) -->
       <div class="flex flex-wrap items-center gap-1 px-1 py-1">

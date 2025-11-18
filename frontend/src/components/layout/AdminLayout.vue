@@ -11,6 +11,8 @@
 
       <app-header />
       <div class="p-4 mx-auto max-w-screen-2xl md:p-6 sm:pt-[180px] md:pt-[220px] pt-[150px] lg:pt-6">
+        <!-- 카드 가로 넓이 -->
+        <!-- <div class="p-4 mx-auto max-w-screen-2xl md:p-6 sm:pt-[180px] md:pt-[220px] pt-[150px] lg:pt-6">-->
         <slot></slot>
       </div>
     </div>
