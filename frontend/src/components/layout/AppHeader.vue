@@ -1,6 +1,6 @@
 <template>
   <header
-      class="fixed inset-x-0 top-0 z-[9998] w-screen bg-white dark:bg-gray-900 lg:sticky lg:inset-x-auto lg:w-full lg:border-b dark:border-gray-800"
+      class="fixed whitespace-nowrap inset-x-0 top-0 z-[9998] w-screen bg-white dark:bg-gray-900 lg:sticky lg:inset-x-auto lg:w-full lg:border-b dark:border-gray-800"
   >
     <div class="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
       <div
@@ -102,17 +102,17 @@
             />
           </div>
 
-<!--          &lt;!&ndash; 카테고리 필터 &ndash;&gt;-->
-<!--          <select-->
-<!--              v-model="selectedCategory"-->
-<!--              class="w-20 h-11 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1-->
-<!--             text-sm focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10-->
-<!--             dark:bg-gray-800 dark:text-gray-400 text-gray-500"-->
-<!--          >-->
-<!--            <option value="all">전체</option>-->
-<!--            <option value="주식">주식</option>-->
-<!--            <option value="코인">코인</option>-->
-<!--          </select>-->
+          <!-- 카테고리 필터 -->
+          <select
+              v-model="selectedCategory"
+              class="w-20 h-11 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1
+             text-sm focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+             dark:bg-gray-800 dark:text-gray-400 text-gray-500"
+          >
+            <option value="all">전체</option>
+            <option value="주식">주식</option>
+            <option value="코인">코인</option>
+          </select>
 
           <!-- 검색창 -->
           <SearchBar />
@@ -181,17 +181,17 @@
             />
           </div>
 
-<!--          &lt;!&ndash; 카테고리 필터 &ndash;&gt;-->
-<!--          <select-->
-<!--              v-model="selectedCategory"-->
-<!--              class="w-20 h-11 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1-->
-<!--             text-sm focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10-->
-<!--             dark:bg-gray-800 dark:text-gray-400 text-gray-500"-->
-<!--          >-->
-<!--            <option value="all">전체</option>-->
-<!--            <option value="주식">주식</option>-->
-<!--            <option value="코인">코인</option>-->
-<!--          </select>-->
+          <!-- 카테고리 필터 -->
+          <select
+              v-model="selectedCategory"
+              class="w-20 h-11 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1
+             text-sm focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+             dark:bg-gray-800 dark:text-gray-400 text-gray-500"
+          >
+            <option value="all">전체</option>
+            <option value="주식">주식</option>
+            <option value="코인">코인</option>
+          </select>
         </div>
 
         <!-- 오른쪽 그룹 -->
@@ -346,16 +346,16 @@ const selectedCategory = ref('all')
 const auth = useAuthStore()
 
 // ping 테스트
-const test = async () => {
-  try {
-    const res = await auth.pingPong()
-    console.log("Ping 성공:", res)
-    // alert("서버 응답: " + JSON.stringify(res))
-  } catch (e) {
-    console.error("Ping 실패:", e)
-    // alert("Ping 실패: " + e)
-  }
-}
+// const test = async () => {
+//   try {
+//     const res = await auth.pingPong()
+//     console.log("Ping 성공:", res)
+//     // alert("서버 응답: " + JSON.stringify(res))
+//   } catch (e) {
+//     console.error("Ping 실패:", e)
+//     // alert("Ping 실패: " + e)
+//   }
+// }
 
 // 사이드바 토글
 const { toggleSidebar, toggleMobileSidebar, isMobileOpen, closeMobileSidebar } = useSidebar()

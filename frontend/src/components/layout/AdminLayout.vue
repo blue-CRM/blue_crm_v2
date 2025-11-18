@@ -6,7 +6,7 @@
     <Backdrop />
     <div
         class="flex-1 bg-white dark:bg-gray-900"
-        :class="[isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]']"
+        :class="[isExpanded || isHovered ? 'lg:ml-[240px]' : 'lg:ml-[90px]']"
     >
 
       <app-header />
