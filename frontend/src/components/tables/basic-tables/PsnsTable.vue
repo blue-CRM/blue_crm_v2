@@ -7,16 +7,16 @@
     >
       <table class="w-full table-auto">
         <thead>
-        <tr class="border-b border-gray-200 dark:border-gray-700">
+        <tr class="border-b border-gray-200 dark:border-gray-700" style="white-space: nowrap;">
           <th v-if="showCheckbox" class="px-5 py-3 w-10">
             <input type="checkbox" :checked="allSelected" @change="toggleAll" />
           </th>
 
-          <th class="px-3 py-3 w-14 text-center">
-            <p class="font-medium text-gray-400 text-theme-xs">번호</p>
+          <th class="px-3 py-3 text-left" style="white-space: nowrap;">
+            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">번호</p>
           </th>
 
-          <th v-for="(col, idx) in columns" :key="idx" class="px-3 py-3 text-left">
+          <th v-for="(col, idx) in columns" :key="idx" class="px-3 py-3 text-left" style="white-space: nowrap;">
             <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">{{ col.label }}</p>
           </th>
         </tr>
