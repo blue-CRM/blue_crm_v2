@@ -11,7 +11,7 @@
                 ['구분 전체', '최초', '유효', '중복'],
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5',
                   '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
-            :buttons="['구분별 보기', '상태별 보기', '중복DB로 이동']"
+            :buttons="['상태별 보기', '중복DB로 이동']"
             :active="adminActiveLabels"
             :showRefresh="true"
             :refreshing="isRefreshing"
@@ -363,7 +363,7 @@ const adminActive = ref({ status: false, division: false })
 const adminActiveLabels = computed(() => {
   const arr = []
   if (adminActive.value.status) arr.push('상태별 보기')
-  if (adminActive.value.division) arr.push('구분별 보기')
+  // if (adminActive.value.division) arr.push('구분별 보기')
   return arr
 })
 
@@ -404,7 +404,7 @@ async function onAdminButtonClick(btn) {
 
     // 2) 상태/구분 토글
     if (btn === "상태별 보기")   adminActive.value.status   = !adminActive.value.status;
-    if (btn === "구분별 보기")   adminActive.value.division = !adminActive.value.division;
+    // if (btn === "구분별 보기")   adminActive.value.division = !adminActive.value.division;
 
     // 3) sort 조합
     const sortParts = [];
