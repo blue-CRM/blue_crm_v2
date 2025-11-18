@@ -107,13 +107,16 @@ public class AuthService {
   public AuthResponse refresh(String refreshToken) {
     try {
       var claims = jwtUtil.validateRefreshToken(refreshToken);
+      String email = claims.getSubject();
       
-      // 과거 데이터 백업
-      UserDto user = new UserDto();
-      user.setUserEmail(claims.getSubject());
-      user.setUserRole(claims.get("role", String.class));
-      user.setUserName(claims.get("name", String.class));
-      user.setSuper(Boolean.TRUE.equals(claims.get("isSuper", Boolean.class)));
+      // DB에서 user 다시 조회
+      UserDto user = authMapper.findByEmail(email);
+      if (user == null) {
+        throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.UNAUTHORIZED);
+      }
+      if (!"Y".equals(user.getUserApproved())) {
+        throw new AuthException("승인되지 않은 계정입니다.", HttpStatus.UNAUTHORIZED);
+      }
       
       // 기존 refreshToken 그대로 쓰므로 exp도 동일
       long refreshExp = claims.getExpiration().getTime();
@@ -151,20 +154,23 @@ public class AuthService {
     try {
       // 1) 기존 토큰 검증 + oldJti 추출
       var claims = jwtUtil.validateRefreshToken(refreshToken);
-      String oldJti = jwtUtil.extractJti(refreshToken);
+      String email = claims.getSubject();
       
-      // 2) 과거 데이터 백업
-      UserDto user = new UserDto();
-      user.setUserEmail(claims.getSubject());
-      user.setUserRole(claims.get("role", String.class));
-      user.setUserName(claims.get("name", String.class));
-      user.setSuper(Boolean.TRUE.equals(claims.get("isSuper", Boolean.class)));
+      // 2) DB에서 user 다시 조회
+      UserDto user = authMapper.findByEmail(email);
+      if (user == null) {
+        throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.UNAUTHORIZED);
+      }
+      if (!"Y".equals(user.getUserApproved())) {
+        throw new AuthException("승인되지 않은 계정입니다.", HttpStatus.UNAUTHORIZED);
+      }
       
       // 3) 새 토큰 발급
       String newAccessToken = jwtUtil.generateAccessToken(user);
       String newRefreshToken = jwtUtil.generateRefreshToken(user);
       
       // 4) jti 회전 (열린 행만 대상)
+      String oldJti = jwtUtil.extractJti(refreshToken);
       String newJti = jwtUtil.extractJti(newRefreshToken);
       if (oldJti != null && newJti != null && !oldJti.equals(newJti)) {
         try {

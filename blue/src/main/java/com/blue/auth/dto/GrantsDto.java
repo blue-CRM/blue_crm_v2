@@ -21,6 +21,7 @@ public class GrantsDto {
   private boolean canPhoneAccess; // 가시 권한
   
   // 세부 권한 맵(없으면 빈 맵)
+  @JsonProperty("perms")
   public Map<String, Boolean> getPerms() {
     return Map.of(
         "allocate", canAllocate,
