@@ -312,7 +312,7 @@
         </choose>
     </sql>
 
-    <!-- MANAGER: 자기 센터 소속 직원 담당 고객 -->
+    <!-- MANAGER: 자기 팀 소속 직원 담당 고객 -->
     <select id="findAllForManager" resultType="com.blue.customer.all.dto.AllDbRowDto">
         SELECT
         c.customer_id           AS id,

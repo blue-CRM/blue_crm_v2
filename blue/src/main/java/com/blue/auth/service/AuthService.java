@@ -315,7 +315,7 @@ public class AuthService {
       user.setCanAllocate("Y"); // 분배권한 O
       user.setCenterId(null); // 팀 미할당
     }
-    else { // 담당자
+    else { // 프로
       user.setManagerPhoneAccess("Y"); // 가시권한 O
       user.setCanAllocate("N"); // 분배권한 X
       user.setCenterId(null); // 팀 미할당

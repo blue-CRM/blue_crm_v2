@@ -64,25 +64,25 @@ public class UserService {
       throw new SecurityException("권한이 없습니다.");
     }
     
-    // 4) 센터장 1명 제한(서버 가드)
-    // 4-1) 구분을 '센터장'으로 바꾸는 경우 → 현재 소속에 다른 센터장이 있으면 불가 (본사 제외)
-    if ("type".equals(field) && "센터장".equals(value)) {
+    // 4) 팀장 1명 제한(서버 가드)
+    // 4-1) 구분을 '팀장'으로 바꾸는 경우 → 현재 소속에 다른 팀장이 있으면 불가 (본사 제외)
+    if ("type".equals(field) && "팀장".equals(value)) {
       String centerName = target.getCenterName();
       if (centerName != null && !"본사".equals(centerName)) {
         int cnt = countManagersInCenter(centerName, userId);
         if (cnt > 0) {
-          throw new IllegalStateException("'" + centerName + "'에는 이미 센터장이 있습니다.");
+          throw new IllegalStateException("'" + centerName + "'에는 이미 팀장이 있습니다.");
         }
       }
     }
     
-    // 4-2) 소속을 바꾸는 경우 → 대상이 현재 MANAGER라면, 이동할 소속에 다른 센터장이 있으면 불가 (본사 제외)
+    // 4-2) 소속을 바꾸는 경우 → 대상이 현재 MANAGER라면, 이동할 소속에 다른 팀장이 있으면 불가 (본사 제외)
     if ("center".equals(field)) {
       boolean targetIsManager = "MANAGER".equals(target.getUserRole());
       if (targetIsManager && value != null && !"본사".equals(value)) {
         int cnt = countManagersInCenter(value, userId);
         if (cnt > 0) {
-          throw new IllegalStateException("'" + value + "'에는 이미 센터장이 있습니다.");
+          throw new IllegalStateException("'" + value + "'에는 이미 팀장이 있습니다.");
         }
       }
     }
@@ -93,8 +93,8 @@ public class UserService {
     String newRole = oldRole;
     if ("type".equals(field)) {
       if ("관리자".equals(value)) newRole = "SUPERADMIN";
-      else if ("센터장".equals(value)) newRole = "MANAGER";
-      else if ("담당자".equals(value)) newRole = "STAFF";
+      else if ("팀장".equals(value)) newRole = "MANAGER";
+      else if ("프로".equals(value)) newRole = "STAFF";
     }
     
     // 조건 통과한 경우만 실제 업데이트 실행
@@ -103,9 +103,9 @@ public class UserService {
     // 업데이트가 성공적일 경우
     // 다음 각 경우에 대해 상태가 '없음'인 디비를 회수
     if ("type".equals(field)) {
-      // 1. 센터장이였다가 -> 담당자로 강등된 경우
+      // 1. 팀장이였다가 -> 프로로 강등된 경우
       boolean demoteManagerToStaff = "MANAGER".equals(oldRole) && "STAFF".equals(newRole);
-      // 2. 센터장이였다가 -> 본사로 승급된 경우
+      // 2. 팀장이였다가 -> 본사로 승급된 경우
       boolean managerToHq = "MANAGER".equals(oldRole) && "SUPERADMIN".equals(newRole);
       
       // 위 두 경우중 하나라도 해당 된다면 회수 처리

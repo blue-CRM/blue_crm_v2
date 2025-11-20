@@ -35,7 +35,7 @@
         LIMIT 1
     </select>
 
-    <!-- 센터 소유 확인: 고객→담당자→센터 -->
+    <!-- 센터 소유 확인: 고객→user→센터 -->
     <select id="customerOwnedByCenter" resultType="int">
         SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
         FROM customers c

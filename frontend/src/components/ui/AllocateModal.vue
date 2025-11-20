@@ -14,14 +14,14 @@
         <!-- 선택 개수 -->
         <p class="text-sm text-gray-500 dark:text-gray-400">선택된 고객: <b>{{ selectedCount }}</b>명</p>
 
-        <!-- HQ 전용: 센터 선택 -->
+        <!-- HQ 전용: 팀 선택 -->
         <div v-if="mode==='HQ'" class="space-y-1">
-          <label class="block text-sm text-gray-600 dark:text-gray-300">센터 선택</label>
+          <label class="block text-sm text-gray-600 dark:text-gray-300">팀 선택</label>
           <select v-model.number="centerId"
                   class="w-full h-11 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2
                   text-sm focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
                   dark:bg-gray-800 dark:text-gray-200">
-            <option :value="null" disabled>센터를 선택하세요</option>
+            <option :value="null" disabled>팀를 선택하세요</option>
             <option v-for="c in centers" :key="c.centerId" :value="c.centerId">
               {{ c.centerName }} (인원 {{ c.userCount }}명)
             </option>
@@ -29,10 +29,10 @@
 
 <!--          <p v-if="selectedCenter && !selectedCenter.hasManager"-->
 <!--             class="text-xs text-amber-600 mt-1">-->
-<!--            이 센터는 팀장이 없습니다. 센터 소속 직원을 선택해야 분배할 수 있어요.-->
+<!--            이 팀은 팀장이 없습니다. 팀 소속 직원을 선택해야 분배할 수 있어요.-->
 <!--          </p>-->
           <p v-if="centerId === null" class="text-xs text-gray-500 mt-1">
-            먼저 센터를 선택하세요.
+            먼저 팀을 선택하세요.
           </p>
         </div>
 
@@ -60,7 +60,7 @@
             </button>
           </div>
 
-          <!-- 센터 미선택 시엔 리스트 숨김 -->
+          <!-- 팀 미선택 시엔 리스트 숨김 -->
           <div
               v-if="!(mode==='HQ' && !centerId) && users.length"
               class="max-h-52 overflow-auto border border-gray-100 dark:border-gray-800 rounded-md">
@@ -74,7 +74,7 @@
               >
                 <div class="text-sm text-gray-700 dark:text-gray-200">
                   <b>{{ u.userName }}</b>
-                  <span class="text-gray-400 ml-2">({{ u.role === 'MANAGER' ? '팀장' : '담당자' }})</span>
+                  <span class="text-gray-400 ml-2">({{ u.role === 'MANAGER' ? '팀장' : '프로' }})</span>
 <!--                  <span class="text-gray-400 ml-2">{{ u.centerName }}</span>-->
                 </div>
 
@@ -147,7 +147,7 @@ async function loadCenters(){
 
 async function searchUsers(){
   try {
-    // HQ에서 센터 미선택이면 검색/표시 금지
+    // HQ에서 팀 미선택이면 검색/표시 금지
     if (props.mode === 'HQ' && !centerId.value) {
       users.value = []
       return
@@ -163,7 +163,7 @@ async function searchUsers(){
 
 let t:any = null
 function debouncedSearch(){
-  // HQ에서 센터 미선택이면 디바운스 없이 무시
+  // HQ에서 팀 미선택이면 디바운스 없이 무시
   if (props.mode === 'HQ' && !centerId.value) return
   clearTimeout(t)
   t = setTimeout(searchUsers, 250)
@@ -175,7 +175,7 @@ async function confirm(){
   submitting.value = true
   try {
     if (props.mode === 'HQ' && (!centerId.value)) {
-      alert('센터를 선택하세요.')
+      alert('팀을 선택하세요.')
       return
     } else if (props.mode === 'HQ' && (!pickedUser.value?.userId)) {
       alert('직원을 선택하세요.')
@@ -193,13 +193,13 @@ watch(
       await loadCenters()
       users.value = []
       pickedUser.value = null
-      // 매니저 모드는 모달 열리자마자 빈 검색 허용(센터 고정)
+      // 매니저 모드는 모달 열리자마자 빈 검색 허용(팀 고정)
       if (m === 'MANAGER') searchUsers()
     },
     { immediate: true }
 )
 
-// HQ에서 센터 선택이 바뀌면 즉시 검색(또는 미선택이면 비우기)
+// HQ에서 팀 선택이 바뀌면 즉시 검색(또는 미선택이면 비우기)
 watch(centerId, () => {
   users.value = []
   pickedUser.value = null

@@ -72,7 +72,7 @@ import axios from '@/plugins/axios.js'
  */
 const columns = [
   { key: 'createdAt',  label: 'DB생성일', type: 'text' },
-  { key: 'staff',      label: '담당자',   type: 'text' },
+  { key: 'staff',      label: '프로',   type: 'text' },
   { key: 'division',   label: '구분',     type: 'badge',  options: ['최초','중복','유효'] },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
   // { key: 'category',   label: '카테고리', type: 'badge',  options: ['주식','코인'] },

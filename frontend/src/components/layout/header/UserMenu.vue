@@ -9,7 +9,7 @@
       <span
           v-if="auth.grants.role === 'STAFF'"
           class="text-blue-500 dark:text-blue-400"
-      > [담당자]&nbsp; </span>
+      > [프로]&nbsp; </span>
       <span
           v-else-if="auth.grants.role === 'MANAGER'"
           class="text-green-600 dark:text-green-400"
@@ -25,7 +25,7 @@
       <span
           v-else-if="auth.grants.role === 'SUPERADMIN'"
           class="text-red-500 dark:text-red-400"
-      > [본사]&nbsp; </span>
+      > [관리자]&nbsp; </span>
 
       <!-- 사용자 이름 -->
       <span class="block mr-1 font-medium text-theme-sm">

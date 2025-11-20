@@ -17,7 +17,7 @@ public class CustomerCenterController {
   
   private final CustomerCenterService service;
   
-  /** 센터 리스트 드롭다운용 */
+  /** 팀 리스트 드롭다운용 */
   @GetMapping("/work/center/centers")
   public ResponseEntity<?> getCenters() {
     return ResponseEntity.ok(service.getCenters());

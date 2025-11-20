@@ -179,7 +179,7 @@ const hqColumns = [
   { key: "status",    label: "상태",     type: "badge" },
   {
     key: "centerName",
-    label: "센터",
+    label: "팀명",
     type: "badge",
     width: 100,
     render: (val: any) => {
@@ -187,7 +187,7 @@ const hqColumns = [
       return `<span>${text}</span>`
     },
   },
-  { key: 'staff',     label: '담당자',    type: 'text' },
+  { key: 'staff',     label: '프로',    type: 'text' },
 ]
 
 const mgrColumns = [
@@ -201,7 +201,7 @@ const mgrColumns = [
   { key: "status",    label: "상태",     type: "badge" },
   {
     key: "centerName",
-    label: "센터",
+    label: "팀명",
     type: "badge",
     width: 100,
     render: (val: any) => {
@@ -209,7 +209,7 @@ const mgrColumns = [
       return `<span>${text}</span>`
     },
   },
-  { key: 'staff',     label: '담당자',    type: 'text' },
+  { key: 'staff',     label: '프로',    type: 'text' },
 ]
 
 /** 버튼 핸들러 */

@@ -714,7 +714,7 @@ async function loadMe() {
     console.log(data)
     if (data.grants.role === 'SUPERADMIN') roleLabel.value = '관리자'
     else if (data.grants.role === 'MANAGER') roleLabel.value = '팀장'
-    else if (data.grants.role === 'STAFF') roleLabel.value = '담당자'
+    else if (data.grants.role === 'STAFF') roleLabel.value = '프로'
     else if (data.grants.role === 'CENTERHEAD') roleLabel.value = '센터장'
     else if (data.grants.role === 'EXPERT') roleLabel.value = '전문가'
     else roleLabel.value = '-'
@@ -1176,7 +1176,7 @@ const candidate = ref(null) // { userId, userName, userEmail, userRole, centerNa
 const roleHuman = (role) =>
     role === 'SUPERADMIN' ? '관리자'
         : role === 'MANAGER'  ? '팀장'
-        : role === 'STAFF'    ? '담당자'
+        : role === 'STAFF'    ? '프로'
         : role
 
 async function lookupDelegate() {

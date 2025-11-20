@@ -58,14 +58,14 @@ public class MyInfoController {
     return ResponseEntity.ok().build();
   }
   
-  // 센터 목록 (특별계정 전용)
+  // 팀 목록 (특별계정 전용)
   @GetMapping("/centers")
   public ResponseEntity<List<CenterDto>> list(Authentication auth) {
     String email = auth.getName();
     return ResponseEntity.ok(myInfoService.listCenters(email));
   }
   
-  // 센터 추가 (특별계정 전용)
+  // 팀 추가 (특별계정 전용)
   @PostMapping("/centers")
   public ResponseEntity<Void> add(@RequestBody CreateCenterRequest req, Authentication auth) {
     String email = auth.getName();
@@ -73,7 +73,7 @@ public class MyInfoController {
     return ResponseEntity.ok().build();
   }
   
-  // 센터 삭제 (특별계정 전용, 직원 존재 시 409)
+  // 팀 삭제 (특별계정 전용, 직원 존재 시 409)
   @DeleteMapping("/centers/{id}")
   public ResponseEntity<Void> delete(@PathVariable("id") long id, Authentication auth) {
     String email = auth.getName();

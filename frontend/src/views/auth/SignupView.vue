@@ -192,7 +192,7 @@
                   >
                     <option value="SUPERADMIN">본사</option>
                     <option value="MANAGER">팀장</option>
-                    <option value="STAFF">담당자</option>
+                    <option value="STAFF">프로</option>
                     <option value="CENTERHEAD">센터장</option>
                     <option value="EXPERT">전문가</option>
                   </select>

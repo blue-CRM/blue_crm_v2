@@ -70,20 +70,20 @@
           </ul>
         </div>
 
-        <!-- 담당자별 (단일 선택) -->
+        <!-- 프로별 (단일 선택) -->
         <div class="col-span-12 xl:col-span-6 rounded-2xl border border-gray-200 bg-white p-5
             dark:border-gray-800 dark:bg-white/[0.03]">
           <!-- 제목 + 검색창 + 버튼 같은 행 -->
           <div class="mb-4 flex items-center gap-2">
             <div class="text-lg font-semibold text-gray-900 dark:text-gray-100 shrink-0 mr-2">
-              담당자별
+              프로별
             </div>
 
             <!-- 검색창 + 버튼 묶음 -->
             <div class="flex items-center gap-2 flex-1">
               <input
                   v-model="userQuery"
-                  placeholder="담당자 검색"
+                  placeholder="프로 검색"
                   @keydown.enter.prevent="pickFirstUser"
                   class="h-11 w-full rounded-lg border px-3
                    bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
@@ -102,9 +102,9 @@
           <!-- 값 리스트 -->
           <ul class="divide-y divide-gray-200 rounded-xl border border-gray-200 overflow-hidden
                    dark:divide-white/10 dark:border-white/10">
-            <!-- 담당자 정보 -->
+            <!-- 프로 정보 -->
             <li class="flex items-center justify-between px-4 py-3">
-              <span class="text-sm text-gray-600 dark:text-gray-300">선택된 담당자 정보</span>
+              <span class="text-sm text-gray-600 dark:text-gray-300">선택된 프로 정보</span>
               <b class="text-base text-gray-900 dark:text-gray-100">
                 <template v-if="pickedUserInfo">
                   {{ pickedUserInfo.name }} ({{ pickedUserInfo.center }}, {{ roleLabel(pickedUserInfo.role) }})
@@ -139,7 +139,7 @@
       </div>
     </div>
 
-    <!-- 팀장/담당자용 -->
+    <!-- 팀장/프로 용 -->
     <div v-else class="mt-2 grid grid-cols-12 gap-4 md:gap-6 items-stretch">
       <!-- KPI -->
       <div class="col-span-12 xl:col-span-4 space-y-4 xl:space-y-0 xl:grid xl:grid-rows-[1fr_1fr] xl:gap-4 xl:h-full xl:min-h-0" >
@@ -156,23 +156,23 @@
         </KpiCardCompact>
       </div>
 
-      <!-- 통계: 담당자별 -->
+      <!-- 통계: 프로별 -->
       <div class="col-span-12 xl:col-span-8 xl:h-full rounded-2xl border bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
 
-        <!-- 담당자별 (단일 선택) -->
+        <!-- 프로별 (단일 선택) -->
         <div class="col-span-12 xl:col-span-6 rounded-2xl border border-gray-200 bg-white p-5
             dark:border-gray-800 dark:bg-white/[0.03]">
           <!-- 제목 + 검색창 + 버튼 같은 행 -->
           <div class="mb-4 flex items-center gap-2">
             <div class="text-lg font-semibold text-gray-900 dark:text-gray-100 shrink-0 mr-2">
-              담당자별
+              프로별
             </div>
 
             <!-- 검색창 + 버튼 묶음 -->
             <div class="flex items-center gap-2 flex-1">
               <input
                   v-model="userQuery"
-                  placeholder="담당자 검색"
+                  placeholder="프로 검색"
                   @keydown.enter.prevent="pickFirstUser"
                   class="h-11 w-full rounded-lg border px-3
                    bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
@@ -191,9 +191,9 @@
           <!-- 값 리스트 -->
           <ul class="divide-y divide-gray-200 rounded-xl border border-gray-200 overflow-hidden
                    dark:divide-white/10 dark:border-white/10">
-            <!-- 담당자 정보 -->
+            <!-- 프로 정보 -->
             <li class="flex items-center justify-between px-4 py-3">
-              <span class="text-sm text-gray-600 dark:text-gray-300">선택된 담당자 정보</span>
+              <span class="text-sm text-gray-600 dark:text-gray-300">선택된 프로 정보</span>
               <b class="text-base text-gray-900 dark:text-gray-100">
                 <template v-if="pickedUserInfo">
                   {{ pickedUserInfo.name }} ({{ pickedUserInfo.center }}, {{ roleLabel(pickedUserInfo.role) }})
@@ -368,7 +368,7 @@ const auth = useAuthStore()
 const roleLabel = (r) => {
   if (r === 'SUPERADMIN') return '관리자'
   if (r === 'MANAGER')    return '팀장'
-  if (r === 'STAFF')      return '담당자'
+  if (r === 'STAFF')      return '프로'
   if (r === 'CENTERHEAD')    return '센터장'
   if (r === 'EXPERT')    return '전문가'
 }
@@ -380,7 +380,7 @@ const isScopedToCenter = computed(() => !isSuperAdmin.value && myCenterId.value 
 const centers = ref([]) // 센터 목록 (모달 열릴 때만 채움)
 const centersLoaded = ref(false)
 const usersFound = ref([]) // 최근 검색 결과(상위 n명)
-const dbsUser = ref([]) // 현재 선택된 "담당자"의 DB
+const dbsUser = ref([]) // 현재 선택된 "프로"의 DB
 const dbsCenters = ref([]) // 현재 선택된 "센터들"의 DB 묶음
 const usersForCenters = ref([]) // 선택된 센터들의 직원 목록(본사 제외, STAFF만)
 
@@ -425,7 +425,7 @@ const openCenterPicker = ref(false)
 const centerQuery = ref('')
 const modalCenters = ref(new Set())   // 모달 내부 임시 선택 -> 확인 버튼 클릭시 확정
 
-// 선택된 담당자 정보 (이름/소속/권한)
+// 선택된 프로 정보 (이름/소속/권한)
 const pickedUserInfo = computed(() => {
   if (!pickedUserId.value) return null
   return usersFound.value.find(u => u.id === pickedUserId.value) || null
@@ -480,7 +480,7 @@ const centerAgg = computed(() => {
   const cs = pickedCenters.value
   if (cs.size === 0) return { totalUsers: 0, dbRangeWithDup: 0, dbRangeOnly: 0, dbAllWithDup: 0, dbAllOnly: 0 }
 
-  // 선택된 센터의 직원만(본사 제외, 담당자+팀장만 계산) — 네트워크에서 이미 필터된 데이터
+  // 선택된 센터의 직원만(본사 제외, 프로+팀장만 계산) — 네트워크에서 이미 필터된 데이터
   const staffInSelectedCenters = usersForCenters.value
       .filter(u => cs.has(u.centerId) && (u.role === 'STAFF' || u.role === 'MANAGER'))
   const staffIds = new Set(staffInSelectedCenters.map(u => u.id))
@@ -496,7 +496,7 @@ const centerAgg = computed(() => {
   }
 })
 
-/* 담당자 단일 선택 */
+/* 프로 단일 선택 */
 const userQuery = ref('')
 const pickedUserId = ref(null)
 const canSearchUser = computed(() => userQuery.value.trim().length > 0)
@@ -505,7 +505,7 @@ async function pickFirstUser() {
   const s = userQuery.value.trim()
   if (!s) return
 
-  await searchUsersExactByName(s) // 담당자명 정확히 일치해야함
+  await searchUsersExactByName(s) // 프로명 정확히 일치해야함
   // await searchUsers(s) // 부분 일치
 
   const hit = usersFound.value[0]
@@ -519,7 +519,7 @@ async function pickFirstUser() {
 
   pickedUserId.value = hit ? hit.id : null
 
-  // 해당 담당자 DB 로드
+  // 해당 프로의 DB 로드
   userAggLoading.value = true
   try {
     if (pickedUserId.value) {
@@ -532,7 +532,7 @@ async function pickFirstUser() {
   }
 }
 
-/* 집계: 담당자별(단일) */
+/* 집계: 프로별(단일) */
 const userAgg = computed(() => {
   const id = pickedUserId.value
   if (!id) return { totalUsers: 0, dbRangeWithDup: 0, dbRangeOnly: 0, dbAllWithDup: 0, dbAllOnly: 0 }

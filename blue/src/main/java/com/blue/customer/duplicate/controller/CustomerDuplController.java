@@ -19,7 +19,7 @@ public class CustomerDuplController {
    * - 소스: customers_duplicate
    * - 노출: duplicate_display = 0 인 행만
    * - 권한 범위:
-   *   SUPERADMIN: 전체 / MANAGER: 자기 센터 / STAFF: 본인 담당
+   *   SUPERADMIN: 전체 / MANAGER: 자기 팀 / STAFF: 본인 담당
    * - 정렬: createdAt DESC 고정 (상태/구분 정렬 옵션 없음)
    * - 마스킹: SUPERADMIN + visible=N 이면 전화 마스킹, 마스킹된 값은 검색 불가
    *

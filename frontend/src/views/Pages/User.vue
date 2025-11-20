@@ -130,7 +130,7 @@ const {
         type:
             u.userRole === "SUPERADMIN" ? "관리자" :
             u.userRole === "MANAGER"    ? "팀장" :
-            u.userRole === "STAFF"      ? "담당자" :
+            u.userRole === "STAFF"      ? "프로" :
             u.userRole === "CENTERHEAD" ? "센터장" :
             u.userRole === "EXPERT"     ? "전문가" : u.userRole,
         name: u.userName,
@@ -179,7 +179,7 @@ onUnmounted(() => {
 const columns = computed(() => {
   const base = [
     { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
-    { key: "type", label: "구분", type: "badge", editable: canEdit, options: ["관리자", "팀장", "담당자"] },
+    { key: "type", label: "구분", type: "badge", editable: canEdit, options: ["관리자", "센터장", "전문가", "팀장", "프로"] },
     { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
     { key: "name", label: "이름", type: "text", ellipsis: { width: 150 } },
     { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 180 } },
@@ -315,7 +315,7 @@ async function onBadgeUpdate(row, key, newValue) {
   // value → 한글
   if (newValue === "SUPERADMIN") displayValue = "관리자"
   else if (newValue === "MANAGER") displayValue = "팀장"
-  else if (newValue === "STAFF") displayValue = "담당자"
+  else if (newValue === "STAFF") displayValue = "프로"
 
   if (key === 'visible' && (newValue === '공개' || newValue === '차단')) {
     newValue = newValue === '공개' ? 'Y' : 'N'

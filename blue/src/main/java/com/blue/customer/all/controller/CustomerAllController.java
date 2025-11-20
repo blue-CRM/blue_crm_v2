@@ -5,7 +5,6 @@ import com.blue.customer.all.dto.PagedResponse;
 import com.blue.customer.all.dto.UpdateFieldDto;
 import com.blue.customer.all.dto.IdsDto;
 import com.blue.customer.all.service.CustomerAllService;
-import com.blue.customer.common.memo.dto.MemoUpdateDto;
 import com.blue.customer.common.memo.service.MemoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

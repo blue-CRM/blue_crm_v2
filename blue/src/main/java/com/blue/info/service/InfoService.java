@@ -28,7 +28,7 @@ public class InfoService {
    * 조직도 트리 + 현재 사용자
    * - centerId == null 사용자는 제외
    * - 보기 범위: STAFF=본인만, MANAGER=본인 센터 전체, HQ/SUPERADMIN=전체
-   * - 정렬: 권한(관리자>센터장>담당자) → 입사일(오름차순)
+   * - 정렬: 권한(관리자>센터장>전문가>팀장>프로) → 입사일(오름차순)
    */
   public Map<String, Object> getOrgTree(Authentication auth) {
     UserRow me = (auth != null) ? infoMapper.findByEmail(auth.getName()) : null;
@@ -59,7 +59,7 @@ public class InfoService {
         .sorted(
             Comparator
                 .comparing((UserRow u) -> u.isSuper() ? 0 : 1) //  superAccount 먼저
-                .thenComparingInt(u -> -rank(u.getUserRole())) // 권한: 관리자>센터장>담당자
+                .thenComparingInt(u -> -rank(u.getUserRole())) // 권한: 관리자>센터장>전문가>팀장>프로
                 .thenComparing(UserRow::getUserCreatedAt,
                     Comparator.nullsLast(Comparator.naturalOrder())) // 입사순
         )

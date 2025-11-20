@@ -21,7 +21,7 @@
     <sql id="DUPL_FILTERS">
         <if test="keyword != null and keyword != ''">
             <choose>
-                <!-- SUPERADMIN 가시권한 N: 전화 앞3/뒤4 '정확일치'만, 이름/담당자 LIKE 허용 -->
+                <!-- SUPERADMIN 가시권한 N: 전화 앞3/뒤4 '정확일치'만, 이름/프로 LIKE 허용 -->
                 <when test='_parameter.containsKey("visible") and visible == "N"'>
                     AND (
                     t.name  LIKE CONCAT('%', #{keyword}, '%')
@@ -31,7 +31,7 @@
                     OR SUBSTRING(REGEXP_REPLACE(t.phone, '[^0-9]', ''), 1, 2) = REGEXP_REPLACE(#{keyword}, '[^0-9]', '')  <!-- 02 지역번호 대응 -->
                     )
                 </when>
-                <!-- 기본: 이름/담당자/전화 LIKE -->
+                <!-- 기본: 이름/프로/전화 LIKE -->
                 <otherwise>
                     AND (
                     t.name  LIKE CONCAT('%', #{keyword}, '%')
@@ -108,7 +108,7 @@
         <include refid="DUPL_FILTERS"/>
     </select>
 
-    <!-- ================= MANAGER: 자기 센터 ================= -->
+    <!-- ================= MANAGER: 자기 팀 ================= -->
     <select id="findAllForManager" resultType="com.blue.customer.all.dto.AllDbRowDto">
         SELECT
         t.id, t.origin, t.createdAt, t.staff, t.division, t.category,

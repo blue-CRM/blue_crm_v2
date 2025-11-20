@@ -16,7 +16,7 @@
         LIMIT 1
     </select>
 
-    <!-- 본사 제외 센터 목록 -->
+    <!-- 본사 제외 팀 목록 -->
     <select id="findCentersExcludingHQ" resultType="com.blue.customer.center.dto.CenterSimpleDto">
         SELECT
             c.center_id   AS centerId,
@@ -62,7 +62,7 @@
         </if>
     </sql>
 
-    <!-- SUPERADMIN 전용: 고객 + 중복 (센터 없는 항목/본사 소속 제외) -->
+    <!-- SUPERADMIN 전용: 고객 + 중복 (팀 없는 항목/본사 소속 제외) -->
     <select id="findForAdmin" resultType="com.blue.customer.center.dto.CenterDbRowDto">
         SELECT
         t.id,

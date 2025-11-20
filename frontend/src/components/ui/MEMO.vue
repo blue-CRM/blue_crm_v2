@@ -46,11 +46,11 @@
         <!-- SUPERADMIN 전용 -->
         <template v-if="isSuperAdmin">
           <div class="flex">
-            <span class="w-24 font-semibold">현재 담당자</span>
+            <span class="w-24 font-semibold">담당 프로</span>
             <span>{{ effectiveStaff }}</span>
           </div>
           <div class="flex items-start">
-            <span class="w-24 font-semibold mb-1 shrink-0">담당자 이력</span>
+            <span class="w-24 font-semibold mb-1 shrink-0">과거 이력</span>
             <div
                 class="flex-1 max-h-20 overflow-y-auto pr-2 break-words whitespace-pre-wrap history-scroll"
             >
@@ -201,8 +201,8 @@ const status     = ref("없음")
 const options    = ref([])
 const promiseTime = ref("")
 
-const detailStaff   = ref(null)   // 현재 담당자
-const staffHistory  = ref([])     // 담당자 이력
+const detailStaff   = ref(null)   // 현재 담당 프로
+const staffHistory  = ref([])     // 담당 프로 이력
 
 // input ref (timepicker)
 const timepicker = ref(null)
@@ -493,7 +493,7 @@ watch(
   font-weight: 500;
 }
 
-/* 담당자 이력 스크롤 디자인(필요시) */
+/* 과거 이력 스크롤 디자인 */
 .history-scroll::-webkit-scrollbar {
   width: 6px;
 }

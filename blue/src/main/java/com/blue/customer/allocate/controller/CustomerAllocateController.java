@@ -36,7 +36,7 @@ public class CustomerAllocateController {
     return service.allocateByHq(auth.getName(), req);
   }
   
-  // 센터장 재분배
+  // 팀장 재분배
   @PostMapping("/work/allocate/manager")
   public AllocateResult allocateByManager(Authentication auth, @RequestBody AllocateMgrReq req) {
     return service.allocateByManager(auth.getName(), req);
@@ -52,7 +52,7 @@ public class CustomerAllocateController {
     return service.searchUsersForAllocate(auth.getName(), centerId, q);
   }
   
-  // 센터 조회
+  // 팀 조회
   @GetMapping("/work/allocate/centers")
   public List<CenterPickDto> centers(Authentication auth) {
     return service.centersForAllocate(auth.getName());

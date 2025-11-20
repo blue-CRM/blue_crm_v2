@@ -33,7 +33,7 @@ public class UserController {
     return userService.getUsers(page, size, keyword);
   }
   
-  // 프론트 사전 확인: 해당 센터에 다른 MANAGER 있는지
+  // 프론트 사전 확인: 해당 팀에 다른 MANAGER 있는지
   @GetMapping("/has-manager")
   public ResponseEntity<?> hasManager(@RequestParam String centerName,
                                       @RequestParam(required = false) Long excludeUserId) {

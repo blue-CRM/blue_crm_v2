@@ -235,7 +235,7 @@ function notDuplicate(row) {
 ============================= */
 const adminColumns = [
   { key: "createdAt", label: "DB생성일", type: "text" },
-  { key: "staff", label: "담당자", type: "text" },
+  { key: "staff", label: "프로", type: "text" },
   { key: "division", label: "구분", type: "badge", options: ["최초", "중복", "유효"] },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
   // { key: "category", label: "카테고리", type: "badge", options: ["주식", "코인"] },
@@ -259,7 +259,7 @@ const adminColumns = [
 const commonColumns = [
   { key: "createdAt", label: "DB생성일", type: "text" },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
-  { key: "staff", label: "담당자", type: "text" },
+  { key: "staff", label: "프로", type: "text" },
   // { key: "category", label: "카테고리", type: "badge", options: ["주식", "코인"] },
   { key: "name", label: "이름", type: "text"},
   { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 150 } },

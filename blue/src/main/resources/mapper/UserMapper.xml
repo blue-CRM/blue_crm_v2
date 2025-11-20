@@ -71,27 +71,27 @@
                 </when>
                 <!-- 권한 수정 -->
                 <when test="field == 'type'">
-                    <!-- 센터 수정 규칙 -->
+                    <!-- 팀 수정 규칙 -->
                     center_id =
                     CASE
                     <!-- 관리자 → 본사 -->
                     WHEN #{value} = '관리자'
                     THEN 1
-                    WHEN #{value} IN ('센터장','담당자')
+                    WHEN #{value} IN ('팀장','프로')
                     AND user_role = 'SUPERADMIN' <!-- 업데이트 전 권한이 관리자라면 -->
-                    THEN NULL  <!-- 관리자 → 센터/담당자 → 소속 제거 -->
-                    ELSE center_id  <!-- 센터↔담당자 이동 → 소속 유지 -->
+                    THEN NULL  <!-- 관리자 → 팀장/프로 → 소속 제거 -->
+                    ELSE center_id  <!-- 팀장↔프로 이동 → 소속 유지 -->
                     END,
 
                     <!-- 가시권한 규칙 -->
                     manager_phone_access =
                     CASE
-                    -- 관리자 → 센터장/담당자 → 가시권한 Y
-                    WHEN #{value} IN ('센터장','담당자')
+                    -- 관리자 → 팀장/프로 → 가시권한 Y
+                    WHEN #{value} IN ('팀장','프로')
                     AND user_role = 'SUPERADMIN'
                     THEN 'Y'
 
-                    -- 센터장/담당자 → 관리자 → 가시권한 N
+                    -- 팀장/프로 → 관리자 → 가시권한 N
                     WHEN #{value} = '관리자'
                     AND user_role IN ('MANAGER','STAFF')
                     THEN 'N'
@@ -103,8 +103,8 @@
                     user_role =
                     CASE
                     WHEN #{value} = '관리자' THEN 'SUPERADMIN'
-                    WHEN #{value} = '센터장' THEN 'MANAGER'
-                    WHEN #{value} = '담당자' THEN 'STAFF'
+                    WHEN #{value} = '팀장' THEN 'MANAGER'
+                    WHEN #{value} = '프로' THEN 'STAFF'
                     END
                 </when>
 
@@ -179,7 +179,7 @@
         </if>
     </select>
 
-    <!-- 센터장(팀장)에서 다른 역할로 변경 직후: 해당 센터장(팀장)이 들고 있던 디비중 상태='없음'만 회수 -->
+    <!-- 팀장에서 다른 역할로 변경 직후: 해당 팀장이 들고 있던 디비중 상태='없음'만 회수 -->
     <update id="autoRecallStatusNoneByOwner" parameterType="long">
         UPDATE customers
         SET customer_status = '회수',

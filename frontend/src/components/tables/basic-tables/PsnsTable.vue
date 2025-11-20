@@ -83,7 +83,7 @@
                   })()"
                 >
                   {{ col.key === 'staff'
-                                ? (row[col.key]?.toString().trim() || '담당자 없음')
+                                ? (row[col.key]?.toString().trim() || '')
                                 : (row[col.key] ?? '') }}
                 </span>
               </button>
@@ -569,7 +569,7 @@ const badgeClass = (value) => {
     case "회수":
     case "차단":
       return "bg-[#F8D7DA] text-[#B23A48] dark:bg-[#4A1C1C]/80 dark:text-[#F28B82]/85"
-    case "담당자":
+    case "프로":
     case "신규":
     case "승인":
     case "최초":

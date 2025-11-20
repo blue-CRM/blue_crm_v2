@@ -165,7 +165,7 @@ const baseCols = [
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
 ]
 
-// 본사(HQ)만 담당자 이력 + 구분 노출
+// 본사(HQ)만 과거 이력 + 구분 노출
 const hqColumns = [
   { key: 'createdAt', label: 'DB생성일', type: 'text' },
   { key: 'division',  label: '구분',     type: 'badge', options: ['최초','유효'] },
@@ -179,10 +179,10 @@ const hqColumns = [
     // 회수 : DB회수하기 메뉴에서
     // 신규 : 한번도 분배가 되지 않은 항목만
     options: ["부재1","부재2","부재3","부재4","부재5","재콜","가망","자연풀","카피","거절"] },
-  { key: 'paststaff',     label: '담당자 이력', type: 'text', ellipsis: { width: 200 } }, // HQ 전용
+  { key: 'paststaff',     label: '과거 이력', type: 'text', ellipsis: { width: 200 } }, // HQ 전용
 ]
 
-// 매니저는 담당자 이력/구분 X (분배만)
+// 매니저는 과거 이력/구분 X (분배만)
 const mgrColumns = [ ...baseCols ]
 
 // ===== HQ 전용 구분 필터 =====
@@ -209,9 +209,9 @@ function closeModal(){ modal.value.open = false }
 async function onConfirmAllocate(payload: { centerId?:number|null, userId?:number|null }){
   const ids = needSelection(); if (!ids.length) return
   await runBusy(async () => {
-    // 관리자가 분배할 경우: 센터 + 대상자(팀장/담당자) 선택 필수
+    // 관리자가 분배할 경우: 팀 + 대상자(팀장/프로) 선택 필수
     if (modal.value.mode === 'HQ' && (!payload.centerId)) {
-      alert('센터를 선택하세요.')
+      alert('팀을 선택하세요.')
       return
     } else if (modal.value.mode === 'HQ' && (!payload.userId)) {
       alert('직원을 선택하세요.')

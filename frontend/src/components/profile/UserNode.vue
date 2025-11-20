@@ -1,6 +1,6 @@
 <template>
   <li class="space-y-2">
-    <!-- 제목 바: 본사 / 본사 직원 / 센터명 -->
+    <!-- 제목 바: 본사 / 본사 직원 / 팀명 -->
     <div
         v-if="isTitle(node)"
         :class="[
@@ -79,7 +79,7 @@
            text-gray-500 dark:border-gray-700 dark:text-gray-400"
         >
           <template v-if="isUnassignedStaff">
-            아직 센터에 배정되지 않았습니다.
+            아직 팀에 배정되지 않았습니다.
           </template>
           <template v-else>
             구성원이 없습니다.
@@ -136,7 +136,7 @@ function toggle() {
   emit('toggle', { key: k, open: !expanded.value })
 }
 
-function roleLabel(r){ return r==='SUPERADMIN'?'관리자':r==='MANAGER'?'팀장':r==='STAFF'?'담당자':r }
+function roleLabel(r){ return r==='SUPERADMIN'?'관리자':r==='MANAGER'?'팀장':r==='STAFF'?'프로':r }
 
 /** 프론트 UX 1차 차단 (서버가 최종 검증) */
 function canEdit(viewer, target) {
@@ -152,7 +152,7 @@ function canEdit(viewer, target) {
   // HQ/SUPERADMIN: 전체 열람, 같은 권한은 수정 불가
   if (viewer.centerId === 1 || viewer.userRole === 'SUPERADMIN') return vr > tr
 
-  // MANAGER: 같은 센터 + 자신보다 낮은 권한(STAFF)만
+  // MANAGER: 같은 팀 + 자신보다 낮은 권한(STAFF)만
   if (viewer.userRole === 'MANAGER') return viewer.centerId === target.centerId && vr > tr
 
   // STAFF: 불가

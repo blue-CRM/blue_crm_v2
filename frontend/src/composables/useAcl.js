@@ -25,7 +25,7 @@ const policy = {
         'menu.db.duplicate', // 중복 DB
         'menu.info',         // 정보보기
     ],
-    // 담당자
+    // 프로
     STAFF: [
         // 사이드바
         'menu.dashboard',    // 대시보드
