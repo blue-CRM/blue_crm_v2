@@ -450,9 +450,20 @@ const extendSession = async () => {
 }
 
 // --- 전역 필터랑 동기화 ---
+// globalFilters.category 의 값을 프론트 셀렉트값으로 복원
+watch(
+    () => globalFilters.category,
+    (val) => {
+      selectedCategory.value = val ?? 'all'
+    },
+    { immediate: true }   // 첫 마운트 때도 바로 반영
+)
+
+// 프론트 셀렉트에서 선택된 값을 globalFilters 로 반영
 watch(selectedCategory, (val) => {
   globalFilters.category = val === 'all' ? null : val
 })
+// ----------------------------
 
 const fmtYMD = (d: Date) => {
   const y = d.getFullYear()
@@ -460,14 +471,6 @@ const fmtYMD = (d: Date) => {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`            // 로컬(브라우저) 기준 YYYY-MM-DD
 }
-
-watch(startDate, (val) => {
-  globalFilters.dateFrom = val ? fmtYMD(val) : null
-})
-
-watch(endDate, (val) => {
-  globalFilters.dateTo = val ? fmtYMD(val) : null
-})
 
 // --- 스크롤/휠 시 달력 강제 닫기 ---
 const closePickerOnScroll = (e: Event) => {
@@ -493,21 +496,42 @@ function shiftMonthsClamped(date: Date, deltaMonths: number) {
   const dim = daysInMonth(ty, tm)
   return new Date(ty, tm, Math.min(d, dim))
 }
+
+// --- 전역 필터랑 동기화 ---
 onMounted(() => {
-  // 종료일 = 오늘(로컬 기준, 시분초 제거)
-  const today = new Date()
-  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const hasFrom = !!globalFilters.dateFrom
+  const hasTo   = !!globalFilters.dateTo
 
-  // 시작일 = 종료일 기준 3개월 전(말일 보정)
-  const start = shiftMonthsClamped(end, -3)
+  // 1) 전역 필터에 날짜가 있으면 입력값 복원, 없는 건 그대로 null 유지
+  if (hasFrom || hasTo) {
+    startDate.value = hasFrom ? new Date(globalFilters.dateFrom) : null
+    endDate.value   = hasTo   ? new Date(globalFilters.dateTo)   : null
+  } else {
+    // 2) 처음 진입: 기본 3개월 범위
+    // 종료일 = 오늘(로컬 기준, 시분초 제거)
+    const today = new Date()
+    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate())
 
-  // 리액티브 값 주입 → 기존 watch가 flatpickr에 반영
-  endDate.value = end
-  startDate.value = start
+    // 시작일 = 종료일 기준 3개월 전(말일 보정)
+    const start = shiftMonthsClamped(end, -3)
+
+    // 리액티브 값 주입 → 기존 watch가 flatpickr에 반영
+    startDate.value = start
+    endDate.value   = end
+  }
 
   updateTime()
   timer = window.setInterval(updateTime, 1000)
 })
+
+watch(startDate, (val) => {
+  globalFilters.dateFrom = val ? fmtYMD(val) : null
+})
+
+watch(endDate, (val) => {
+  globalFilters.dateTo = val ? fmtYMD(val) : null
+})
+// ----------------------------
 
 onMounted(() => {
   // capture:true 로 위쪽에서 먼저 잡아서 확실하게 닫음

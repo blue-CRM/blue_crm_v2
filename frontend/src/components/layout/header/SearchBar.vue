@@ -45,14 +45,23 @@ import { globalFilters } from '@/composables/globalFilters.js'
 
 const keyword = ref('')
 
+// --- 전역 필터랑 동기화 ---
+// globalFilters.keyword 의 값을 프론트 검색창으로 복원
+watch(
+    () => globalFilters.keyword,
+    (val) => {
+      keyword.value = val ?? ''
+    },
+    { immediate: true }
+)
+
 function doSearch() {
-  globalFilters.page = 1
   globalFilters.keyword = keyword.value.trim() || null
 }
+// ----------------------------
 
 function clearSearch() {
   keyword.value = ''
-  globalFilters.page = 1
   globalFilters.keyword = null
 }
 </script>
