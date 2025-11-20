@@ -2,11 +2,13 @@
   <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
     <div
         ref="tableScrollHost"
-        class="max-w-full overflow-x-auto overflow-y-auto custom-scrollbar"
+        class="relative max-w-full overflow-x-auto overflow-y-auto custom-scrollbar"
         :style="{ maxHeight: scrollMaxHeight }"
     >
       <table class="w-full table-auto">
-        <thead>
+        <thead class="sticky top-0 z-20 bg-white dark:bg-gray-900
+           shadow-[0_1px_0_0_rgba(229,231,235,0.4)]
+           dark:shadow-[0_1px_0_0_rgba(31,41,55,0.7)]">
         <tr class="border-b border-gray-200 dark:border-gray-700" style="white-space: nowrap;">
           <th v-if="showCheckbox" class="px-5 py-3 w-10">
             <input type="checkbox" :checked="allSelected" @change="toggleAll" />
