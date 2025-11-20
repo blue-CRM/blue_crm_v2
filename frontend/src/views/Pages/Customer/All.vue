@@ -70,12 +70,14 @@
           />
         </ComponentCard>
 
-        <Memo
-            v-if="memoOpen"
-            :row="memoRow"
-            @close="closeMemo"
-            @saved="onMemoSaved"
-        />
+        <Teleport to="body">
+          <Memo
+              v-if="memoOpen"
+              :row="memoRow"
+              @close="closeMemo"
+              @saved="onMemoSaved"
+          />
+        </Teleport>
 
       </div>
     </div>

@@ -9,7 +9,10 @@
     <!-- 모달 본체 -->
     <div
         ref="modalRoot"
-        class="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[750px] max-w-full p-6 z-10 border border-gray-200 dark:border-gray-700"
+        class="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl
+              w-[750px] max-w-full p-6 z-10 border
+              border-gray-200 dark:border-gray-700
+              max-h-[calc(100vh-80px)] overflow-y-auto"
     >
       <!-- 헤더 -->
       <header class="flex justify-between items-center mb-4">
