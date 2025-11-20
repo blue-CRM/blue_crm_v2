@@ -51,15 +51,9 @@
                 </otherwise>
             </choose>
         </if>
-<!--        <if test="dateFrom != null and dateFrom != ''">-->
-<!--            AND t.createdAt &gt;= #{dateFrom}-->
-<!--        </if>-->
-<!--        <if test="dateTo != null and dateTo != ''">-->
-<!--            AND t.createdAt &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)-->
-<!--        </if>-->
-<!--        <if test="category != null and category != ''">-->
-<!--            AND t.category = #{category}-->
-<!--        </if>-->
+        <if test="category != null and category != ''">
+            AND t.category = #{category}
+        </if>
         <if test="division != null and division != ''">
             AND t.division = #{division}
         </if>
@@ -281,9 +275,9 @@
         <if test="dateTo != null and dateTo != ''">
             AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
-<!--        <if test="category != null and category != ''">-->
-<!--            AND c.customer_category = #{category}-->
-<!--        </if>-->
+        <if test="category != null and category != ''">
+            AND c.customer_category = #{category}
+        </if>
         <if test="division != null and division != ''">
             AND c.customer_division = #{division}  <!-- '최초','유효' -->
         </if>
