@@ -141,7 +141,8 @@ const {
             u.userApproved === 'Y' ? '승인' :
             u.userApproved === 'N' ? '대기' :
             u.userApproved === 'X' ? '탈퇴' : u.userApproved,
-        visible: u.managerPhoneAccess === 'N' ? '차단' : '공개'
+        visible: u.managerPhoneAccess === 'N' ? '차단' : '공개',
+        allocate: u.canAllocate === 'Y' ? '허용' : '차단'
       })),
       totalPages: res.data.totalPages,
       totalCount: res.data.totalCount
@@ -202,7 +203,7 @@ const columns = computed(() => {
     },
     { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
     {
-      key: "visible",
+      key: "allocate",
       label: "분배권한",
       type: "badge",
       // super가 볼 때만 노출, 그리고 "행의 권한이 센터장 혹은 전문가"인 경우에만 편집 허용 (자기 자신은 수정 불가)
@@ -310,19 +311,34 @@ async function onBadgeUpdate(row, key, newValue) {
   if (key === "type") fieldLabel = "구분"
   else if (key === "center") fieldLabel = "소속"
   else if (key === "requestStatus") fieldLabel = "요청상태"
-  else if (key === "visible") fieldLabel = "가시권한";
+  else if (key === "visible") fieldLabel = "가시권한"
+  else if (key === "allocate") fieldLabel = "분배권한";
 
   // value → 한글
   if (newValue === "SUPERADMIN") displayValue = "관리자"
   else if (newValue === "MANAGER") displayValue = "팀장"
   else if (newValue === "STAFF") displayValue = "프로"
 
-  if (key === 'visible' && (newValue === '공개' || newValue === '차단')) {
-    newValue = newValue === '공개' ? 'Y' : 'N'
+  // 가시권한 → Y/N
+  if (key === "visible") {
+    newValue = newValue === "공개" ? "Y" : "N";
   }
 
+  // 분배권한 → Y/N
+  if (key === "allocate") {
+    newValue = newValue === "허용" ? "Y" : "N";
+  }
+
+  // 가시권한 가드
   if (key === "visible" && row.type !== "관리자") {
     alert("가시권한은 '관리자' 권한에만 수정할 수 있습니다.");
+    await fetchData();
+    return;
+  }
+
+  // 분배권한 가드
+  if (key === "allocate" && !(row.type === "센터장" || row.type === "전문가")) {
+    alert("'센터장' 또는 '전문가'의 분배권한만 수정가능합니다.");
     await fetchData();
     return;
   }

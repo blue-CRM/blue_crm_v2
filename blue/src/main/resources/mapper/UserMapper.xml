@@ -23,6 +23,7 @@
         u.user_role   AS userRole,
         u.user_approved AS userApproved,
         u.manager_phone_access AS managerPhoneAccess,
+        u.can_allocate AS canAllocate,
         c.center_name AS centerName
         FROM users u
         LEFT JOIN centers c ON u.center_id = c.center_id
@@ -113,6 +114,11 @@
                     manager_phone_access = #{value}
                 </when>
 
+                <!-- 분배권한(Y/N) 수정 -->
+                <when test="field == 'allocate'">
+                    can_allocate = #{value}
+                </when>
+
             </choose>
         </set>
         WHERE user_id = #{userId}
@@ -137,6 +143,7 @@
         u.user_role     AS userRole,
         u.user_approved AS userApproved,
         u.manager_phone_access AS managerPhoneAccess,
+        u.can_allocate  AS canAllocate,
         c.center_name   AS centerName
         FROM users u
         LEFT JOIN centers c ON u.center_id = c.center_id
@@ -156,6 +163,7 @@
             u.user_role     AS userRole,
             u.user_approved AS userApproved,
             u.manager_phone_access AS managerPhoneAccess,
+            u.can_allocate  AS canAllocate,
             c.center_name   AS centerName
         FROM users u
                  LEFT JOIN centers c ON u.center_id = c.center_id

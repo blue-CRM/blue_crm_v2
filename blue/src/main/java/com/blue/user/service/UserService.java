@@ -59,9 +59,25 @@ public class UserService {
       throw new SecurityException("권한이 없습니다.");
     }
     
-    // 3) 가시권한(visible)은 super만 수정 가능
-    if ("visible".equals(field) && !isRequesterSuper(requesterEmail)) {
+    boolean requesterIsSuper = isRequesterSuper(requesterEmail);
+    String targetRole = target.getUserRole();
+    // 3-공통) 가시권한/분배권한은 둘 다 super만 수정 가능
+    if (("visible".equals(field) || "allocate".equals(field)) && !requesterIsSuper) {
       throw new SecurityException("권한이 없습니다.");
+    }
+    
+    // 3-1) 가시권한: 대상이 관리자(SUPERADMIN)인 경우만 허용
+    if ("visible".equals(field)) {
+      if (!"SUPERADMIN".equals(targetRole)) {
+        throw new SecurityException("관리자의 가시권한만 변경할 수 있습니다.");
+      }
+    }
+    
+    // 3-2) 분배권한: 대상이 센터장/전문가인 경우만 허용
+    if ("allocate".equals(field)) {
+      if (!"CENTERHEAD".equals(targetRole) && !"EXPERT".equals(targetRole)) {
+        throw new SecurityException("센터장/전문가의 분배권한만 변경할 수 있습니다.");
+      }
     }
     
     // 4) 팀장 1명 제한(서버 가드)
