@@ -21,7 +21,9 @@
             created_at AS createdAt,
             updated_at AS updatedAt
         FROM ip_whitelist
-        ORDER BY ip_address
+        ORDER BY
+            COALESCE(updated_at, created_at) DESC,
+            ip_id DESC
     </select>
 
     <insert id="insert"
@@ -48,6 +50,7 @@
         WHERE ip_id = #{ipId}
     </update>
 
+    <!-- 비활성화 (소프트 삭제) -->
     <update id="deactivate">
         UPDATE ip_whitelist
         SET
@@ -55,5 +58,12 @@
             updated_at = NOW()
         WHERE ip_id = #{ipId}
     </update>
+
+    <!-- 완전 삭제 (하드 삭제) -->
+    <delete id="deleteHard">
+        DELETE
+        FROM ip_whitelist
+        WHERE ip_id = #{ipId}
+    </delete>
 
 </mapper>

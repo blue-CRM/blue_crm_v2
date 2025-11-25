@@ -441,47 +441,6 @@
                 </div>
               </div>
 
-              <!-- 수정 모드에서만 새 IP 등록 폼 노출 (DOM 유지: v-show) -->
-              <div class="contents" v-show="ipEditing">
-                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
-                  새 IP 등록
-                </div>
-                <div class="col-start-2">
-                  <div class="flex flex-col gap-2">
-                    <div class="flex flex-col gap-2 xl:flex-row">
-                      <input
-                          v-model="newIp"
-                          :disabled="ipSaving"
-                          placeholder="예) 118.235.10.27"
-                          class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
-                               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                      />
-                      <input
-                          v-model="newIpMemo"
-                          :disabled="ipSaving"
-                          placeholder="메모 (예: 본사 팀장 PC)"
-                          class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
-                               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                      />
-                      <button
-                          type="button"
-                          class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white
-                               hover:bg-brand-600 disabled:opacity-50"
-                          :disabled="ipSaving || !canAddIp"
-                          @click="addIp"
-                      >
-                        {{ ipSaving ? '추가 중...' : '추가' }}
-                      </button>
-                    </div>
-                    <p v-if="ipFormError" class="text-xs text-error-500">
-                      {{ ipFormError }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               <!-- IP 검색 (편집 여부와 상관없이 항상 표시) -->
               <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-4">
                 검색
@@ -522,6 +481,47 @@
                   >
                     검색
                   </button>
+                </div>
+              </div>
+
+              <!-- 수정 모드에서만 새 IP 등록 폼 노출 (DOM 유지: v-show) -->
+              <div class="contents" v-show="ipEditing">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                  새 IP 등록
+                </div>
+                <div class="col-start-2">
+                  <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 xl:flex-row">
+                      <input
+                          v-model="newIp"
+                          :disabled="ipSaving"
+                          placeholder="예) 118.235.10.27"
+                          class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      />
+                      <input
+                          v-model="newIpMemo"
+                          :disabled="ipSaving"
+                          placeholder="메모 (예: 본사 팀장 PC)"
+                          class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      />
+                      <button
+                          type="button"
+                          class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white
+                               hover:bg-brand-600 disabled:opacity-50"
+                          :disabled="ipSaving || !canAddIp"
+                          @click="addIp"
+                      >
+                        {{ ipSaving ? '추가 중...' : '추가' }}
+                      </button>
+                    </div>
+                    <p v-if="ipFormError" class="text-xs text-error-500">
+                      {{ ipFormError }}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -570,9 +570,10 @@
                                text-xs text-gray-500 dark:text-gray-400"
                     >
                       <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
-                      <th class="px-3 py-2 text-left">IP / 메모</th>
+                      <th class="w-40 px-3 py-2 text-left whitespace-nowrap">IP</th>
+                      <th class="w-55 px-3 py-2 text-left">메모</th>
                       <th class="w-20 px-3 py-2 text-center whitespace-nowrap">상태</th>
-                      <th class="w-28 px-3 py-2 text-right whitespace-nowrap">수정일</th>
+                      <th class="w-20 px-3 py-2 text-right whitespace-nowrap">수정일</th>
                       <th class="w-20 px-3 py-2 text-center whitespace-nowrap">관리</th>
                     </tr>
                     </thead>
@@ -604,6 +605,21 @@
                                      dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="IP 주소"
                           />
+                        </template>
+
+                        <!-- 표시 모드 -->
+                        <template v-else>
+                          <div
+                              class="font-mono text-[13px] text-gray-900 dark:text-gray-100 truncate"
+                          >
+                            {{ row.ipAddress }}
+                          </div>
+                        </template>
+                      </td>
+
+                      <td class="px-3 py-3 align-middle">
+                        <!-- 편집 모드 -->
+                        <template v-if="editingRowId === row.ipId">
                           <input
                               v-model="editingRow.memo"
                               class="w-full rounded-md border border-gray-200 px-2 py-1 text-xs
@@ -617,12 +633,7 @@
                         <!-- 표시 모드 -->
                         <template v-else>
                           <div
-                              class="font-mono text-[13px] text-gray-900 dark:text-gray-100 truncate"
-                          >
-                            {{ row.ipAddress }}
-                          </div>
-                          <div
-                              class="mt-0.5 text-xs text-gray-400 dark:text-gray-500 break-words"
+                              class="mt-0.5 text-xs text-gray-400 dark:text-gray-500 break-all"
                           >
                             {{ row.memo || '-' }}
                           </div>
@@ -648,7 +659,7 @@
                         <!-- 표시 모드 -->
                         <template v-else>
                             <span
-                                class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                class="inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-medium"
                                 :class="row.isActive === 'Y'
                                 ? 'bg-[#D1F2D6] text-[#2F855A] dark:bg-[#1B3A2E] dark:text-[#5FA97A]'
                                 : 'bg-[#E5E7EB] text-[#4B5563] dark:bg-[#374151] dark:text-[#D1D5DB]'"
@@ -718,7 +729,7 @@
                                      dark:bg-transparent dark:text-red-400 dark:hover:bg-red-900/40
                                      disabled:opacity-50"
                               :disabled="!ipEditing || ipSaving"
-                              @click="deleteIpRow(row)"
+                              @click="hardDeleteIpRow(row)"
                           >
                             삭제
                           </button>
@@ -1796,6 +1807,22 @@ async function deleteIpRow(row) {
     }
   } catch (e) {
     alert(e?.response?.data || 'IP 삭제에 실패했습니다.')
+  } finally {
+    ipSaving.value = false
+  }
+}
+
+// 행 완전삭제
+async function hardDeleteIpRow(row) {
+  if (!row || !row.ipId) return
+  if (!confirm('이 IP를 정말 완전히 삭제하시겠습니까?\n(기록이 복구되지 않습니다)')) return
+
+  try {
+    ipSaving.value = true
+    await axios.delete(`/api/me/ip-whitelist/${row.ipId}/hard`, { withCredentials: true })
+    ipList.value = (ipList.value || []).filter(r => r.ipId !== row.ipId)
+  } catch (e) {
+    alert(e?.response?.data || 'IP 완전 삭제에 실패했습니다.')
   } finally {
     ipSaving.value = false
   }

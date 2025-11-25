@@ -18,4 +18,6 @@ public interface IpWhitelistMapper {
   int update(IpWhitelistDto dto);
   
   int deactivate(@Param("ipId") Long ipId);
+  
+  int deleteHard(@Param("ipId") Long ipId);
 }

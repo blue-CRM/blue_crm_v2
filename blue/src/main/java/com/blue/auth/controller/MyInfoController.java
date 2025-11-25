@@ -111,49 +111,47 @@ public class MyInfoController {
   public static record DelegateRequest(Long userId) {}
   
   // IP 화이트리스트 관련
-  // IP화이트리스트 목록 조회 (슈퍼 전용)
+  // 목록
   @GetMapping("/ip-whitelist")
   public ResponseEntity<List<IpWhitelistDto>> getIpWhitelist(Authentication auth) {
-    requireSuper(auth);
-    return ResponseEntity.ok(ipWhitelistService.getAll());
+    String email = auth.getName();
+    return ResponseEntity.ok(ipWhitelistService.getAll(email));
   }
   
-  // IP화이트리스트 신규 등록 (슈퍼 전용)
+  // 추가
   @PostMapping("/ip-whitelist")
   public ResponseEntity<Void> addIp(@RequestBody IpWhitelistDto body,
                                     Authentication auth) {
-    requireSuper(auth);
-    ipWhitelistService.create(body);
+    String email = auth.getName();
+    ipWhitelistService.create(email, body);
     return ResponseEntity.ok().build();
   }
   
-  // IP화이트리스트 수정 (슈퍼 전용)
+  // 수정
   @PutMapping("/ip-whitelist/{ipId}")
   public ResponseEntity<Void> updateIp(@PathVariable Long ipId,
                                        @RequestBody IpWhitelistDto body,
                                        Authentication auth) {
-    requireSuper(auth);
-    ipWhitelistService.update(ipId, body);
+    String email = auth.getName();
+    ipWhitelistService.update(email, ipId, body);
     return ResponseEntity.ok().build();
   }
   
-  // IP화이트리스트 삭제(비활성화, 슈퍼 전용)
+  // 비활성화
   @DeleteMapping("/ip-whitelist/{ipId}")
   public ResponseEntity<Void> deleteIp(@PathVariable Long ipId,
                                        Authentication auth) {
-    requireSuper(auth);
-    ipWhitelistService.deactivate(ipId);
+    String email = auth.getName();
+    ipWhitelistService.deactivate(email, ipId);
     return ResponseEntity.ok().build();
   }
   
-  // TODO 슈퍼계정인지 검사하는건 서비스에서 하면 되는거 아니감 ㅋㅋ
-  /** 슈퍼계정인지 검사 (아니면 403) */
-  private void requireSuper(Authentication auth) {
+  // 완전 삭제
+  @DeleteMapping("/ip-whitelist/{ipId}/hard")
+  public ResponseEntity<Void> hardDeleteIp(@PathVariable Long ipId,
+                                           Authentication auth) {
     String email = auth.getName();
-    MyInfoResponse me = myInfoService.getMeByEmail(email);
-    
-    if (me == null || me.getGrants() == null || !me.getGrants().isSuper()) {
-      throw new AuthException("슈퍼계정만 사용할 수 있습니다.", HttpStatus.FORBIDDEN);
-    }
+    ipWhitelistService.deleteHard(email, ipId);
+    return ResponseEntity.ok().build();
   }
 }
