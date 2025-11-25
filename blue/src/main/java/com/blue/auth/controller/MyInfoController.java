@@ -1,8 +1,11 @@
 package com.blue.auth.controller;
 
 import com.blue.auth.dto.*;
+import com.blue.auth.service.IpWhitelistService;
 import com.blue.auth.service.MyInfoService;
+import com.blue.global.exception.AuthException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
@@ -15,6 +18,7 @@ import java.util.List;
 public class MyInfoController {
   
   private final MyInfoService myInfoService;
+  private final IpWhitelistService ipWhitelistService;
   
   // 내 정보 조회
   @GetMapping
@@ -105,4 +109,51 @@ public class MyInfoController {
   
   // POST 바디 바인딩용 경량 DTO (record → 불변, 보일러플레이트 없음)
   public static record DelegateRequest(Long userId) {}
+  
+  // IP 화이트리스트 관련
+  // IP화이트리스트 목록 조회 (슈퍼 전용)
+  @GetMapping("/ip-whitelist")
+  public ResponseEntity<List<IpWhitelistDto>> getIpWhitelist(Authentication auth) {
+    requireSuper(auth);
+    return ResponseEntity.ok(ipWhitelistService.getAll());
+  }
+  
+  // IP화이트리스트 신규 등록 (슈퍼 전용)
+  @PostMapping("/ip-whitelist")
+  public ResponseEntity<Void> addIp(@RequestBody IpWhitelistDto body,
+                                    Authentication auth) {
+    requireSuper(auth);
+    ipWhitelistService.create(body);
+    return ResponseEntity.ok().build();
+  }
+  
+  // IP화이트리스트 수정 (슈퍼 전용)
+  @PutMapping("/ip-whitelist/{ipId}")
+  public ResponseEntity<Void> updateIp(@PathVariable Long ipId,
+                                       @RequestBody IpWhitelistDto body,
+                                       Authentication auth) {
+    requireSuper(auth);
+    ipWhitelistService.update(ipId, body);
+    return ResponseEntity.ok().build();
+  }
+  
+  // IP화이트리스트 삭제(비활성화, 슈퍼 전용)
+  @DeleteMapping("/ip-whitelist/{ipId}")
+  public ResponseEntity<Void> deleteIp(@PathVariable Long ipId,
+                                       Authentication auth) {
+    requireSuper(auth);
+    ipWhitelistService.deactivate(ipId);
+    return ResponseEntity.ok().build();
+  }
+  
+  // TODO 슈퍼계정인지 검사하는건 서비스에서 하면 되는거 아니감 ㅋㅋ
+  /** 슈퍼계정인지 검사 (아니면 403) */
+  private void requireSuper(Authentication auth) {
+    String email = auth.getName();
+    MyInfoResponse me = myInfoService.getMeByEmail(email);
+    
+    if (me == null || me.getGrants() == null || !me.getGrants().isSuper()) {
+      throw new AuthException("슈퍼계정만 사용할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+  }
 }

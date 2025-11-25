@@ -3,33 +3,33 @@
     <PageBreadcrumb pageTitle="내 정보 수정" />
 
     <div
-        class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-0
+        class="relative overflow-x-auto overflow-y-visible rounded-2xl border border-gray-200 bg-white p-0
              dark:border-gray-800 dark:bg-white/[0.03]"
     >
-      <!-- 가운데 정렬 컨테이너 -->
-      <div class="relative z-10 mx-auto w-full max-w-2xl">
-        <!-- 장식 그리드 -->
-        <div
-            class="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-[250%] max-w-none select-none"
-            aria-hidden="true"
-        >
-          <CommonGridShape
-              src="/images/shape/grid-01.svg"
-              mode="mask"
-              size="w-56 h-56"
-              position="-top-1 -right-4"
-              opacity="opacity-[0.06] dark:opacity-[0.10]"
-              lightColor="bg-gray-900"
-              darkColor="dark:bg-gray-900"
-          />
-        </div>
+      <!-- 장식 그리드 -->
+      <div
+          class="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-[100%] max-w-none select-none"
+          aria-hidden="true"
+      >
+        <CommonGridShape
+            src="/images/shape/grid-01.svg"
+            mode="mask"
+            size="w-56 h-56"
+            position="-top-1 -right-4"
+            opacity="opacity-[0.06] dark:opacity-[0.10]"
+            lightColor="bg-gray-900"
+            darkColor="dark:bg-gray-900"
+        />
+      </div>
 
+      <!-- 가운데 정렬 컨테이너 -->
+      <div class="relative z-10 mx-auto my-10 w-full max-w-[min(48rem,calc(100%-48px))]">
         <!-- 헤더 -->
-        <div class="min-w-0 pt-5 lg:pt-6 mb-10">
-          <h2 class="truncate text-xl font-semibold text-gray-800 dark:text-white/90">
+        <div class="min-w-0 pt-5 lg:pt-6 mb-15">
+          <h2 class="truncate text-2xl font-semibold text-gray-800 dark:text-white/90">
             {{ name || '사용자' }}
           </h2>
-          <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
+          <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-m text-gray-500 dark:text-gray-400">
             <span>구분: <b class="text-gray-700 dark:text-gray-300">{{ roleLabel }}</b></span>
             <span>소속: <b class="text-gray-700 dark:text-gray-300">{{ orgLabel }}</b></span>
           </div>
@@ -37,7 +37,7 @@
         </div>
 
         <!-- 공통 2열 폼 그리드 -->
-        <div class="form-grid grid grid-cols-[6rem,1fr] items-start gap-x-3 gap-y-3">
+        <div class="form-grid grid grid-cols-[6rem,1fr] items-start gap-x-10 gap-y-3 mx-2">
 
           <!-- 이메일 -->
 <!--          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">이메일</div>-->
@@ -282,12 +282,12 @@
               <div class="col-start-2">
                 <div class="flex gap-2">
                   <!-- 날짜 필터 -->
-                  <div class="flex flex-wrap">
+                  <div class="inline-flex items-stretch whitespace-nowrap">
                     <!-- 시작일 -->
                     <input
                         type="text"
                         ref="logStartInput"
-                        class="w-[11.85rem] h-11 border border-gray-200 dark:border-gray-700 rounded-l-lg px-3 py-2 text-sm text-center
+                        class="w-full h-11 border border-gray-200 dark:border-gray-700 rounded-l-lg px-3 py-2 text-sm text-center
                              focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
                              dark:bg-gray-800 dark:text-gray-200"
                         placeholder="시작일"
@@ -295,14 +295,14 @@
 
                     <!-- 구분자 -->
                     <span
-                        class="flex items-center justify-center w-8 h-11 border-t border-b border-gray-200 dark:border-gray-700
+                        class="flex items-center justify-center w-20 h-11 border-t border-b border-gray-200 dark:border-gray-700
                               text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900">~</span>
 
                     <!-- 종료일 -->
                     <input
                         type="text"
                         ref="logEndInput"
-                        class="w-[11.85rem] h-11 border border-gray-200 dark:border-gray-700 rounded-r-lg px-3 py-2 text-sm text-center
+                        class="w-full h-11 border border-gray-200 dark:border-gray-700 rounded-r-lg px-3 py-2 text-sm text-center
                            focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
                            dark:bg-gray-800 dark:text-gray-200"
                         placeholder="종료일"
@@ -310,7 +310,7 @@
                   </div>
                   <button
                       type="button"
-                      class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                      class="ml-auto h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
                       :disabled="downloading || !logFrom || !logTo"
                       @click="downloadLogs"
                   >
@@ -406,6 +406,328 @@
                      dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
                 />
                 <p v-if="startRowError" class="mt-1 text-sm text-error-500">{{ startRowError }}</p>
+              </div>
+
+              <!-- ===== IP 화이트리스트 ===== -->
+              <div class="col-span-2">
+                <hr class="my-6 border-gray-200 dark:border-gray-700" />
+              </div>
+
+              <div class="col-span-2">
+                <div class="flex items-center justify-between">
+                  <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    IP 화이트리스트
+                  </h3>
+                  <div class="flex gap-2">
+                    <button
+                        v-if="!ipEditing"
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100
+                             dark:bg-gray-700 dark:text-gray-100"
+                        @click="ipEditing = true"
+                    >
+                      수정
+                    </button>
+                    <button
+                        v-else
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100
+                             dark:bg-gray-700 dark:text-gray-100"
+                        @click="onIpCancel"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 수정 모드에서만 새 IP 등록 폼 노출 (DOM 유지: v-show) -->
+              <div class="contents" v-show="ipEditing">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                  새 IP 등록
+                </div>
+                <div class="col-start-2">
+                  <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 xl:flex-row">
+                      <input
+                          v-model="newIp"
+                          :disabled="ipSaving"
+                          placeholder="예) 118.235.10.27"
+                          class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      />
+                      <input
+                          v-model="newIpMemo"
+                          :disabled="ipSaving"
+                          placeholder="메모 (예: 본사 팀장 PC)"
+                          class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      />
+                      <button
+                          type="button"
+                          class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white
+                               hover:bg-brand-600 disabled:opacity-50"
+                          :disabled="ipSaving || !canAddIp"
+                          @click="addIp"
+                      >
+                        {{ ipSaving ? '추가 중...' : '추가' }}
+                      </button>
+                    </div>
+                    <p v-if="ipFormError" class="text-xs text-error-500">
+                      {{ ipFormError }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- IP 검색 (편집 여부와 상관없이 항상 표시) -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-4">
+                검색
+              </div>
+              <div class="col-start-2">
+                <div class="flex gap-2 w-full">
+                  <!-- 입력창 + X 버튼 -->
+                  <div class="relative flex-1">
+                    <input
+                        v-model="ipSearchInput"
+                        type="text"
+                        placeholder="IP, 메모, 수정일(YYYY-MM-DD) 검색"
+                        @keyup.enter="applyIpSearch"
+                        class="h-10 w-full rounded-lg border px-3 pr-8 bg-white text-gray-800
+                            focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                            dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
+                            disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
+                            dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
+                    />
+                    <!-- 값 있을 때는 항상 X 보이게 -->
+                    <button
+                        v-if="ipSearchInput"
+                        type="button"
+                        class="absolute inset-y-0 right-4 my-auto text-xs text-gray-400 hover:text-gray-600
+                              dark:text-gray-500 dark:hover:text-gray-300"
+                        @click="clearIpSearch"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <!-- 검색 버튼 (항상 파란색, 비활성 없음) -->
+                  <button
+                      type="button"
+                      class="h-10 px-4 rounded-lg bg-brand-500 text-xs sm:text-sm font-medium text-white
+                            hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      @click="applyIpSearch"
+                  >
+                    검색
+                  </button>
+                </div>
+              </div>
+
+              <!-- 등록된 IP 목록 : 항상 표시 & 그리드 2열 전체 사용 -->
+              <div class="col-span-2 mt-4">
+                <div
+                    class="ip-scroll rounded-md border border-gray-100 dark:border-gray-800
+                         max-h-85 overflow-auto spin-dark"
+                >
+                  <!-- 로딩 -->
+                  <div
+                      v-if="ipLoading"
+                      class="p-4 text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    불러오는 중…
+                  </div>
+
+                  <!-- 비어있음 -->
+                  <div
+                      v-else-if="!ipList || ipList.length === 0"
+                      class="p-4 text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    등록된 IP가 없습니다.
+                  </div>
+
+                  <!-- 검색 결과 없음 -->
+                  <div
+                      v-else-if="filteredIpList.length === 0"
+                      class="p-4 text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    검색 결과가 없습니다.
+                  </div>
+
+                  <!-- 테이블 -->
+                  <table
+                      v-else
+                      class="min-w-full table-fixed text-sm"
+                  >
+                    <thead
+                        class="sticky top-0 z-10 bg-white dark:bg-gray-900
+                             shadow-[0_1px_0_0_rgba(229,231,235,0.7)]
+                             dark:shadow-[0_1px_0_0_rgba(31,41,55,0.8)]"
+                    >
+                    <tr
+                        class="border-b border-gray-200 dark:border-gray-700
+                               text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
+                      <th class="px-3 py-2 text-left">IP / 메모</th>
+                      <th class="w-20 px-3 py-2 text-center whitespace-nowrap">상태</th>
+                      <th class="w-28 px-3 py-2 text-right whitespace-nowrap">수정일</th>
+                      <th class="w-20 px-3 py-2 text-center whitespace-nowrap">관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr
+                        v-for="(row, idx) in filteredIpList"
+                        :key="row.ipId ?? idx"
+                        :class="[
+                          'border-b border-gray-100 dark:border-gray-800',
+                          idx % 2 === 0
+                            ? 'bg-white dark:bg-gray-900'
+                            : 'bg-gray-50 dark:bg-gray-800/60'
+                        ]"
+                    >
+                      <!-- 행번호 -->
+                      <td class="px-3 py-3 text-center text-xs text-gray-400 whitespace-nowrap">
+                        {{ idx + 1 }}
+                      </td>
+
+                      <!-- IP / 메모 두 줄 (메모만 줄바꿈 허용) -->
+                      <td class="px-3 py-3 align-middle">
+                        <!-- 편집 모드 -->
+                        <template v-if="editingRowId === row.ipId">
+                          <input
+                              v-model="editingRow.ipAddress"
+                              class="mb-1 w-full rounded-md border border-gray-200 px-2 py-1 text-xs
+                                     bg-white text-gray-800
+                                     focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                              placeholder="IP 주소"
+                          />
+                          <input
+                              v-model="editingRow.memo"
+                              class="w-full rounded-md border border-gray-200 px-2 py-1 text-xs
+                                     bg-white text-gray-800
+                                     focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                              placeholder="메모"
+                          />
+                        </template>
+
+                        <!-- 표시 모드 -->
+                        <template v-else>
+                          <div
+                              class="font-mono text-[13px] text-gray-900 dark:text-gray-100 truncate"
+                          >
+                            {{ row.ipAddress }}
+                          </div>
+                          <div
+                              class="mt-0.5 text-xs text-gray-400 dark:text-gray-500 break-words"
+                          >
+                            {{ row.memo || '-' }}
+                          </div>
+                        </template>
+                      </td>
+
+                      <!-- 상태 -->
+                      <td class="px-3 py-3 text-center whitespace-nowrap">
+                        <!-- 편집 모드 -->
+                        <template v-if="editingRowId === row.ipId">
+                          <select
+                              v-model="editingRow.isActive"
+                              class="h-8 rounded-md border border-gray-300 px-2 text-xs
+                                     bg-white text-gray-800
+                                     focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          >
+                            <option value="Y">사용</option>
+                            <option value="N">중지</option>
+                          </select>
+                        </template>
+
+                        <!-- 표시 모드 -->
+                        <template v-else>
+                            <span
+                                class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                :class="row.isActive === 'Y'
+                                ? 'bg-[#D1F2D6] text-[#2F855A] dark:bg-[#1B3A2E] dark:text-[#5FA97A]'
+                                : 'bg-[#E5E7EB] text-[#4B5563] dark:bg-[#374151] dark:text-[#D1D5DB]'"
+                            >
+                              {{ row.isActive === 'Y' ? '사용' : '중지' }}
+                            </span>
+                        </template>
+                      </td>
+
+                      <!-- 수정일: 날짜 / 시간 두 줄 -->
+                      <td
+                          class="px-3 py-3 text-right text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                      >
+                        <template v-if="row.updatedAt || row.createdAt">
+                            <span class="block">
+                              {{ splitDateTime(row.updatedAt || row.createdAt)[0] }}
+                            </span>
+                          <span class="block">
+                              {{ splitDateTime(row.updatedAt || row.createdAt)[1] }}
+                            </span>
+                        </template>
+                        <span v-else>-</span>
+                      </td>
+
+                      <!-- 관리: 수정 / 저장·취소 / 삭제 -->
+                      <td class="px-3 py-3 text-right whitespace-nowrap">
+                        <template v-if="editingRowId === row.ipId">
+                          <button
+                              type="button"
+                              class="mr-1 px-2 py-1 text-xs rounded-md border border-brand-500
+                                     bg-brand-500 text-white hover:bg-brand-600
+                                     disabled:opacity-50"
+                              :disabled="ipSaving"
+                              @click="saveIpRow(row)"
+                          >
+                            저장
+                          </button>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700
+                                     disabled:opacity-50"
+                              :disabled="ipSaving"
+                              @click="cancelIpRowEdit"
+                          >
+                            취소
+                          </button>
+                        </template>
+
+                        <template v-else>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700
+                                     disabled:opacity-50"
+                              :disabled="!ipEditing || ipSaving"
+                              @click="startIpRowEdit(row)"
+                          >
+                            수정
+                          </button>
+                          <button
+                              type="button"
+                              class="ml-1 px-2 py-1 text-xs rounded-md border border-red-200 dark:border-red-700
+                                     bg-white text-red-600 hover:bg-red-50
+                                     dark:bg-transparent dark:text-red-400 dark:hover:bg-red-900/40
+                                     disabled:opacity-50"
+                              :disabled="!ipEditing || ipSaving"
+                              @click="deleteIpRow(row)"
+                          >
+                            삭제
+                          </button>
+                        </template>
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <!-- ===== 센터 관리 ===== -->
@@ -963,9 +1285,6 @@ async function deleteCenter(id) {
   }
 }
 
-// 특별계정 켜지면 센터 목록 불러오기
-watch(() => isSuperEmail.value, async (ok) => { if (ok) await fetchCenters() }, { immediate: true })
-
 // -----------------------
 
 // 날짜 피커 + 다운로드 + 위임용 상태/메서드 (상단 import 아래쪽에 추가)
@@ -1237,6 +1556,273 @@ async function delegateNow() {
   }
 }
 
+// ===== IP 화이트리스트 =====
+const ipList = ref([])
+const ipLoading = ref(false)
+
+const ipEditing = ref(false)    // 편집 모드
+const ipSaving  = ref(false)
+
+const newIp = ref('')
+const newIpMemo = ref('')
+const ipFormError = ref('')
+
+const editingRowId = ref(null)  // 행 편집 ID
+const editingRow = ref({
+  ipAddress: '',
+  memo: '',
+  isActive: 'Y',
+})
+
+const canAddIp = computed(() => {
+  const ip = (newIp.value || '').trim()
+  if (!ip) return false
+  return validateIpFormat(ip)
+})
+
+// 검색어: input에 타이핑용 / 실제 필터용 분리
+const ipSearchInput = ref('')
+const ipSearch = ref('')
+
+const filteredIpList = computed(() => {
+  const list = ipList.value || []
+  const raw = ipSearch.value || ''
+  const q = raw.trim().toLowerCase()
+  if (!q) return list
+
+  return list.filter((row) => {
+    const ip = String(row.ipAddress || '').toLowerCase()
+    const memo = String(row.memo || '').toLowerCase()
+    const dt = String(row.updatedAt || row.createdAt || '').toLowerCase()
+    return ip.includes(q) || memo.includes(q) || dt.includes(q)
+  })
+})
+
+function applyIpSearch() {
+  ipSearch.value = (ipSearchInput.value || '').trim()
+}
+
+function clearIpSearch() {
+  ipSearchInput.value = ''
+  ipSearch.value = ''
+}
+
+function splitDateTime(str) {
+  if (!str) return ['', '']
+  const s = String(str).replace('T', ' ')
+  const [d, t] = s.split(' ')
+  return [d || '', t || '']
+}
+
+// IPv4 검사
+function isValidIPv4(ip) {
+  const v = (ip || '').trim()
+  const v4 =
+      /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
+  return v4.test(v)
+}
+
+// IPv4 → 두 개의 헥스텟으로 변환
+function ipv4ToHextets(ip) {
+  const parts = ip.split('.').map(n => Number(n))
+  if (parts.length !== 4 || parts.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return null
+  const hi = (parts[0] << 8) + parts[1]
+  const lo = (parts[2] << 8) + parts[3]
+  return [hi.toString(16), lo.toString(16)]
+}
+
+// 순수 IPv6 검사
+function isValidPureIPv6(ip) {
+  const v = (ip || '').trim()
+  if (!v) return false
+  const isValidBlock = (s) => /^[0-9a-fA-F]{1,4}$/.test(s)
+  const hasDoubleColon = v.includes('::')
+  if (hasDoubleColon) {
+    if (v.indexOf('::') !== v.lastIndexOf('::')) return false
+    const parts = v.split('::')
+    if (parts.length !== 2) return false
+    const head = parts[0] ? parts[0].split(':') : []
+    const tail = parts[1] ? parts[1].split(':') : []
+    if (head.some(g => !isValidBlock(g)) || tail.some(g => !isValidBlock(g))) return false
+    const numGroups = head.length + tail.length
+    return numGroups < 8
+  } else {
+    const groups = v.split(':')
+    if (groups.length !== 8) return false
+    return groups.every(isValidBlock)
+  }
+}
+
+// 최종 IP 형식 검사
+function validateIpFormat(ip) {
+  const v = (ip || '').trim()
+  if (!v) return false
+  if (!v.includes('.')) {
+    if (isValidIPv4(v)) return true
+    return isValidPureIPv6(v)
+  }
+  if (isValidIPv4(v)) return true
+  const lastColon = v.lastIndexOf(':')
+  if (lastColon === -1) return false
+  const ipv6Part = v.slice(0, lastColon)
+  const ipv4Part = v.slice(lastColon + 1)
+  if (!isValidIPv4(ipv4Part)) return false
+  const hextets = ipv4ToHextets(ipv4Part)
+  if (!hextets) return false
+  const reconstructed = `${ipv6Part}:${hextets[0]}:${hextets[1]}`
+  return isValidPureIPv6(reconstructed)
+}
+
+// 새 IP 입력 감시
+watch(newIp, (val) => {
+  const ip = (val || '').trim()
+  if (!ip) {
+    ipFormError.value = ''
+    return
+  }
+  ipFormError.value = validateIpFormat(ip) ? '' : '올바른 IPv4/IPv6 형식이 아닙니다.'
+})
+
+// IP 목록 조회
+async function fetchIpWhitelist() {
+  if (!isSuperEmail.value) return
+  try {
+    ipLoading.value = true
+    const { data } = await axios.get('/api/me/ip-whitelist', { withCredentials: true })
+    ipList.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    alert(e?.response?.data || 'IP 목록을 불러오지 못했습니다.')
+  } finally {
+    ipLoading.value = false
+  }
+}
+
+// 새 IP 추가
+async function addIp() {
+  const ip   = (newIp.value || '').trim()
+  const memo = (newIpMemo.value || '').trim()
+  if (!ip) {
+    ipFormError.value = 'IP 주소를 입력하세요.'
+    return
+  }
+  if (!validateIpFormat(ip)) {
+    ipFormError.value = '올바른 IPv4/IPv6 형식이 아닙니다.'
+    return
+  }
+  try {
+    ipSaving.value = true
+    await axios.post(
+        '/api/me/ip-whitelist',
+        {
+          ipId: null,
+          ipAddress: ip,
+          memo: memo || null,
+          isActive: 'Y',
+        },
+        { withCredentials: true },
+    )
+    newIp.value = ''
+    newIpMemo.value = ''
+    ipFormError.value = ''
+    await fetchIpWhitelist()
+  } catch (e) {
+    alert(e?.response?.data || 'IP 추가에 실패했습니다.')
+  } finally {
+    ipSaving.value = false
+  }
+}
+
+// 행 편집 시작
+function startIpRowEdit(row) {
+  if (!ipEditing.value) return
+  editingRowId.value = row.ipId
+  editingRow.value = {
+    ipAddress: row.ipAddress || '',
+    memo: row.memo || '',
+    isActive: row.isActive || 'Y',
+  }
+}
+
+// 행 편집 취소
+function cancelIpRowEdit() {
+  editingRowId.value = null
+  editingRow.value = { ipAddress: '', memo: '', isActive: 'Y' }
+}
+
+// 행 저장
+async function saveIpRow(row) {
+  const ip   = (editingRow.value.ipAddress || '').trim()
+  const memo = (editingRow.value.memo || '').trim()
+  const next = editingRow.value.isActive || 'Y'
+  if (!ip) {
+    alert('IP 주소를 입력하세요.')
+    return
+  }
+  if (!validateIpFormat(ip)) {
+    alert('올바른 IPv4/IPv6 형식이 아닙니다.')
+    return
+  }
+  try {
+    ipSaving.value = true
+    await axios.put(
+        `/api/me/ip-whitelist/${row.ipId}`,
+        {
+          ipAddress: ip,
+          memo: memo || null,
+          isActive: next,
+        },
+        { withCredentials: true },
+    )
+    cancelIpRowEdit()
+    await fetchIpWhitelist()
+  } catch (e) {
+    alert(e?.response?.data || 'IP 수정에 실패했습니다.')
+  } finally {
+    ipSaving.value = false
+  }
+}
+
+// 행 삭제
+async function deleteIpRow(row) {
+  if (!row || !row.ipId) return
+  if (!confirm('이 IP를 삭제하시겠습니까?')) return
+
+  try {
+    ipSaving.value = true
+    await axios.delete(`/api/me/ip-whitelist/${row.ipId}`, { withCredentials: true })
+    ipList.value = (ipList.value || []).filter(r => r.ipId !== row.ipId)
+    if (editingRowId.value === row.ipId) {
+      cancelIpRowEdit()
+    }
+  } catch (e) {
+    alert(e?.response?.data || 'IP 삭제에 실패했습니다.')
+  } finally {
+    ipSaving.value = false
+  }
+}
+
+// 전체 수정 취소
+function onIpCancel() {
+  ipEditing.value  = false
+  newIp.value      = ''
+  newIpMemo.value  = ''
+  ipFormError.value = ''
+  cancelIpRowEdit()
+}
+
+// 특별계정 켜지면 센터 목록 + IP 화이트리스트 불러오기
+watch(
+    () => isSuperEmail.value,
+    async (ok) => {
+      if (!ok) return
+      await Promise.all([
+        fetchCenters(),
+        fetchIpWhitelist(),
+      ])
+    },
+    { immediate: true },
+)
+
 // 라우트 이탈 시 초기화
 onBeforeRouteLeave(() => { onDelegateCancel() })
 </script>
@@ -1264,4 +1850,6 @@ onBeforeRouteLeave(() => { onDelegateCancel() })
   max-height: 2000px;
   opacity: 1;
 }
+
+.ip-scroll { scrollbar-gutter: stable; }
 </style>

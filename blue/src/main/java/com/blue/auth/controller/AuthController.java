@@ -22,9 +22,11 @@ public class AuthController {
   private final AuthService authService;
   
   @PostMapping("/login")
-  public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletResponse response) {
+  public ResponseEntity<?> login(@RequestBody LoginRequest request,
+                                 HttpServletRequest httpRequest,
+                                 HttpServletResponse response) {
     try {
-      AuthResponse authResponse = authService.login(request, response);
+      AuthResponse authResponse = authService.login(request, httpRequest, response);
       return ResponseEntity.ok(authResponse);
     }  catch (AuthException e) {
       // 사용자 예외

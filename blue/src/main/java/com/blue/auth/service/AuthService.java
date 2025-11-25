@@ -31,6 +31,8 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtUtil jwtUtil;
   
+  private final IpWhitelistService ipWhitelistService;
+  
   // 운영과 개발 구분
   @Value("${jwt.cookie.secure:false}")
   private boolean cookieSecure;
@@ -47,8 +49,18 @@ public class AuthService {
     response.addCookie(cookie);
   }
   
+  private String getClientIp(HttpServletRequest request) {
+    String header = request.getHeader("X-Forwarded-For");
+    if (header != null && !header.isBlank()) {
+      return header.split(",")[0].trim();
+    }
+    return request.getRemoteAddr();
+  }
+  
   // 로그인
-  public AuthResponse login(LoginRequest request, HttpServletResponse response) {
+  public AuthResponse login(LoginRequest request,
+                            HttpServletRequest httpRequest,
+                            HttpServletResponse response) {
     // DB 조회
     UserDto user = authMapper.findByEmail(request.getEmail());
     
@@ -60,6 +72,19 @@ public class AuthService {
     // 승인된 사용자만 로그인 허용
     if (!"Y".equals(user.getUserApproved())) {
       throw new AuthException("승인되지 않은 계정입니다.", HttpStatus.UNAUTHORIZED);
+    }
+
+    // IP 화이트리스트 확인
+    String clientIp = getClientIp(httpRequest);
+    if (!user.isSuper()) { // 슈퍼계정은 어떤 IP여도 로그인 가능
+      if (!ipWhitelistService.isAllowed(clientIp)) { // 그 외 계정은 사전에 등록된 IP만 허용
+        throw new AuthException(
+            "현재 접속하신 위치에서는 로그인할 수 없습니다.\n\n"
+                + "* 접속 IP : " + clientIp + "\n"
+                + "이 IP를 관리자에게 전달해 주시면 등록 후 다시 로그인하실 수 있습니다.",
+            HttpStatus.FORBIDDEN
+        );
+      }
     }
     
     String accessToken = jwtUtil.generateAccessToken(user);
