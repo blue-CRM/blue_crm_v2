@@ -610,7 +610,7 @@
                         <!-- 표시 모드 -->
                         <template v-else>
                           <div
-                              class="font-mono text-[13px] text-gray-900 dark:text-gray-100 truncate"
+                              class="font-mono text-[13px] text-gray-900 dark:text-gray-400 truncate"
                           >
                             {{ row.ipAddress }}
                           </div>
