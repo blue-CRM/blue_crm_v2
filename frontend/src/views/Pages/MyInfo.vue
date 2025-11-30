@@ -741,98 +741,477 @@
                 </div>
               </div>
 
-              <!-- ===== 센터 관리 ===== -->
+              <!-- ===== 지점 / 팀 관리 ===== -->
               <div class="col-span-2">
                 <hr class="my-6 border-gray-200 dark:border-gray-700" />
               </div>
 
+              <!-- 지점 관리 -->
               <div class="col-span-2">
                 <div class="flex items-center justify-between">
-                  <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">센터 관리</h3>
+                  <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    지점 관리
+                  </h3>
+                  <div class="flex gap-2">
+                    <button
+                        v-if="!branchesEditing"
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
+                        @click="branchesEditing = true"
+                    >
+                      수정
+                    </button>
+                    <button
+                        v-else
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
+                        @click="onBranchesCancel"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 지점 검색 -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                검색
+              </div>
+              <div class="col-start-2">
+                <div class="flex gap-2 w-full">
+                  <div class="relative flex-1">
+                    <input
+                        v-model="branchSearchInput"
+                        type="text"
+                        placeholder="지점명 검색"
+                        @keyup.enter="applyBranchSearch"
+                        class="h-10 w-full rounded-lg border px-3 pr-8 bg-white text-gray-800
+                             focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <button
+                        v-if="branchSearchInput"
+                        type="button"
+                        class="absolute inset-y-0 right-4 my-auto text-xs text-gray-400 hover:text-gray-600
+                            dark:text-gray-500 dark:hover:text-gray-300"
+                        @click="clearBranchSearch"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <button
+                      type="button"
+                      class="h-10 px-4 rounded-lg bg-brand-500 text-xs sm:text-sm font-medium text-white
+                          hover:bg-brand-600 disabled:opacity-50"
+                      @click="applyBranchSearch"
+                  >
+                    검색
+                  </button>
+                </div>
+              </div>
+
+              <!-- 신규 지점 -->
+              <div v-if="branchesEditing" class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                신규 지점
+              </div>
+              <div v-if="branchesEditing" class="col-start-2">
+                <div class="flex gap-2">
+                  <input
+                      v-model="newBranchName"
+                      placeholder="예) 본사 지점"
+                      class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                             focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
+                             disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
+                             dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
+                  />
+                  <button
+                      type="button"
+                      class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                      :disabled="!branchesEditing || !canAddBranch"
+                      @click="addBranch"
+                  >
+                    추가
+                  </button>
+                </div>
+                <p v-if="branchFormError" class="text-xs text-error-500">
+                  {{ branchFormError }}
+                </p>
+              </div>
+
+              <!-- 지점 목록 -->
+              <div class="col-span-2 mt-4">
+                <div
+                    class="ip-scroll rounded-md border border-gray-100 dark:border-gray-800
+                           max-h-60 overflow-auto spin-dark"
+                >
+                  <div v-if="branchesLoading" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    불러오는 중…
+                  </div>
+                  <div v-else-if="!branches || branches.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    등록된 지점이 없습니다.
+                  </div>
+                  <div v-else-if="filteredBranches.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    검색 결과가 없습니다.
+                  </div>
+                  <table
+                      v-else
+                      class="min-w-full table-fixed text-sm"
+                  >
+                    <thead
+                        class="sticky top-0 z-10 bg-white dark:bg-gray-900
+                               shadow-[0_1px_0_0_rgba(229,231,235,0.7)]
+                               dark:shadow-[0_1px_0_0_rgba(31,41,55,0.8)]"
+                    >
+                    <tr
+                        class="border-b border-gray-200 dark:border-gray-700
+                               text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
+                      <th class="px-3 py-2 text-left whitespace-nowrap">지점명</th>
+                      <th class="w-24 px-3 py-2 text-center whitespace-nowrap">관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr
+                        v-for="(b, idx) in filteredBranches"
+                        :key="b.branchId ?? idx"
+                        :class="[
+                          'border-b border-gray-100 dark:border-gray-800',
+                          idx % 2 === 0
+                            ? 'bg-white dark:bg-gray-900'
+                            : 'bg-gray-50 dark:bg-gray-800/60'
+                        ]"
+                    >
+                      <td class="px-3 py-3 text-center text-xs text-gray-400 whitespace-nowrap">
+                        {{ idx + 1 }}
+                      </td>
+                      <td class="px-3 py-3">
+                        <template v-if="editingBranchId === b.branchId">
+                          <input
+                              v-model="editingBranchName"
+                              class="w-full rounded-md border border-gray-200 px-2 py-1 text-xs
+                                     bg-white text-gray-800
+                                     focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                              placeholder="지점명"
+                          />
+                        </template>
+                        <template v-else>
+                          <span class="text-sm text-gray-800 dark:text-gray-200">
+                            {{ b.branchName }}
+                          </span>
+                        </template>
+                      </td>
+                      <td class="px-3 py-3 text-center whitespace-nowrap">
+                        <template v-if="editingBranchId === b.branchId">
+                          <button
+                              type="button"
+                              class="mr-1 px-2 py-1 text-xs rounded-md border border-brand-500
+                                     bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+                              @click="saveBranchRow(b)"
+                          >
+                            저장
+                          </button>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700"
+                              @click="cancelBranchEdit"
+                          >
+                            취소
+                          </button>
+                        </template>
+                        <template v-else>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700
+                                     disabled:opacity-50"
+                              :disabled="!branchesEditing"
+                              @click="startBranchEdit(b)"
+                          >
+                            수정
+                          </button>
+                          <button
+                              type="button"
+                              class="ml-1 px-2 py-1 text-xs rounded-md border border-red-200 dark:border-red-700
+                                     bg-white text-red-600 hover:bg-red-50
+                                     dark:bg-transparent dark:text-red-400 dark:hover:bg-red-900/40
+                                     disabled:opacity-50"
+                              :disabled="!branchesEditing"
+                              @click="deleteBranch(b.branchId)"
+                          >
+                            삭제
+                          </button>
+                        </template>
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 구분선 -->
+              <div class="col-span-2">
+                <hr class="my-6 border-gray-200 dark:border-gray-700" />
+              </div>
+
+              <!-- 팀 관리 -->
+              <div class="col-span-2 mt-6">
+                <div class="flex items-center justify-between">
+                  <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">팀 관리</h3>
                   <div class="flex gap-2">
                     <button
                         v-if="!centersEditing"
                         type="button"
                         class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
                         @click="centersEditing = true"
-                    >수정</button>
+                    >
+                      수정
+                    </button>
                     <button
                         v-else
                         type="button"
                         class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
-                        @click="centersEditing = false"
-                    >취소</button>
+                        @click="onCentersCancel"
+                    >
+                      취소
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <!-- 신규 센터 추가 -->
-              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">신규 센터</div>
+              <!-- 팀 검색 -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                검색
+              </div>
               <div class="col-start-2">
-                <div class="flex gap-2">
-                  <input
-                      v-model="newCenterName"
-                      :disabled="!centersEditing"
-                      placeholder="예) 강남센터"
-                      class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
-                     focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
-                     disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
-                     dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
-                  />
+                <div class="flex gap-2 w-full">
+                  <div class="relative flex-1">
+                    <input
+                        v-model="centerSearchInput"
+                        type="text"
+                        placeholder="팀명 / 지점명 검색"
+                        @keyup.enter="applyCenterSearch"
+                        class="h-10 w-full rounded-lg border px-3 pr-8 bg-white text-gray-800
+                             focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <button
+                        v-if="centerSearchInput"
+                        type="button"
+                        class="absolute inset-y-0 right-4 my-auto text-xs text-gray-400 hover:text-gray-600
+                            dark:text-gray-500 dark:hover:text-gray-300"
+                        @click="clearCenterSearch"
+                    >
+                      ✕
+                    </button>
+                  </div>
                   <button
                       type="button"
-                      class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-                      :disabled="!centersEditing"
-                      @click="addCenter"
-                  >추가</button>
+                      class="h-10 px-4 rounded-lg bg-brand-500 text-xs sm:text-sm font-medium text-white
+                          hover:bg-brand-600 disabled:opacity-50"
+                      @click="applyCenterSearch"
+                  >
+                    검색
+                  </button>
                 </div>
               </div>
 
-              <!-- 목록 -->
-              <div v-if="centersEditing"
-                   class="text-sm font-medium text-gray-700 dark:text-gray-300">센터 목록</div>
-
-              <!-- 리스트 컨테이너: 스크롤, 라운드, 테두리 -->
-              <div v-if="centersEditing"
-                   class="rounded-md border border-gray-100 dark:border-gray-800 max-h-50 overflow-auto">
-
-                <!-- 로딩 -->
-                <div v-if="centersLoading" class="p-4 text-sm text-gray-500 dark:text-gray-400">
-                  불러오는 중...
-                </div>
-
-                <!-- 비어있음 -->
-                <div v-else-if="!centers || centers.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
-                  조회 결과가 없습니다.
-                </div>
-
-                <!-- 리스트 -->
-                <ul v-else>
-                  <li
-                      v-for="c in centers"
-                      :key="c.centerId"
-                      class="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/70"
+              <!-- 신규 팀 -->
+              <div v-if="centersEditing" class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                신규 팀
+              </div>
+              <div v-if="centersEditing" class="col-start-2">
+                <div class="flex flex-col gap-2 md:flex-row">
+                  <input
+                      v-model="newCenterName"
+                      placeholder="예) 강남1팀"
+                      class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                             focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
+                             disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
+                             dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
+                  />
+                  <select
+                      v-model="newCenterBranchId"
+                      class="h-11 w-full md:w-48 rounded-lg border px-3 bg-white text-gray-800
+                             focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100
+                             disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
+                             dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
                   >
-                    <div class="text-sm text-gray-800 dark:text-gray-200">
-                      {{ c.centerName }}
-                    </div>
-
-                    <!-- 흰색 아웃라인 버튼 -->
-                    <button
-                        type="button"
-                        class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
-                             bg-white text-gray-700 hover:bg-gray-50
-                             dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700
-                             focus:outline-hidden focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700
-                             disabled:opacity-50"
-                        :disabled="!centersEditing"
-                        @click.stop="deleteCenter(c.centerId)"
+                    <option value="">지점 지정 안 함</option>
+                    <option
+                        v-for="b in branches"
+                        :key="b.branchId"
+                        :value="b.branchId"
                     >
-                      삭제
-                    </button>
-                  </li>
-                </ul>
+                      {{ b.branchName }}
+                    </option>
+                  </select>
+                  <button
+                      type="button"
+                      class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                      :disabled="!centersEditing || !canAddCenter"
+                      @click="addCenter"
+                  >
+                    추가
+                  </button>
+                </div>
+                <p v-if="centerFormError" class="text-xs text-error-500">
+                  {{ centerFormError }}
+                </p>
+              </div>
+
+              <!-- 팀 목록 -->
+              <div class="col-span-2 mt-4">
+                <div
+                    class="ip-scroll rounded-md border border-gray-100 dark:border-gray-800
+                           max-h-60 overflow-auto spin-dark"
+                >
+                  <div v-if="centersLoading" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    불러오는 중…
+                  </div>
+                  <div v-else-if="!centers || centers.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    등록된 팀이 없습니다.
+                  </div>
+                  <div v-else-if="filteredCenters.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    검색 결과가 없습니다.
+                  </div>
+                  <table
+                      v-else
+                      class="min-w-full table-fixed text-sm"
+                  >
+                    <thead
+                        class="sticky top-0 z-10 bg-white dark:bg-gray-900
+                               shadow-[0_1px_0_0_rgba(229,231,235,0.7)]
+                               dark:shadow-[0_1px_0_0_rgba(31,41,55,0.8)]"
+                    >
+                    <tr
+                        class="border-b border-gray-200 dark:border-gray-700
+                               text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
+                      <th class="px-3 py-2 text-left whitespace-nowrap">팀명</th>
+                      <th class="w-40 px-3 py-2 text-left whitespace-nowrap">지점</th>
+                      <th class="w-24 px-3 py-2 text-center whitespace-nowrap">관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr
+                        v-for="(c, idx) in filteredCenters"
+                        :key="c.centerId ?? idx"
+                        :class="[
+                          'border-b border-gray-100 dark:border-gray-800',
+                          idx % 2 === 0
+                            ? 'bg-white dark:bg-gray-900'
+                            : 'bg-gray-50 dark:bg-gray-800/60'
+                        ]"
+                    >
+                      <td class="px-3 py-3 text-center text-xs text-gray-400 whitespace-nowrap">
+                        {{ idx + 1 }}
+                      </td>
+
+                      <!-- 팀명 -->
+                      <td class="px-3 py-3">
+                        <template v-if="editingCenterId === c.centerId">
+                          <input
+                              v-model="editingCenter.centerName"
+                              class="w-full rounded-md border border-gray-200 px-2 py-1 text-xs
+                                     bg-white text-gray-800
+                                     focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                              placeholder="팀명"
+                          />
+                        </template>
+                        <template v-else>
+                          <span class="text-sm text-gray-800 dark:text-gray-200">
+                            {{ c.centerName }}
+                          </span>
+                        </template>
+                      </td>
+
+                      <!-- 지점 -->
+                      <td class="px-3 py-3">
+                        <template v-if="editingCenterId === c.centerId">
+                          <select
+                              v-model="editingCenter.branchId"
+                              class="h-9 w-full rounded-md border border-gray-300 px-2 text-xs
+                                     bg-white text-gray-800
+                                     focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          >
+                            <option :value="null">지점 지정 안 함</option>
+                            <option
+                                v-for="b in branches"
+                                :key="b.branchId"
+                                :value="b.branchId"
+                            >
+                              {{ b.branchName }}
+                            </option>
+                          </select>
+                        </template>
+                        <template v-else>
+                          <span class="text-xs text-gray-600 dark:text-gray-300">
+                            {{ getBranchName(c.branchId) }}
+                          </span>
+                        </template>
+                      </td>
+
+                      <!-- 관리 -->
+                      <td class="px-3 py-3 text-center whitespace-nowrap">
+                        <template v-if="editingCenterId === c.centerId">
+                          <button
+                              type="button"
+                              class="mr-1 px-2 py-1 text-xs rounded-md border border-brand-500
+                                     bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+                              @click="saveCenterRow(c)"
+                          >
+                            저장
+                          </button>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700"
+                              @click="cancelCenterEdit"
+                          >
+                            취소
+                          </button>
+                        </template>
+                        <template v-else>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700
+                                     disabled:opacity-50"
+                              :disabled="!centersEditing"
+                              @click="startCenterEdit(c)"
+                          >
+                            수정
+                          </button>
+                          <button
+                              type="button"
+                              class="ml-1 px-2 py-1 text-xs rounded-md border border-red-200 dark:border-red-700
+                                     bg-white text-red-600 hover:bg-red-50
+                                     dark:bg-transparent dark:text-red-400 dark:hover:bg-red-900/40
+                                     disabled:opacity-50"
+                              :disabled="!centersEditing"
+                              @click="deleteCenter(c.centerId)"
+                          >
+                            삭제
+                          </button>
+                        </template>
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <!-- ===== 슈퍼계정 위임 ===== -->
@@ -1234,66 +1613,360 @@ async function saveSheetConfig() {
   }
 }
 
-/* ===== 센터관리 ===== */
-const centers = ref([]);
+/* ===== 지점 / 센터(팀) 관리 ===== */
+
+// 지점 검색 상태
+const branchSearchInput = ref('')
+const branchSearch = ref('')
+
+const filteredBranches = computed(() => {
+  // 1) 본사 지점(branchId = 1)은 지점 관리 테이블에서는 숨김
+  let list = (branches.value || []).filter(b => b.branchId !== 1)
+
+  const q = (branchSearch.value || '').trim().toLowerCase()
+  if (!q) return list
+
+  // 2) 검색어 필터
+  return list.filter(b =>
+      String(b.branchName || '').toLowerCase().includes(q)
+  )
+})
+
+async function applyBranchSearch() {
+  branchSearch.value = (branchSearchInput.value || '').trim()
+  await fetchBranches(branchSearch.value)
+}
+
+async function clearBranchSearch() {
+  branchSearchInput.value = ''
+  branchSearch.value = ''
+  await fetchBranches('')
+}
+
+// 팀 검색 상태
+const centerSearchInput = ref('')
+const centerSearch = ref('')
+
+const filteredCenters = computed(() => {
+  const list = centers.value || []
+  const q = (centerSearch.value || '').trim().toLowerCase()
+  if (!q) return list
+
+  return list.filter(c => {
+    const name = String(c.centerName || '').toLowerCase()
+    const bname = String(getBranchName(c.branchId) || '').toLowerCase()
+    return name.includes(q) || bname.includes(q)
+  })
+})
+
+async function applyCenterSearch() {
+  centerSearch.value = (centerSearchInput.value || '').trim()
+  await fetchCenters(centerSearch.value)
+}
+
+async function clearCenterSearch() {
+  centerSearchInput.value = ''
+  centerSearch.value = ''
+  await fetchCenters('')
+}
+
+// ----- 공통: 지점 이름 매핑 -----
+const branches = ref([])
+const branchesLoading = ref(false)
+const branchesEditing = ref(false)
+const newBranchName = ref('')
+// 지점 입력 에러 메시지
+const branchFormError = ref('')
+
+// 지점 추가 가능 여부 (에러 없고, 최소 2자 이상일 때)
+const canAddBranch = computed(() => {
+  const name = (newBranchName.value || '').trim()
+  if (!name) return false
+  return !branchFormError.value
+})
+
+// 지점 이름 검증 (IP처럼 자동 검증)
+watch(newBranchName, (val) => {
+  const name = (val || '').trim()
+  if (!name) {
+    branchFormError.value = ''
+    return
+  }
+  if (name.length < 2) {
+    branchFormError.value = '지점명은 2자 이상이어야 합니다.'
+  } else if (name.length > 40) {
+    branchFormError.value = '지점명은 40자 이하로 입력하세요.'
+  } else {
+    branchFormError.value = ''
+  }
+})
+
+const editingBranchId = ref(null)
+const editingBranchName = ref('')
+
+// 센터(팀)
+const centers = ref([])
 const centersLoading = ref(false)
 const centersEditing = ref(false)
 const newCenterName = ref('')
+const newCenterBranchId = ref('') // '' = 지점 지정 안 함
+// 팀 입력 에러 메시지
+const centerFormError = ref('')
 
-async function fetchCenters() {
+// 팀 추가 가능 여부
+const canAddCenter = computed(() => {
+  const name = (newCenterName.value || '').trim()
+  if (!name) return false
+  return !centerFormError.value
+})
+
+// 팀 이름 검증
+watch(newCenterName, (val) => {
+  const name = (val || '').trim()
+  if (!name) {
+    centerFormError.value = ''
+    return
+  }
+  if (name.length < 2) {
+    centerFormError.value = '팀명은 2자 이상이어야 합니다.'
+  } else if (name.length > 40) {
+    centerFormError.value = '팀명은 40자 이하로 입력하세요.'
+  } else {
+    centerFormError.value = ''
+  }
+})
+
+const editingCenterId = ref(null)
+const editingCenter = ref({
+  centerName: '',
+  branchId: null,
+})
+
+// 지점 id → 이름 맵
+const branchNameMap = computed(() => {
+  const m = new Map()
+  for (const b of branches.value || []) {
+    if (b.branchId != null) m.set(b.branchId, b.branchName)
+  }
+  return m
+})
+
+const getBranchName = (branchId) => {
+  if (!branchId) return '지정 안 함'
+  return branchNameMap.value.get(branchId) || '지정 안 함'
+}
+
+/* ----- 지점(Branch) ----- */
+
+async function fetchBranches(keyword = '') {
   try {
-    centersLoading.value = true;
-    const { data } = await axios.get('/api/me/centers', { withCredentials: true });
-    centers.value = Array.isArray(data) ? data : [];
+    branchesLoading.value = true
+    const { data } = await axios.get('/api/me/branches', { withCredentials: true, params: { keyword: keyword || '' } })
+    branches.value = Array.isArray(data) ? data : []
   } catch (e) {
-    alert(e?.response?.data || '센터 목록을 불러오지 못했습니다.');
+    alert(e?.response?.data || '지점 목록을 불러오지 못했습니다.')
   } finally {
-    centersLoading.value = false;
+    branchesLoading.value = false
+  }
+}
+
+async function addBranch() {
+  const name = (newBranchName.value || '').trim()
+  if (!name) {
+    alert('지점 이름을 입력하세요.')
+    return
+  }
+  try {
+    await axios.post(
+        '/api/me/branches',
+        { branchName: name },
+        { withCredentials: true },
+    )
+    newBranchName.value = ''
+    await fetchBranches(branchSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '이미 존재하는 지점명입니다.')
+    else if (s === 400) alert(e?.response?.data || '요청 값이 올바르지 않습니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert('지점 추가에 실패했습니다.')
+  }
+}
+
+function startBranchEdit(b) {
+  if (!branchesEditing.value) return
+  editingBranchId.value = b.branchId
+  editingBranchName.value = b.branchName || ''
+}
+
+function cancelBranchEdit() {
+  editingBranchId.value = null
+  editingBranchName.value = ''
+}
+
+async function saveBranchRow(b) {
+  const name = (editingBranchName.value || '').trim()
+  if (!name) {
+    alert('지점 이름을 입력하세요.')
+    return
+  }
+  try {
+    await axios.put(
+        `/api/me/branches/${b.branchId}`,
+        { branchName: name },
+        { withCredentials: true },
+    )
+    cancelBranchEdit()
+    await fetchBranches(branchSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '이미 존재하는 지점명입니다.')
+    else if (s === 404) alert(e?.response?.data || '존재하지 않는 지점입니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert('지점 수정에 실패했습니다.')
+  }
+}
+
+async function deleteBranch(branchId) {
+  const id = Number(branchId)
+  if (!Number.isFinite(id)) {
+    alert('잘못된 지점 ID 입니다.')
+    return
+  }
+  if (!confirm('해당 지점을 삭제하시겠습니까?\n(소속 팀이 있으면 삭제할 수 없습니다.)')) return
+
+  try {
+    await axios.delete(`/api/me/branches/${id}`, { withCredentials: true })
+    await fetchBranches(branchSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) {
+      alert(e?.response?.data || '소속 팀이 있어 삭제할 수 없습니다.')
+    } else if (s === 404) {
+      alert(e?.response?.data || '존재하지 않는 지점입니다.')
+    } else if (s === 403) {
+      alert('접근 권한이 없습니다.')
+    } else {
+      alert('지점 삭제에 실패했습니다.')
+    }
+  }
+}
+
+function onBranchesCancel() {
+  branchesEditing.value = false
+  newBranchName.value = ''
+  cancelBranchEdit()
+}
+
+/* ----- 센터(Center / 팀) ----- */
+
+async function fetchCenters(keyword = '') {
+  try {
+    centersLoading.value = true
+    const { data } = await axios.get('/api/me/centers', { withCredentials: true, params: { keyword: keyword || '' } })
+    centers.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    alert(e?.response?.data || '팀 목록을 불러오지 못했습니다.')
+  } finally {
+    centersLoading.value = false
   }
 }
 
 async function addCenter() {
-  const name = (newCenterName.value || '').trim();
-  if (!name) return alert('센터 이름을 입력하세요.');
+  const name = (newCenterName.value || '').trim()
+  if (!name) {
+    alert('팀 이름을 입력하세요.')
+    return
+  }
+
+  const payload = {
+    centerName: name,
+    branchId: newCenterBranchId.value || null, // '' → null
+  }
 
   try {
-    await axios.post('/api/me/centers', { centerName: name }, { withCredentials: true });
-    newCenterName.value = '';
-    await fetchCenters();
+    await axios.post('/api/me/centers', payload, { withCredentials: true })
+    newCenterName.value = ''
+    newCenterBranchId.value = ''
+    await fetchCenters(centerSearch.value)
   } catch (e) {
-    const s = e?.response?.status;
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '이미 존재하는 팀명입니다.')
+    else if (s === 400) alert(e?.response?.data || '요청 값이 올바르지 않습니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert('팀 추가에 실패했습니다.')
+  }
+}
+
+function startCenterEdit(c) {
+  if (!centersEditing.value) return
+  editingCenterId.value = c.centerId
+  editingCenter.value = {
+    centerName: c.centerName || '',
+    branchId: c.branchId ?? null,
+  }
+}
+
+function cancelCenterEdit() {
+  editingCenterId.value = null
+  editingCenter.value = { centerName: '', branchId: null }
+}
+
+async function saveCenterRow(c) {
+  const name = (editingCenter.value.centerName || '').trim()
+  if (!name) {
+    alert('팀 이름을 입력하세요.')
+    return
+  }
+
+  const payload = {
+    centerName: name,
+    branchId: editingCenter.value.branchId || null,
+  }
+
+  try {
+    await axios.put(`/api/me/centers/${c.centerId}`, payload, { withCredentials: true })
+    cancelCenterEdit()
+    await fetchCenters(centerSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '이미 존재하는 팀명입니다.')
+    else if (s === 404) alert(e?.response?.data || '존재하지 않는 팀입니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert('팀 수정에 실패했습니다.')
+  }
+}
+
+async function deleteCenter(centerId) {
+  const cid = Number(centerId)
+  if (!Number.isFinite(cid)) {
+    alert('잘못된 팀 ID 입니다.')
+    return
+  }
+  if (!confirm('해당 팀을 삭제하시겠습니까?\n(소속 직원이 있으면 삭제할 수 없습니다.)')) return
+
+  try {
+    await axios.delete(`/api/me/centers/${cid}`, { withCredentials: true })
+    await fetchCenters(centerSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
     if (s === 409) {
-      alert(e?.response?.data || '이미 존재하는 센터명입니다.');
-    } else if (s === 400) {
-      alert(e?.response?.data || '요청 값이 올바르지 않습니다.');
+      alert(e?.response?.data || '팀에 소속된 직원이 있어 삭제할 수 없습니다.')
+    } else if (s === 404) {
+      alert(e?.response?.data || '존재하지 않는 팀입니다.')
     } else if (s === 403) {
-      alert('접근 권한이 없습니다.');
+      alert('접근 권한이 없습니다.')
     } else {
-      alert('센터 추가에 실패했습니다.');
+      alert('팀 삭제에 실패했습니다.')
     }
   }
 }
 
-async function deleteCenter(id) {
-  const cid = Number(id);
-  if (!Number.isFinite(cid)) return alert('잘못된 ID');
-  if (!confirm('삭제하시겠습니까?')) return;
-
-  try {
-    await axios.delete(`/api/me/centers/${cid}`, { withCredentials: true });
-    await fetchCenters();
-  } catch (e) {
-    const s = e?.response?.status;
-    if (s === 409) {
-      alert(e?.response?.data || '센터에 소속된 직원이 있어 삭제할 수 없습니다.');
-    } else if (s === 404) {
-      alert(e?.response?.data || '존재하지 않는 센터입니다.');
-    } else if (s === 403) {
-      alert('접근 권한이 없습니다.');
-    } else {
-      alert('센터 삭제에 실패했습니다.');
-    }
-  }
+function onCentersCancel() {
+  centersEditing.value = false
+  newCenterName.value = ''
+  newCenterBranchId.value = ''
+  cancelCenterEdit()
 }
 
 // -----------------------
@@ -1837,13 +2510,14 @@ function onIpCancel() {
   cancelIpRowEdit()
 }
 
-// 특별계정 켜지면 센터 목록 + IP 화이트리스트 불러오기
+// 특별계정 켜지면 지점/팀 목록 + IP 화이트리스트 불러오기
 watch(
     () => isSuperEmail.value,
     async (ok) => {
       if (!ok) return
       await Promise.all([
-        fetchCenters(),
+        fetchBranches(branchSearch.value),
+        fetchCenters(centerSearch.value),
         fetchIpWhitelist(),
       ])
     },

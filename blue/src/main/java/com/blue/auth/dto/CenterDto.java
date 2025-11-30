@@ -9,5 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CenterDto {
   private Long centerId;
+  private Long branchId;
   private String centerName;
 }

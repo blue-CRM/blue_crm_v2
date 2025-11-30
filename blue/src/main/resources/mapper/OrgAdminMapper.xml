@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.blue.auth.mapper.OrgAdminMapper">
+
+    <!-- ======================
+         BRANCHES (지점)
+       ====================== -->
+
+<!--    &lt;!&ndash; 전체 지점 목록 &ndash;&gt;-->
+<!--    <select id="findAllBranches" resultType="com.blue.auth.dto.BranchDto">-->
+<!--        SELECT-->
+<!--            branch_id   AS branchId,-->
+<!--            branch_name AS branchName-->
+<!--        FROM branches-->
+<!--        ORDER BY branch_id ASC-->
+<!--    </select>-->
+
+    <!-- 지점 목록: 전체 + 검색 겸용 (이름 가나다 순) -->
+    <select id="findBranches" resultType="com.blue.auth.dto.BranchDto">
+        SELECT
+        branch_id   AS branchId,
+        branch_name AS branchName
+        FROM branches
+        <if test="keyword != null and keyword != ''">
+            WHERE branch_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY
+            branch_name ASC,   -- 1) 지점명 가나다/알파벳 순
+            branch_id   ASC    -- 2) 이름 같을 때만 ID 순
+    </select>
+
+    <!-- 지점 이름 중복 여부 -->
+    <select id="existsBranchName" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM branches
+            WHERE branch_name = #{branchName}
+            LIMIT 1
+        )
+    </select>
+
+    <!-- 지점 추가 -->
+    <insert id="insertBranch"
+            parameterType="com.blue.auth.dto.BranchDto"
+            useGeneratedKeys="true"
+            keyProperty="branchId">
+        INSERT INTO branches (branch_name)
+        VALUES (#{branchName})
+    </insert>
+
+    <!-- 지점 이름 수정 -->
+    <update id="updateBranchName">
+        UPDATE branches
+        SET branch_name = #{branchName}
+        WHERE branch_id = #{branchId}
+    </update>
+
+    <!-- 지점에 소속된 센터 수 -->
+    <select id="countCentersInBranch" resultType="int">
+        SELECT COUNT(*)
+        FROM centers
+        WHERE branch_id = #{branchId}
+    </select>
+
+    <!-- 지점 삭제 (하드 삭제) -->
+    <delete id="deleteBranch">
+        DELETE
+        FROM branches
+        WHERE branch_id = #{branchId}
+    </delete>
+
+    <!-- ======================
+         CENTERS (팀/센터)
+       ====================== -->
+
+<!--    &lt;!&ndash; 센터 목록: 본사(1) 제외 &ndash;&gt;-->
+<!--    <select id="findAllCenters" resultType="com.blue.auth.dto.CenterDto">-->
+<!--        SELECT-->
+<!--            center_id   AS centerId,-->
+<!--            center_name AS centerName,-->
+<!--            branch_id   AS branchId-->
+<!--        FROM centers-->
+<!--        WHERE center_id != 1   &#45;&#45; 본사 제외-->
+<!--        ORDER BY center_id DESC-->
+<!--    </select>-->
+
+    <!-- 센터 목록: 본사(1) 제외 + 팀명/지점명 검색 + 지점ID/팀명 정렬 -->
+    <select id="findCenters" resultType="com.blue.auth.dto.CenterDto">
+        SELECT
+        c.center_id   AS centerId,
+        c.center_name AS centerName,
+        c.branch_id   AS branchId
+        FROM centers c
+        LEFT JOIN branches b
+        ON c.branch_id = b.branch_id
+        WHERE c.center_id != 1   -- 본사 제외
+        <if test="keyword != null and keyword != ''">
+            AND (
+            c.center_name LIKE CONCAT('%', #{keyword}, '%')
+            OR b.branch_name LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY
+            CASE WHEN c.branch_id = 1 THEN 0 ELSE 1 END,  -- 1) 본사 지점(id==1) 최우선
+            b.branch_name ASC,                            -- 2) 지점명 가나다/알파벳
+            c.branch_id   ASC,                            -- 3) 지점 ID
+            c.center_name ASC                             -- 4) 팀명
+    </select>
+
+    <!-- 센터 이름 중복 여부 -->
+    <select id="existsCenterName" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM centers
+            WHERE center_name = #{centerName}
+            LIMIT 1
+        )
+    </select>
+
+    <!-- 센터 추가 (branch_id는 NULL 허용) -->
+    <insert id="insertCenter">
+        INSERT INTO centers (center_name, branch_id)
+        VALUES (#{centerName}, #{branchId})
+    </insert>
+
+    <!-- 해당 센터에 소속된 사용자 수 -->
+    <select id="countUsersInCenter" resultType="int">
+        SELECT COUNT(*)
+        FROM users
+        WHERE center_id = #{centerId}
+    </select>
+
+    <!-- 센터 수정 -->
+    <update id="updateCenter">
+        UPDATE centers
+        SET
+            center_name = #{centerName},
+            branch_id   = #{branchId}
+        WHERE center_id = #{centerId}
+    </update>
+
+    <!-- 센터 삭제 (하드 삭제) -->
+    <delete id="deleteCenter">
+        DELETE
+        FROM centers
+        WHERE center_id = #{centerId}
+    </delete>
+
+</mapper>

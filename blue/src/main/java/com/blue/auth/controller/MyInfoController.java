@@ -3,6 +3,7 @@ package com.blue.auth.controller;
 import com.blue.auth.dto.*;
 import com.blue.auth.service.IpWhitelistService;
 import com.blue.auth.service.MyInfoService;
+import com.blue.auth.service.OrgAdminService;
 import com.blue.global.exception.AuthException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ public class MyInfoController {
   
   private final MyInfoService myInfoService;
   private final IpWhitelistService ipWhitelistService;
+  private final OrgAdminService orgAdminService;
   
   // 내 정보 조회
   @GetMapping
@@ -62,29 +64,6 @@ public class MyInfoController {
     return ResponseEntity.ok().build();
   }
   
-  // 팀 목록 (특별계정 전용)
-  @GetMapping("/centers")
-  public ResponseEntity<List<CenterDto>> list(Authentication auth) {
-    String email = auth.getName();
-    return ResponseEntity.ok(myInfoService.listCenters(email));
-  }
-  
-  // 팀 추가 (특별계정 전용)
-  @PostMapping("/centers")
-  public ResponseEntity<Void> add(@RequestBody CreateCenterRequest req, Authentication auth) {
-    String email = auth.getName();
-    myInfoService.addCenter(email, req.getCenterName());
-    return ResponseEntity.ok().build();
-  }
-  
-  // 팀 삭제 (특별계정 전용, 직원 존재 시 409)
-  @DeleteMapping("/centers/{id}")
-  public ResponseEntity<Void> delete(@PathVariable("id") long id, Authentication auth) {
-    String email = auth.getName();
-    myInfoService.removeCenter(email, id);
-    return ResponseEntity.ok().build();
-  }
-  
   /** 접속 로그 엑셀 (기간 내 전체 사용자, login_at 기준) */
   @GetMapping("/logs/export")
   public ResponseEntity<byte[]> exportLoginLogs(Authentication auth,
@@ -110,7 +89,9 @@ public class MyInfoController {
   // POST 바디 바인딩용 경량 DTO (record → 불변, 보일러플레이트 없음)
   public static record DelegateRequest(Long userId) {}
   
-  // IP 화이트리스트 관련
+  // ============================
+  //   IP 화이트리스트 관리
+  // ============================
   // 목록
   @GetMapping("/ip-whitelist")
   public ResponseEntity<List<IpWhitelistDto>> getIpWhitelist(Authentication auth) {
@@ -154,4 +135,86 @@ public class MyInfoController {
     ipWhitelistService.deleteHard(email, ipId);
     return ResponseEntity.ok().build();
   }
+  
+  // ============================
+  //   지점(Branch) 관리
+  // ============================
+  
+  @GetMapping("/branches")
+  public ResponseEntity<List<BranchDto>> listBranches(
+      @RequestParam(value = "keyword", required = false) String keyword,
+      Authentication auth
+  ) {
+    String email = auth.getName();
+    return ResponseEntity.ok(orgAdminService.getBranches(email, keyword));
+  }
+  
+  @PostMapping("/branches")
+  public ResponseEntity<Void> addBranch(@RequestBody BranchDto body,
+                                        Authentication auth) {
+    String email = auth.getName();
+    orgAdminService.createBranch(email, body.getBranchName());
+    return ResponseEntity.ok().build();
+  }
+  
+  @PutMapping("/branches/{branchId}")
+  public ResponseEntity<Void> renameBranch(@PathVariable Long branchId,
+                                           @RequestBody BranchDto body,
+                                           Authentication auth) {
+    String email = auth.getName();
+    orgAdminService.renameBranch(email, branchId, body.getBranchName());
+    return ResponseEntity.ok().build();
+  }
+  
+  @DeleteMapping("/branches/{branchId}")
+  public ResponseEntity<Void> deleteBranch(@PathVariable Long branchId,
+                                           Authentication auth) {
+    String email = auth.getName();
+    orgAdminService.deleteBranch(email, branchId);
+    return ResponseEntity.ok().build();
+  }
+  
+  // ============================
+  //   센터(Team) 관리
+  // ============================
+  
+  /** 팀 목록 */
+  @GetMapping("/centers")
+  public ResponseEntity<List<CenterDto>> listCenters(
+      @RequestParam(value = "keyword", required = false) String keyword,
+      Authentication auth
+  ) {
+    String email = auth.getName();
+    return ResponseEntity.ok(orgAdminService.getCenters(email, keyword));
+  }
+  
+  /** 팀 추가 */
+  @PostMapping("/centers")
+  public ResponseEntity<Void> addCenter(@RequestBody CenterDto body,
+                                        Authentication auth) {
+    String email = auth.getName();
+    // body.getBranchId() 는 null 가능. 기본 본사(1)로 고정하고 싶으면 OrgAdminService에서 처리.
+    orgAdminService.createCenter(email, body.getCenterName(), body.getBranchId());
+    return ResponseEntity.ok().build();
+  }
+  
+  /** 팀 수정 */
+  @PutMapping("/centers/{centerId}")
+  public ResponseEntity<Void> updateCenter(@PathVariable Long centerId,
+                                           @RequestBody CenterDto body,
+                                           Authentication auth) {
+    String email = auth.getName();
+    orgAdminService.updateCenter(email, centerId, body.getCenterName(), body.getBranchId());
+    return ResponseEntity.ok().build();
+  }
+  
+  /** 팀 삭제 */
+  @DeleteMapping("/centers/{id}")
+  public ResponseEntity<Void> deleteCenter(@PathVariable("id") long id,
+                                           Authentication auth) {
+    String email = auth.getName();
+    orgAdminService.deleteCenter(email, id);
+    return ResponseEntity.ok().build();
+  }
+  
 }
