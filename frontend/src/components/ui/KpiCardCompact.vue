@@ -1,7 +1,12 @@
 <template>
-  <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-    <div class="icon-scope flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800
-                text-gray-800 dark:text-white/90">
+  <div class="rounded-2xl border border-gray-200 p-5 md:p-6
+         bg-gradient-to-r from-blue-50/80 via-blue-50/20 to-white
+         dark:border-gray-800
+         dark:bg-none dark:bg-white/[0.03]">
+    <div class="icon-scope flex items-center justify-center w-12 h-12 rounded-xl
+             bg-white/95 shadow-sm shadow-blue-100/80 ring-1 ring-blue-100
+             text-blue-600
+             dark:bg-gray-800 dark:text-white/90 dark:shadow-none dark:ring-0">
       <!-- 아이콘 슬롯 -->
       <slot name="icon">
         <!-- 기본 아이콘 (없어도 됨) -->
