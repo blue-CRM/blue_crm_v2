@@ -3,6 +3,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.blue.customer.alloclog.mapper.AllocLogMapper">
 
+    <!-- 배치 INSERT -->
     <insert id="insertLogs">
         INSERT INTO alloc_logs (
         customer_id,
@@ -26,5 +27,21 @@
             )
         </foreach>
     </insert>
+
+    <!-- 회수 직전 담당자 스냅샷 -->
+    <select id="findOwnersByCustomerIds"
+            resultType="com.blue.customer.alloclog.dto.CustomerOwnerSnapshotDto">
+        SELECT
+        c.customer_id     AS customerId,
+        c.user_id         AS userId,
+        u.user_role       AS userRole,
+        c.customer_status AS status
+        FROM customers c
+        LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE c.customer_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
 
 </mapper>
