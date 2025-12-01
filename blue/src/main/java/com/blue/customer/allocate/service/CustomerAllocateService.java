@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
+import com.blue.customer.alloclog.mapper.AllocLogMapper;
+import com.blue.customer.alloclog.dto.AllocLogInsertDto;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ import java.util.List;
 public class CustomerAllocateService {
   
   private final CustomerAllocateMapper mapper;
+  private final AllocLogMapper allocLogMapper;
   
   public PagedResponse<AllocateListRowDto> list(String callerEmail,
                                                 int page, int size,
@@ -79,13 +82,26 @@ public class CustomerAllocateService {
     mapper.updateOwner(lockIds, targetUserId);
     
     // 본사 기준 상태 변경 규칙
-    // - 팀장에게 분배: 상태를 '없음'으로 통일(회수도 없음으로 전환)
-    // - 프로에게 분배: '신규'
     if ("MANAGER".equals(targetRole)) {
+      // - 팀장에게 분배: 상태를 '없음'으로 통일(회수도 없음으로 전환)
       mapper.updateStatusToNone(lockIds);
     } else {
+      // - 프로에게 분배: '신규'
       mapper.updateStatusToNew(lockIds);
     }
+    
+    // ---- 분배 로그 기록 ----
+    // HQ → MANAGER : 팀장풀에 쌓이는 것이므로 isFinalAssign = 0
+    // HQ → STAFF   : 확정 DB 이므로 isFinalAssign = 1
+    boolean isFinalAssign = !"MANAGER".equals(targetRole);
+    writeAssignLogs(
+        lockIds,
+        me.getUserId(),       // 분배를 실행한 사람 (현재 로그인한 사람)
+        null,                 // from_user_id (담당자 없음 상태에서 분배되는 것이므로 null)
+        targetUserId,
+        isFinalAssign,
+        null                  // memo (필요하면 나중에 req.getMemo() 등으로 교체)
+    );
     
     return new AllocateResult(lockIds.size(), req.getCustomerIds().size() - lockIds.size());
   }
@@ -123,6 +139,33 @@ public class CustomerAllocateService {
     // 팀장→본인/팀원 모두 '신규'
     mapper.updateStatusToNew(lockIds);
     
+    // ---- 분배 로그 기록 ----
+    Long managerId = me.getUserId();
+    Long targetUserId = req.getTargetUserId();
+    
+    // 여기서부터는 전부 "팀장 풀 → 확정 DB" 케이스이므로 isFinalAssign = 1 고정
+    if (selfReallocate) {
+      // 팀장 풀 → 팀장 본인 확정
+      writeAssignLogs(
+          lockIds,
+          managerId,       // 분배를 실행한 사람 (현재 로그인한 사람)
+          managerId,       // from_user_id (풀의 주인)
+          managerId,       // to_user_id (팀장 본인 확정 - 스스로에게 재분배)
+          true,
+          null
+      );
+    } else {
+      // 팀장 풀 → 직원 확정
+      writeAssignLogs(
+          lockIds,
+          managerId,       // 분배를 실행한 사람 (현재 로그인한 사람 -> 팀장이 실행)
+          managerId,       // from_user_id (풀의 주인)
+          targetUserId,    // to_user_id (팀장이 하위 팀원에게 분배한 경우)
+          true,
+          null
+      );
+    }
+    
     return new AllocateResult(lockIds.size(), req.getCustomerIds().size() - lockIds.size());
   }
   
@@ -155,5 +198,33 @@ public class CustomerAllocateService {
       throw new IllegalArgumentException("본사만 조회할 수 있습니다.");
     }
     return mapper.findCentersForAllocate();
+  }
+  
+  // 분배기록 공통 헬퍼 매서드
+  private void writeAssignLogs(List<Long> customerIds,
+                               Long actedByUserId,
+                               Long fromUserId,
+                               Long toUserId,
+                               boolean finalAssign,
+                               String memo) {
+    
+    if (customerIds == null || customerIds.isEmpty()) return;
+    
+    List<AllocLogInsertDto> logs = new java.util.ArrayList<>();
+    Integer finalFlag = finalAssign ? 1 : 0;
+    
+    for (Long id : customerIds) {
+      AllocLogInsertDto dto = new AllocLogInsertDto();
+      dto.setCustomerId(id);
+      dto.setActionType("ASSIGN");
+      dto.setFromUserId(fromUserId);
+      dto.setToUserId(toUserId);
+      dto.setActedByUserId(actedByUserId);
+      dto.setIsFinalAssign(finalFlag);
+      dto.setMemo(memo);
+      logs.add(dto);
+    }
+    
+    allocLogMapper.insertLogs(logs);
   }
 }

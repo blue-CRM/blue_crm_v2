@@ -285,33 +285,33 @@
 
     <!-- 분배용 팀 목록:
       1) 사람 0명인 팀 제외
-      2) 본사(1) 제외 +) TODO 본사 지점 소속이면 모두 제외 예정
+      2) 본사지점(branch_id == 1) 인 경우 제외 -> 어차피 센터장/전문가/관리자라 분배받을 대상이 아님
       3) hasManager 플래그/인원수 내려줌 -->
     <select id="findCentersForAllocate" resultType="com.blue.customer.allocate.dto.CenterPickDto">
         SELECT
         c.center_id   AS centerId,
         c.center_name AS centerName,
         EXISTS(
-        SELECT 1
-        FROM users mu
-        WHERE mu.center_id = c.center_id
-        AND mu.user_role = 'MANAGER'
-        AND mu.user_approved = 'Y'           <!-- 승인된 팀장만 hasManager -->
+            SELECT 1
+            FROM users mu
+            WHERE mu.center_id = c.center_id
+                AND mu.user_role = 'MANAGER'
+                AND mu.user_approved = 'Y'           <!-- 승인된 팀장만 hasManager -->
         ) AS hasManager,
         (
-        SELECT COUNT(*)
-        FROM users u
-        WHERE u.center_id = c.center_id
-        AND u.user_approved = 'Y'            <!-- 승인된 인원만 카운트 -->
+            SELECT COUNT(*)
+            FROM users u
+            WHERE u.center_id = c.center_id
+                AND u.user_approved = 'Y'            <!-- 승인된 인원만 카운트 -->
         ) AS userCount
-        FROM centers c
-        WHERE c.center_id &lt;&gt; 1                    <!-- 본사 제외 -->
-        AND EXISTS (                              <!-- 승인된 인원 1명 이상 있는 팀만 노출 -->
-        SELECT 1 FROM users u
-        WHERE u.center_id = c.center_id
-        AND u.user_approved = 'Y'
-        )
-        ORDER BY c.center_name ASC
+            FROM centers c
+            WHERE (c.branch_id IS NULL OR c.branch_id != 1) <!-- 본사지점 제외 -->
+                AND EXISTS (                              <!-- 승인된 인원 1명 이상 있는 팀만 노출 -->
+                    SELECT 1 FROM users u
+                    WHERE u.center_id = c.center_id
+                    AND u.user_approved = 'Y'
+                )
+            ORDER BY c.center_name ASC
     </select>
 
 </mapper>

@@ -7,10 +7,25 @@
 
     <!-- 센터 목록 (본사 제외) -->
     <select id="findCenters" resultType="com.blue.dashboard.dto.CenterDto">
-        SELECT c.center_id AS id, c.center_name AS name
+        SELECT
+        c.center_id   AS id,
+        c.center_name AS name,
+        c.branch_id   AS branchId,
+        b.branch_name AS branchName
         FROM centers c
-        WHERE c.center_name &lt;&gt; '본사'
-        ORDER BY c.center_name ASC
+        LEFT JOIN branches b
+        ON c.branch_id = b.branch_id
+        WHERE c.center_id != 1
+        ORDER BY
+        -- 1) 본사지점 먼저
+        CASE
+        WHEN b.branch_id = 1 THEN 0
+        ELSE 1
+        END ASC,
+        -- 2) 지점명 순
+        b.branch_name ASC,
+        -- 3) 팀(센터) 이름 순
+        c.center_name ASC
     </select>
 
     <!-- 승인 사용자 목록 -->

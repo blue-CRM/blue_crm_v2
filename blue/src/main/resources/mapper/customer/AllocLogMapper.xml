@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blue.customer.alloclog.mapper.AllocLogMapper">
+
+    <insert id="insertLogs">
+        INSERT INTO alloc_logs (
+        customer_id,
+        action_type,
+        is_final_assign,
+        from_user_id,
+        to_user_id,
+        acted_by_user_id,
+        memo
+        )
+        VALUES
+        <foreach collection="logs" item="log" separator=",">
+            (
+            #{log.customerId},
+            #{log.actionType},
+            #{log.isFinalAssign},
+            #{log.fromUserId},
+            #{log.toUserId},
+            #{log.actedByUserId},
+            #{log.memo}
+            )
+        </foreach>
+    </insert>
+
+</mapper>
