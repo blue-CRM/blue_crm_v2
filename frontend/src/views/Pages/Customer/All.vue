@@ -387,7 +387,7 @@ async function onAdminButtonClick(btn) {
       }
 
       try {
-        await axios.post("/api/lead/db/duplicate/hide", { ids: dupIds });
+        await axios.post("/api/work/db/duplicate/hide", { ids: dupIds });
         alert(`중복 ${dupIds.length}건을 중복DB 메뉴로 이동(숨김)했습니다.`);
 
         // 선택 초기화

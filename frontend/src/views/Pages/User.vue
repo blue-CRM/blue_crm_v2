@@ -97,7 +97,7 @@ async function onRefresh() {
 const centerOptions = ref([]);
 onMounted(async () => {
   try {
-    const res = await axios.get("/api/common/centers");
+    const res = await axios.get("/api/super/users/centers");
     // console.log(res)
     centerOptions.value = res.data.map(c => c.centerName);
     // console.log(centerOptions.value)

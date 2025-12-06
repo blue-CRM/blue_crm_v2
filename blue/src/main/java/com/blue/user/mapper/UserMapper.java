@@ -1,5 +1,6 @@
 package com.blue.user.mapper;
 
+import com.blue.user.dto.CenterDto;
 import com.blue.user.dto.UserSelectDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -10,6 +11,9 @@ import java.util.List;
 public interface UserMapper {
   // 슈퍼계정인지 판단
   Boolean isSuperByEmail(String email);
+  
+  // 센터 목록 조회
+  List<CenterDto> findCenters();
   
   // 페이지 로딩시 최초 조회 - 데이터 목록 조회
   List<UserSelectDto> findUsers(@Param("offset") int offset,

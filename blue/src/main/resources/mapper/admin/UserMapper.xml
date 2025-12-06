@@ -13,6 +13,21 @@
         LIMIT 1
     </select>
 
+    <!-- 센터 목록 (본사 제외) -->
+    <select id="findCenters" resultType="com.blue.user.dto.CenterDto">
+        SELECT
+        c.center_id   AS centerId,
+        c.center_name AS centerName,
+        c.branch_id   AS branchId,
+        b.branch_name AS branchName
+        FROM centers c
+        LEFT JOIN branches b ON c.branch_id = b.branch_id
+        WHERE c.center_id != 1       <!-- 본사센터 제외 -->
+        ORDER BY
+        b.branch_name ASC,
+        c.center_name ASC
+    </select>
+
     <!-- 직원 목록 조회 -->
     <select id="findUsers" resultType="com.blue.user.dto.UserSelectDto">
         SELECT

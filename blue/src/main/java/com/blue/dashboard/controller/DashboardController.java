@@ -1,9 +1,6 @@
 package com.blue.dashboard.controller;
 
-import com.blue.dashboard.dto.CenterDto;
-import com.blue.dashboard.dto.SummaryDto;
-import com.blue.dashboard.dto.UserDto;
-import com.blue.dashboard.dto.CustomerDto;
+import com.blue.dashboard.dto.*;
 import com.blue.dashboard.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +13,16 @@ import java.util.List;
 public class DashboardController {
   
   private final DashboardService dashboardService;
+  
+  @GetMapping("/branches")
+  public List<BranchDto> getBranches() {
+    return dashboardService.findBranches();
+  }
+  
+  @GetMapping("/centers")
+  public List<CenterDto> getCenters() {
+    return dashboardService.findCenters();
+  }
   
   // 승인(Y) 사용자 리스트(간단 조회)
   @GetMapping("/users")
@@ -32,15 +39,34 @@ public class DashboardController {
     return dashboardService.findUsersExact(name, email);
   }
   
-  // 본체+중복 통합 조회 (필터: userId / centerIds / from / to)
-  @GetMapping("/customers")
-  public List<CustomerDto> getCustomers(
-      @RequestParam(required = false) Long userId,
-      @RequestParam(required = false) List<Long> centerIds,
-      @RequestParam(required = false) String from,
-      @RequestParam(required = false) String to
+  // 개인 통계 조회
+  @GetMapping("/stats/user")
+  public UserStatsResponse getUserStats(
+      @RequestParam Long userId,
+      @RequestParam(required = false) String dateFrom,
+      @RequestParam(required = false) String dateTo
   ) {
-    return dashboardService.findCustomers(userId, centerIds, from, to);
+    return dashboardService.getUserStats(userId, dateFrom, dateTo);
+  }
+  
+  // 팀별 통계 조회
+  @GetMapping("/stats/centers")
+  public CenterStatsResponse getCenterStats(
+      @RequestParam List<Long> centerIds,
+      @RequestParam(required = false) String dateFrom,
+      @RequestParam(required = false) String dateTo
+  ) {
+    return dashboardService.getCenterStats(centerIds, dateFrom, dateTo);
+  }
+  
+  // 지점별 통계 조회
+  @GetMapping("/stats/branches")
+  public BranchStatsResponse getBranchStats(
+      @RequestParam List<Long> branchIds,
+      @RequestParam(required = false) String dateFrom,
+      @RequestParam(required = false) String dateTo
+  ) {
+    return dashboardService.getBranchStats(branchIds, dateFrom, dateTo);
   }
   
   // KPI (프론트 호환)

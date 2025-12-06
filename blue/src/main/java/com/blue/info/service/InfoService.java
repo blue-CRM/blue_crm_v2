@@ -1,7 +1,7 @@
 package com.blue.info.service;
 
-import com.blue.customer.common.center.dto.CenterDto;
-import com.blue.customer.common.center.service.CenterService;
+
+import com.blue.info.dto.CenterDto;
 import com.blue.info.dto.UserRow;
 import com.blue.info.mapper.InfoMapper;
 import com.blue.user.dto.UpdateUserRequest;
@@ -19,7 +19,11 @@ import java.util.stream.Collectors;
 public class InfoService {
   
   private final InfoMapper infoMapper;
-  private final CenterService centerService;
+  
+  // 센터 목록 조회
+  public List<CenterDto> findCenters() {
+    return infoMapper.findCenters();
+  }
   
   // 회사명 상수
   private static final String COMPANY_NAME = "마크CRM";
@@ -83,7 +87,7 @@ public class InfoService {
     }
     
     // 센터 노드들
-    for (CenterDto c : centerService.getCenters()) {
+    for (CenterDto c : infoMapper.findCenters()) {
       if (Objects.equals(c.getCenterId(), 1L)) continue;
       
       // MANAGER/STAFF는 자신의 센터만
@@ -147,7 +151,7 @@ public class InfoService {
   
   /** 프론트 옵션: 센터명 목록 반환 */
   public List<String> centerNames() {
-    return centerService.getCenters().stream()
+    return infoMapper.findCenters().stream()
         .map(CenterDto::getCenterName)
         .toList();
   }

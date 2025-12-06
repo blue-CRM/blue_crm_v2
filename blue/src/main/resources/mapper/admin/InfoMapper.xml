@@ -3,6 +3,20 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.blue.info.mapper.InfoMapper">
 
+    <!-- 센터 목록 (본사 제외) -->
+    <select id="findCenters" resultType="com.blue.info.dto.CenterDto">
+        SELECT
+        c.center_id   AS centerId,
+        c.center_name AS centerName,
+        c.branch_id   AS branchId,
+        b.branch_name AS branchName
+        FROM centers c
+        LEFT JOIN branches b ON c.branch_id = b.branch_id
+        ORDER BY
+        b.branch_name ASC,
+        c.center_name ASC
+    </select>
+
     <!-- 조회 -->
     <select id="findAllUsers" resultType="com.blue.info.dto.UserRow">
         SELECT

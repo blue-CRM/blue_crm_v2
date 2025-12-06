@@ -49,8 +49,8 @@ public class CustomerAllController {
     return ResponseEntity.ok().build();
   }
   
-  // (본사 전용) 중복 DB 숨김 duplicate_display=0
-  @PostMapping("/lead/db/duplicate/hide")
+  // 중복 DB 숨김 duplicate_display=0
+  @PostMapping("/work/db/duplicate/hide")
   public ResponseEntity<Void> hideDuplicates(
       Authentication auth,
       @RequestBody IdsDto req

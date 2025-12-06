@@ -1,6 +1,7 @@
 package com.blue.user.service;
 
 import com.blue.user.dto.BulkApproveResponse;
+import com.blue.user.dto.CenterDto;
 import com.blue.user.dto.PageResponse;
 import com.blue.user.dto.UserSelectDto;
 import com.blue.user.mapper.UserMapper;
@@ -21,6 +22,11 @@ public class UserService {
   private boolean isRequesterSuper(String email) {
     Boolean b = userMapper.isSuperByEmail(email);
     return Boolean.TRUE.equals(b);
+  }
+  
+  // 센터 목록 조회
+  public List<CenterDto> findCenters() {
+    return userMapper.findCenters();
   }
   
   // 페이지 로딩시 최초 조회

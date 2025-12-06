@@ -5,6 +5,16 @@
 
 <mapper namespace="com.blue.dashboard.mapper.DashboardMapper">
 
+    <!-- 지점 목록 -->
+    <select id="findBranches" resultType="com.blue.dashboard.dto.BranchDto">
+        SELECT
+        b.branch_id   AS id,
+        b.branch_name AS name
+        FROM branches b
+        WHERE b.branch_id != 1       <!-- 본사지점 제외 -->
+        ORDER BY b.branch_name ASC
+    </select>
+
     <!-- 센터 목록 (본사 제외) -->
     <select id="findCenters" resultType="com.blue.dashboard.dto.CenterDto">
         SELECT
@@ -13,18 +23,10 @@
         c.branch_id   AS branchId,
         b.branch_name AS branchName
         FROM centers c
-        LEFT JOIN branches b
-        ON c.branch_id = b.branch_id
-        WHERE c.center_id != 1
+        LEFT JOIN branches b ON c.branch_id = b.branch_id
+        WHERE c.branch_id != 1       <!-- 본사지점 소속 센터 전체 제외 -->
         ORDER BY
-        -- 1) 본사지점 먼저
-        CASE
-        WHEN b.branch_id = 1 THEN 0
-        ELSE 1
-        END ASC,
-        -- 2) 지점명 순
         b.branch_name ASC,
-        -- 3) 팀(센터) 이름 순
         c.center_name ASC
     </select>
 
@@ -72,68 +74,126 @@
         ORDER BY u.user_created_at DESC
     </select>
 
-    <!-- 본체 + 중복 UNION ALL (필터: userId / centerIds / from / to) -->
-    <select id="findCustomers" resultType="com.blue.dashboard.dto.CustomerDto">
-        (
+    <!-- ────────────────────────────
+     개인 통계
+    ──────────────────────────── -->
+    <!-- 기간 내 합계 -->
+    <select id="getUserRangeStats" resultType="com.blue.dashboard.dto.RangeStatsDto">
         SELECT
-        c.customer_id            AS id,
-        c.user_id                AS userId,
-        u.center_id              AS centerId,
-        c.customer_created_at    AS created,
-        c.customer_division      AS type
-        FROM customers c
-        LEFT JOIN users u ON u.user_id = c.user_id
-        WHERE 1=1
-        <if test="userId != null">
-            AND c.user_id = #{userId}
+        COALESCE(SUM(main_count),0) AS mainCount,
+        COALESCE(SUM(dup_count),0)  AS dupCount
+        FROM user_daily_stats
+        WHERE user_id = #{userId}
+        <if test="dateFrom != null and dateFrom != ''">
+            AND stat_date &gt;= #{dateFrom}
         </if>
-        <if test="centerIds != null and centerIds.size() &gt; 0">
-            AND u.center_id IN
-            <foreach collection="centerIds" item="cid" open="(" close=")" separator=",">
-                #{cid}
-            </foreach>
+        <if test="dateTo != null and dateTo != ''">
+            AND stat_date &lt;= #{dateTo}
         </if>
-        <if test="from != null and from != ''">
-            AND DATE(c.customer_created_at) &gt;= #{from}
-        </if>
-        <if test="to != null and to != ''">
-            AND DATE(c.customer_created_at) &lt;= #{to}
-        </if>
+    </select>
 
-        AND c.customer_status != '없음'
-        )
-        UNION ALL
-        (
+    <!-- 전체 기간 합계 -->
+    <select id="getUserTotalStats" resultType="com.blue.dashboard.dto.TotalStatsDto">
         SELECT
-        d.duplicate_id           AS id,
-        c.user_id                AS userId,
-        u.center_id              AS centerId,
-        d.duplicate_created_at   AS created,
-        '중복'                    AS type
-        FROM customers_duplicate d
-        JOIN customers c ON c.customer_id = d.customer_id
-        LEFT JOIN users u ON u.user_id = c.user_id
-        WHERE 1=1
-        <if test="userId != null">
-            AND c.user_id = #{userId}
-        </if>
-        <if test="centerIds != null and centerIds.size() &gt; 0">
-            AND u.center_id IN
-            <foreach collection="centerIds" item="cid" open="(" close=")" separator=",">
-                #{cid}
-            </foreach>
-        </if>
-        <if test="from != null and from != ''">
-            AND DATE(d.duplicate_created_at) &gt;= #{from}
-        </if>
-        <if test="to != null and to != ''">
-            AND DATE(d.duplicate_created_at) &lt;= #{to}
-        </if>
+            COALESCE(SUM(main_count),0) AS mainCount,
+            COALESCE(SUM(dup_count),0)  AS dupCount
+        FROM user_daily_stats
+        WHERE user_id = #{userId}
+    </select>
 
-        AND c.customer_status != '없음'
-        )
+    <!-- ────────────────────────────
+         센터 통계
+    ──────────────────────────── -->
+    <!-- 기간 내 합계 (센터들 여러 개) -->
+    <select id="getCenterRangeStats" resultType="com.blue.dashboard.dto.RangeStatsDto">
+        SELECT
+        COALESCE(SUM(uds.main_count),0) AS mainCount,
+        COALESCE(SUM(uds.dup_count),0)  AS dupCount
+        FROM user_daily_stats uds
+        JOIN users u ON u.user_id = uds.user_id
+        WHERE u.center_id IN
+        <foreach collection="centerIds" item="cid" open="(" close=")" separator=",">
+            #{cid}
+        </foreach>
+        <if test="dateFrom != null and dateFrom != ''">
+            AND uds.stat_date &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND uds.stat_date &lt;= #{dateTo}
+        </if>
+    </select>
 
-        ORDER BY created DESC
+    <!-- 전체 기간 합계 (센터들 여러 개) -->
+    <select id="getCenterTotalStats" resultType="com.blue.dashboard.dto.TotalStatsDto">
+        SELECT
+        COALESCE(SUM(uds.main_count),0) AS mainCount,
+        COALESCE(SUM(uds.dup_count),0)  AS dupCount
+        FROM user_daily_stats uds
+        JOIN users u ON u.user_id = uds.user_id
+        WHERE u.center_id IN
+        <foreach collection="list" item="cid" open="(" close=")" separator=",">
+            #{cid}
+        </foreach>
+    </select>
+
+    <!-- 센터들에 속한 직원 수 (MANAGER+STAFF) -->
+    <select id="countUsersInCenters" resultType="int">
+        SELECT COUNT(*)
+        FROM users
+        WHERE center_id IN
+        <foreach collection="list" item="cid" open="(" close=")" separator=",">
+            #{cid}
+        </foreach>
+        AND user_role IN ('MANAGER','STAFF')
+    </select>
+
+    <!-- ────────────────────────────
+         지점 통계
+    ──────────────────────────── -->
+    <!-- 기간 내 합계 (지점 여러 개) -->
+    <select id="getBranchRangeStats" resultType="com.blue.dashboard.dto.RangeStatsDto">
+        SELECT
+        COALESCE(SUM(uds.main_count),0) AS mainCount,
+        COALESCE(SUM(uds.dup_count),0)  AS dupCount
+        FROM user_daily_stats uds
+        JOIN users   u ON u.user_id = uds.user_id
+        JOIN centers c ON c.center_id = u.center_id
+        WHERE c.branch_id IN
+        <foreach collection="branchIds" item="bid" open="(" close=")" separator=",">
+            #{bid}
+        </foreach>
+        <if test="dateFrom != null and dateFrom != ''">
+            AND uds.stat_date &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND uds.stat_date &lt;= #{dateTo}
+        </if>
+    </select>
+
+    <!-- 전체 기간 합계 (지점 여러 개) -->
+    <select id="getBranchTotalStats" resultType="com.blue.dashboard.dto.TotalStatsDto">
+        SELECT
+        COALESCE(SUM(uds.main_count),0) AS mainCount,
+        COALESCE(SUM(uds.dup_count),0)  AS dupCount
+        FROM user_daily_stats uds
+        JOIN users   u ON u.user_id = uds.user_id
+        JOIN centers c ON c.center_id = u.center_id
+        WHERE c.branch_id IN
+        <foreach collection="list" item="bid" open="(" close=")" separator=",">
+            #{bid}
+        </foreach>
+    </select>
+
+    <!-- 지점에 속한 직원 수 -->
+    <select id="countUsersInBranches" resultType="int">
+        SELECT COUNT(*)
+        FROM users u
+        JOIN centers c ON c.center_id = u.center_id
+        WHERE c.branch_id IN
+        <foreach collection="list" item="bid" open="(" close=")" separator=",">
+            #{bid}
+        </foreach>
+        AND u.user_role IN ('MANAGER','STAFF')
     </select>
 
     <!-- KPI: 승인 사용자 수 -->
@@ -141,9 +201,18 @@
         SELECT COUNT(*) FROM users WHERE user_approved = 'Y'
     </select>
 
-    <!-- KPI: 센터 수 (본사 제외) -->
+    <!-- KPI: 센터 수 (본사지점 소속 제외) -->
     <select id="countCentersExcludingHQ" resultType="int">
-        SELECT COUNT(*) FROM centers WHERE center_name &lt;&gt; '본사'
+        SELECT COUNT(*)
+        FROM centers
+        WHERE branch_id != 1
+    </select>
+
+    <!-- KPI: 지점 수 (본사지점 제외) -->
+    <select id="countBranchesExcludingHQ" resultType="int">
+        SELECT COUNT(*)
+        FROM branches
+        WHERE branch_id != 1
     </select>
 
 </mapper>

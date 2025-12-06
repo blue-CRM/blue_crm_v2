@@ -1,5 +1,6 @@
 package com.blue.user.controller;
 
+import com.blue.user.dto.CenterDto;
 import com.blue.user.dto.BulkApproveResponse;
 import com.blue.user.dto.PageResponse;
 import com.blue.user.dto.UpdateUserRequest;
@@ -19,6 +20,11 @@ import java.util.Map;
 public class UserController {
   
   private final UserService userService;
+  
+  @GetMapping("/centers")
+  public List<CenterDto> getCenters() {
+    return userService.findCenters();
+  }
   
   @GetMapping
   // 페이지 로딩시 최초 조회
