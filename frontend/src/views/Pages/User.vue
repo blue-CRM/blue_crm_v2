@@ -18,6 +18,8 @@
               :rowSelectable="isRowSelectable"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @changePage="changePage"
@@ -95,7 +97,7 @@ async function onRefresh() {
 const centerOptions = ref([]);
 onMounted(async () => {
   try {
-    const res = await axios.get("/api/common/centers");
+    const res = await axios.get("/api/super/users/centers");
     // console.log(res)
     centerOptions.value = res.data.map(c => c.centerName);
     // console.log(centerOptions.value)
@@ -127,8 +129,10 @@ const {
         userId: u.userId,
         type:
             u.userRole === "SUPERADMIN" ? "관리자" :
-            u.userRole === "MANAGER"    ? "센터장" :
-            u.userRole === "STAFF"      ? "담당자" : u.userRole,
+            u.userRole === "MANAGER"    ? "팀장" :
+            u.userRole === "STAFF"      ? "프로" :
+            u.userRole === "CENTERHEAD" ? "센터장" :
+            u.userRole === "EXPERT"     ? "전문가" : u.userRole,
         name: u.userName,
         phone: u.userPhone,
         email: u.userEmail,
@@ -137,7 +141,8 @@ const {
             u.userApproved === 'Y' ? '승인' :
             u.userApproved === 'N' ? '대기' :
             u.userApproved === 'X' ? '탈퇴' : u.userApproved,
-        visible: u.managerPhoneAccess === 'N' ? '차단' : '공개'
+        visible: u.managerPhoneAccess === 'N' ? '차단' : '공개',
+        allocate: u.canAllocate === 'Y' ? '허용' : '차단'
       })),
       totalPages: res.data.totalPages,
       totalCount: res.data.totalCount
@@ -175,7 +180,7 @@ onUnmounted(() => {
 const columns = computed(() => {
   const base = [
     { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
-    { key: "type", label: "구분", type: "badge", editable: canEdit, options: ["관리자", "센터장", "담당자"] },
+    { key: "type", label: "구분", type: "badge", editable: canEdit, options: ["관리자", "센터장", "전문가", "팀장", "프로"] },
     { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
     { key: "name", label: "이름", type: "text", ellipsis: { width: 150 } },
     { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 180 } },
@@ -195,7 +200,17 @@ const columns = computed(() => {
       // super가 볼 때만 노출, 그리고 "행의 권한이 관리자"인 경우에만 편집 허용 (자기 자신은 수정 불가)
       editable: (row) => isSuper.value && row.type === "관리자" && row.email !== auth.email,
       options: ["공개", "차단"]
-    }, { key: "",  label: "",   type: "text", ellipsis: { width: 20 } })
+    },
+    { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
+    {
+      key: "allocate",
+      label: "분배권한",
+      type: "badge",
+      // super가 볼 때만 노출, 그리고 "행의 권한이 센터장 혹은 전문가"인 경우에만 편집 허용 (자기 자신은 수정 불가)
+      editable: (row) => isSuper.value && (row.type === "센터장" || row.type === "전문가") && row.email !== auth.email,
+      options: ["허용", "차단"]
+    },
+    { key: "",  label: "",   type: "text", ellipsis: { width: 20 } })
   }
   return base;
 });
@@ -212,7 +227,7 @@ function canEdit(row) {
   // 1. 본인 계정이면 불가
   if (row.email === requesterEmail) return false
   // 2. super 계정 제외, 관리자 계정 수정 불가
-  return !((row.type === "관리자" || row.center === "본사") && !auth.isSuper);
+  return !((row.type === "관리자" || row.center === "본사") && !auth.grants.isSuper);
 }
 
 // super만 수정할 수 있는지 판단
@@ -221,7 +236,7 @@ function canEditVisible() {
 }
 
 // 프론트는 백엔드가 내려준 isSuper만 사용
-const isSuper = computed(() => !!auth.isSuper);
+const isSuper = computed(() => !!auth.grants.isSuper);
 
 async function hasManager(centerName, excludeUserId) {
   const { data } = await axios.get("/api/super/users/has-manager", {
@@ -296,57 +311,72 @@ async function onBadgeUpdate(row, key, newValue) {
   if (key === "type") fieldLabel = "구분"
   else if (key === "center") fieldLabel = "소속"
   else if (key === "requestStatus") fieldLabel = "요청상태"
-  else if (key === "visible") fieldLabel = "가시권한";
+  else if (key === "visible") fieldLabel = "가시권한"
+  else if (key === "allocate") fieldLabel = "분배권한";
 
   // value → 한글
   if (newValue === "SUPERADMIN") displayValue = "관리자"
-  else if (newValue === "MANAGER") displayValue = "센터장"
-  else if (newValue === "STAFF") displayValue = "담당자"
+  else if (newValue === "MANAGER") displayValue = "팀장"
+  else if (newValue === "STAFF") displayValue = "프로"
 
-  if (key === 'visible' && (newValue === '공개' || newValue === '차단')) {
-    newValue = newValue === '공개' ? 'Y' : 'N'
+  // 가시권한 → Y/N
+  if (key === "visible") {
+    newValue = newValue === "공개" ? "Y" : "N";
   }
 
+  // 분배권한 → Y/N
+  if (key === "allocate") {
+    newValue = newValue === "허용" ? "Y" : "N";
+  }
+
+  // 가시권한 가드
   if (key === "visible" && row.type !== "관리자") {
     alert("가시권한은 '관리자' 권한에만 수정할 수 있습니다.");
     await fetchData();
     return;
   }
 
+  // 분배권한 가드
+  if (key === "allocate" && !(row.type === "센터장" || row.type === "전문가")) {
+    alert("'센터장' 또는 '전문가'의 분배권한만 수정가능합니다.");
+    await fetchData();
+    return;
+  }
+
   // === 승인된 직원은 super계정 만 '관리자'로 변경 가능 ===
-  if (key === "type" && newValue === "관리자" && row.requestStatus === "승인" && !auth.isSuper) {
+  if (key === "type" && newValue === "관리자" && row.requestStatus === "승인" && !auth.grants.isSuper) {
     alert("수정 권한이 없습니다.");
     await fetchData();
     return;
   }
 
-  // === 센터장 1명 제한 가드 ===
+  // === 팀장 1명 제한 가드 ===
   try {
-    // 1) 구분을 '센터장'으로 바꾸려는 경우
-    if (key === "type" && newValue === "센터장") {
+    // 1) 구분을 '팀장'으로 바꾸려는 경우
+    if (key === "type" && newValue === "팀장") {
       const targetCenter = row.center; // 현재 소속
       if (targetCenter && targetCenter !== "본사") {
         const exists = await hasManager(targetCenter, row.userId);
         if (exists) {
-          alert(`'${targetCenter}'에는 이미 센터장이 있습니다. 기존 센터장을 해제한 뒤 진행하세요.`);
+          alert(`'${targetCenter}'에는 이미 팀장이 있습니다. 기존 팀장을 해제한 뒤 진행하세요.`);
           await fetchData();
           return;
         }
       }
     }
 
-    // 2) 소속을 변경하는데, 현재 계정이 '센터장'인 경우
-    if (key === "center" && row.type === "센터장" && newValue && newValue !== "본사") {
+    // 2) 소속을 변경하는데, 현재 계정이 '팀장'인 경우
+    if (key === "center" && row.type === "팀장" && newValue && newValue !== "본사") {
       const exists = await hasManager(newValue, row.userId);
       if (exists) {
-        alert(`'${newValue}'에는 이미 센터장이 있습니다. 기존 센터장을 해제한 뒤 진행하세요.`);
+        alert(`'${newValue}'에는 이미 팀장이 있습니다. 기존 팀장을 해제한 뒤 진행하세요.`);
         await fetchData();
         return;
       }
     }
   } catch (e) {
-    console.error("센터장 중복 확인 실패", e);
-    alert("센터장 중복 확인 중 오류가 발생했습니다.");
+    console.error("팀장 중복 확인 실패", e);
+    alert("팀장 중복 확인 중 오류가 발생했습니다.");
     return;
   }
 

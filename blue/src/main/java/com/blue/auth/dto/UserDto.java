@@ -21,4 +21,5 @@ public class UserDto {
   private String userApproved;
   private LocalDateTime userCreatedAt;
   private boolean isSuper;
+  private String canAllocate;
 }

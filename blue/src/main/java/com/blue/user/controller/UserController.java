@@ -1,5 +1,6 @@
 package com.blue.user.controller;
 
+import com.blue.user.dto.CenterDto;
 import com.blue.user.dto.BulkApproveResponse;
 import com.blue.user.dto.PageResponse;
 import com.blue.user.dto.UpdateUserRequest;
@@ -20,6 +21,11 @@ public class UserController {
   
   private final UserService userService;
   
+  @GetMapping("/centers")
+  public List<CenterDto> getCenters() {
+    return userService.findCenters();
+  }
+  
   @GetMapping
   // 페이지 로딩시 최초 조회
   public PageResponse<UserSelectDto> getUsers(
@@ -33,7 +39,7 @@ public class UserController {
     return userService.getUsers(page, size, keyword);
   }
   
-  // 프론트 사전 확인: 해당 센터에 다른 MANAGER 있는지
+  // 프론트 사전 확인: 해당 팀에 다른 MANAGER 있는지
   @GetMapping("/has-manager")
   public ResponseEntity<?> hasManager(@RequestParam String centerName,
                                       @RequestParam(required = false) Long excludeUserId) {

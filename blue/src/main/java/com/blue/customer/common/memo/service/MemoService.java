@@ -41,7 +41,7 @@ public class MemoService {
     MemoDetailDto dto = mapper.selectCustomerMemoBlock(customerId);
     if (dto == null) throw new IllegalArgumentException("고객을 찾을 수 없습니다.");
     
-    // 2) 전화번호로 과거 담당자 이력 조회 후 세팅 (resultMap 없이)
+    // 2) 전화번호로 과거 담당 프로 이력 조회 후 세팅 (resultMap 없이)
     if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
       dto.setStaffHistory(mapper.selectPastStaffByPhone(dto.getPhone()));
     }

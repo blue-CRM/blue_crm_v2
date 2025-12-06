@@ -53,7 +53,7 @@ public class CustomerAllService {
               keyword, dateFrom, dateTo, category, division, status, myUserId
           );
         } else {
-          // 센터 범위
+          // 팀 범위
           items = mapper.findAllForManager(
               offset, size, keyword, dateFrom, dateTo, category, division, sort, status, me.getCenterId()
           );
@@ -91,7 +91,7 @@ public class CustomerAllService {
     return first + "-****-" + last;
   }
   
-  // 배지/예약 수정 — 현재 담당자, 그 센터장, 본사만
+  // 배지/예약 수정 — 현재 담당 프로, 그 팀장, 본사만
   @Transactional
   public void updateField(String callerEmail, Long customerId, UpdateFieldDto dto) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);

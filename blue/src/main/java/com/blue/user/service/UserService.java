@@ -1,6 +1,7 @@
 package com.blue.user.service;
 
 import com.blue.user.dto.BulkApproveResponse;
+import com.blue.user.dto.CenterDto;
 import com.blue.user.dto.PageResponse;
 import com.blue.user.dto.UserSelectDto;
 import com.blue.user.mapper.UserMapper;
@@ -21,6 +22,11 @@ public class UserService {
   private boolean isRequesterSuper(String email) {
     Boolean b = userMapper.isSuperByEmail(email);
     return Boolean.TRUE.equals(b);
+  }
+  
+  // 센터 목록 조회
+  public List<CenterDto> findCenters() {
+    return userMapper.findCenters();
   }
   
   // 페이지 로딩시 최초 조회
@@ -59,30 +65,46 @@ public class UserService {
       throw new SecurityException("권한이 없습니다.");
     }
     
-    // 3) 가시권한(visible)은 super만 수정 가능
-    if ("visible".equals(field) && !isRequesterSuper(requesterEmail)) {
+    boolean requesterIsSuper = isRequesterSuper(requesterEmail);
+    String targetRole = target.getUserRole();
+    // 3-공통) 가시권한/분배권한은 둘 다 super만 수정 가능
+    if (("visible".equals(field) || "allocate".equals(field)) && !requesterIsSuper) {
       throw new SecurityException("권한이 없습니다.");
     }
     
-    // 4) 센터장 1명 제한(서버 가드)
-    // 4-1) 구분을 '센터장'으로 바꾸는 경우 → 현재 소속에 다른 센터장이 있으면 불가 (본사 제외)
-    if ("type".equals(field) && "센터장".equals(value)) {
+    // 3-1) 가시권한: 대상이 관리자(SUPERADMIN)인 경우만 허용
+    if ("visible".equals(field)) {
+      if (!"SUPERADMIN".equals(targetRole)) {
+        throw new SecurityException("관리자의 가시권한만 변경할 수 있습니다.");
+      }
+    }
+    
+    // 3-2) 분배권한: 대상이 센터장/전문가인 경우만 허용
+    if ("allocate".equals(field)) {
+      if (!"CENTERHEAD".equals(targetRole) && !"EXPERT".equals(targetRole)) {
+        throw new SecurityException("센터장/전문가의 분배권한만 변경할 수 있습니다.");
+      }
+    }
+    
+    // 4) 팀장 1명 제한(서버 가드)
+    // 4-1) 구분을 '팀장'으로 바꾸는 경우 → 현재 소속에 다른 팀장이 있으면 불가 (본사 제외)
+    if ("type".equals(field) && "팀장".equals(value)) {
       String centerName = target.getCenterName();
       if (centerName != null && !"본사".equals(centerName)) {
         int cnt = countManagersInCenter(centerName, userId);
         if (cnt > 0) {
-          throw new IllegalStateException("'" + centerName + "'에는 이미 센터장이 있습니다.");
+          throw new IllegalStateException("'" + centerName + "'에는 이미 팀장이 있습니다.");
         }
       }
     }
     
-    // 4-2) 소속을 바꾸는 경우 → 대상이 현재 MANAGER라면, 이동할 소속에 다른 센터장이 있으면 불가 (본사 제외)
+    // 4-2) 소속을 바꾸는 경우 → 대상이 현재 MANAGER라면, 이동할 소속에 다른 팀장이 있으면 불가 (본사 제외)
     if ("center".equals(field)) {
       boolean targetIsManager = "MANAGER".equals(target.getUserRole());
       if (targetIsManager && value != null && !"본사".equals(value)) {
         int cnt = countManagersInCenter(value, userId);
         if (cnt > 0) {
-          throw new IllegalStateException("'" + value + "'에는 이미 센터장이 있습니다.");
+          throw new IllegalStateException("'" + value + "'에는 이미 팀장이 있습니다.");
         }
       }
     }
@@ -93,8 +115,8 @@ public class UserService {
     String newRole = oldRole;
     if ("type".equals(field)) {
       if ("관리자".equals(value)) newRole = "SUPERADMIN";
-      else if ("센터장".equals(value)) newRole = "MANAGER";
-      else if ("담당자".equals(value)) newRole = "STAFF";
+      else if ("팀장".equals(value)) newRole = "MANAGER";
+      else if ("프로".equals(value)) newRole = "STAFF";
     }
     
     // 조건 통과한 경우만 실제 업데이트 실행
@@ -103,9 +125,9 @@ public class UserService {
     // 업데이트가 성공적일 경우
     // 다음 각 경우에 대해 상태가 '없음'인 디비를 회수
     if ("type".equals(field)) {
-      // 1. 센터장이였다가 -> 담당자로 강등된 경우
+      // 1. 팀장이였다가 -> 프로로 강등된 경우
       boolean demoteManagerToStaff = "MANAGER".equals(oldRole) && "STAFF".equals(newRole);
-      // 2. 센터장이였다가 -> 본사로 승급된 경우
+      // 2. 팀장이였다가 -> 본사로 승급된 경우
       boolean managerToHq = "MANAGER".equals(oldRole) && "SUPERADMIN".equals(newRole);
       
       // 위 두 경우중 하나라도 해당 된다면 회수 처리

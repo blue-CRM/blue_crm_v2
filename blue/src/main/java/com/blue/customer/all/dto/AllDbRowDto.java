@@ -36,7 +36,7 @@ public class AllDbRowDto {
   @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
   private LocalDateTime createdAt;
   
-  /** 현재 담당자명 (없을 수 있음). 중복 행은 원본 customers의 현재 담당자를 참조 */
+  /** 현재 담당 프로명 (없을 수 있음). 중복 행은 원본 customers의 현재 담당 프로를 참조 */
   private String staff;
   
   /** "최초" | "유효" | "중복" */

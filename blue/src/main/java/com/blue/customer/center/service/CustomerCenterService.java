@@ -26,7 +26,7 @@ public class CustomerCenterService {
   
   private final CustomerCenterMapper mapper;
   
-  /** 본사 제외 센터 목록 */
+  /** 본사 제외 팀 목록 */
   public List<CenterSimpleDto> getCenters() {
     return mapper.findCentersExcludingHQ();
   }

@@ -30,9 +30,28 @@ public class MyInfoService {
   private final MyInfoMapper myInfoMapper;
   private final PasswordEncoder passwordEncoder;
   
+  // GrantsDto 매핑을 위한 공통 함수
+  private GrantsDto normalizeGrants(GrantsDto g) {
+    if (g == null) {
+      return new GrantsDto("STAFF", false, false, false);
+    }
+    return new GrantsDto(
+        g.getRole() != null ? g.getRole() : "STAFF",
+        g.isSuper(),
+        g.isCanAllocate(),
+        g.isCanPhoneAccess()
+    );
+  }
+  
   public MyInfoResponse getMeByEmail(String email) {
     MyInfoResponse dto = myInfoMapper.findByEmail(email);
+    if (dto == null) throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    if (dto.getGrants() == null) throw new AuthException("권한 정보를 불러오지 못했습니다.", HttpStatus.NOT_FOUND);
+    
     dto.setUserPassword(""); // 보안상 비번 제거
+    
+    // 권한 최신값 조회
+    dto.setGrants(normalizeGrants(dto.getGrants()));
     return dto;
   }
   
@@ -88,43 +107,6 @@ public class MyInfoService {
     }
     
     myInfoMapper.updateOne(1L, sheetId, startRow, sheetName);
-  }
-  
-  // 센터관리
-  @Transactional(readOnly = true)
-  public List<CenterDto> listCenters(String email) {
-    ensureSuper(email);
-    return myInfoMapper.findAll();
-  }
-  
-  @Transactional
-  public void addCenter(String email, String centerName) {
-    ensureSuper(email);
-    if (!StringUtils.hasText(centerName)) {
-      throw new AuthException("센터 이름을 입력하세요.", HttpStatus.BAD_REQUEST);
-    }
-    String name = centerName.trim();
-    if (name.length() > 100) {
-      throw new AuthException("센터 이름이 너무 깁니다. (최대 100자)", HttpStatus.BAD_REQUEST);
-    }
-    if (myInfoMapper.existsByName(name)) {
-      throw new AuthException("이미 존재하는 센터명입니다.", HttpStatus.CONFLICT);
-    }
-    myInfoMapper.insert(name);
-  }
-  
-  @Transactional
-  public void removeCenter(String email, long centerId) {
-    ensureSuper(email);
-    // 직원 존재 여부 체크
-    int userCount = myInfoMapper.countUsersInCenter(centerId);
-    if (userCount > 0) {
-      throw new AuthException("센터에 소속된 직원이 있어 삭제할 수 없습니다.", HttpStatus.CONFLICT);
-    }
-    int affected = myInfoMapper.delete(centerId);
-    if (affected == 0) {
-      throw new AuthException("존재하지 않는 센터입니다.", HttpStatus.NOT_FOUND);
-    }
   }
   
   /** 접속 로그 엑셀 (login_logs 구조 기반, login_at 기준, 헤더/키 하드코딩) */
@@ -214,7 +196,11 @@ public class MyInfoService {
   // 공통 함수
   private void ensureSuper(String email) {
     MyInfoResponse user = myInfoMapper.findByEmail(email);
-    if (user == null || !user.isSuper()) {
+    if (user == null) {
+      throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+    user.setGrants(normalizeGrants(user.getGrants()));
+    if (!user.getGrants().isSuper()) {
       throw new AuthException("접근 권한이 없습니다.", HttpStatus.FORBIDDEN);
     }
   }

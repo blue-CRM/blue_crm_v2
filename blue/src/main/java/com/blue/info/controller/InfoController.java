@@ -22,7 +22,7 @@ public class InfoController {
     return infoService.getOrgTree(auth);
   }
   
-  /** 프론트 옵션: 센터 이름 목록 (필요 시 HQ 제외/포함 조정 가능) */
+  /** 프론트 옵션: 팀 이름 목록 (필요 시 HQ 제외/포함 조정 가능) */
   @GetMapping("/centers")
   public List<String> centers() {
     return infoService.centerNames();

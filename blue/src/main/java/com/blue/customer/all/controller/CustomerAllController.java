@@ -5,7 +5,6 @@ import com.blue.customer.all.dto.PagedResponse;
 import com.blue.customer.all.dto.UpdateFieldDto;
 import com.blue.customer.all.dto.IdsDto;
 import com.blue.customer.all.service.CustomerAllService;
-import com.blue.customer.common.memo.dto.MemoUpdateDto;
 import com.blue.customer.common.memo.service.MemoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -50,8 +49,8 @@ public class CustomerAllController {
     return ResponseEntity.ok().build();
   }
   
-  // (본사 전용) 중복 DB 숨김 duplicate_display=0
-  @PostMapping("/lead/db/duplicate/hide")
+  // 중복 DB 숨김 duplicate_display=0
+  @PostMapping("/work/db/duplicate/hide")
   public ResponseEntity<Void> hideDuplicates(
       Authentication auth,
       @RequestBody IdsDto req

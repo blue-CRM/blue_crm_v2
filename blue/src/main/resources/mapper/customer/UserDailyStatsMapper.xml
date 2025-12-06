@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blue.customer.common.stats.mapper.UserDailyStatsMapper">
+
+    <!-- 마지막 처리한 log_id 가져오기 -->
+    <select id="getLastProcessedLogId" resultType="long">
+        SELECT last_log_id FROM alloc_log_cursor WHERE id = 1
+    </select>
+
+    <!-- 이번 배치에서 처리해야 할 마지막 log_id -->
+    <select id="findMaxLogIdAfter" resultType="long">
+        SELECT MAX(log_id)
+        FROM alloc_logs
+        WHERE log_id > #{lastLogId}
+    </select>
+
+    <!-- ================================
+          MAIN: ASSIGN (+) 증가 반영
+    ================================= -->
+    <insert id="applyAssignMain">
+        INSERT INTO user_daily_stats (stat_date, user_id, main_count, dup_count, updated_at)
+        SELECT
+            action_date as stat_date,
+            to_user_id,
+            COUNT(*) as cnt,
+            0,
+            NOW()
+        FROM alloc_logs
+        WHERE log_id > #{lastLogId} AND log_id &lt;= #{maxLogId}
+          AND action_type = 'ASSIGN'
+          AND is_final_assign = 1  GROUP BY action_date, to_user_id
+        ON DUPLICATE KEY UPDATE
+                             main_count = main_count + VALUES(main_count),
+                             updated_at = NOW()
+    </insert>
+
+    <!-- ================================
+      MAIN: REVOKE (-) 감소 반영
+================================= -->
+    <update id="applyRevokeMain">
+        UPDATE user_daily_stats s
+            JOIN (
+                SELECT
+                    action_date as stat_date,
+                    from_user_id,
+                    COUNT(*) as cnt
+                FROM alloc_logs
+                WHERE log_id > #{lastLogId} AND log_id &lt;= #{maxLogId}
+                  AND action_type = 'REVOKE'
+                  AND is_final_assign = 1
+                GROUP BY action_date, from_user_id
+            ) delta ON s.stat_date = delta.stat_date AND s.user_id = delta.from_user_id
+        SET s.main_count = s.main_count - delta.cnt,
+            s.updated_at = NOW()
+    </update>
+
+    <!-- ================================
+          DUP: ASSIGN (+) 증가 반영
+    ================================= -->
+    <insert id="applyAssignDup">
+        INSERT INTO user_daily_stats (stat_date, user_id, main_count, dup_count, updated_at)
+        SELECT
+            l.action_date as stat_date,
+            l.to_user_id,
+            0,
+            COUNT(d.duplicate_id) as cnt, -- customers_duplicate 테이블 카운트
+            NOW()
+        FROM alloc_logs l
+                 -- Main DB(l.customer_id)에 매달린 중복 DB들(d) 조인
+                 INNER JOIN customers_duplicate d ON d.customer_id = l.customer_id
+        WHERE l.log_id > #{lastLogId} AND l.log_id &lt;= #{maxLogId}
+          AND l.action_type = 'ASSIGN'
+          AND l.is_final_assign = 1
+        GROUP BY l.action_date, l.to_user_id
+        ON DUPLICATE KEY UPDATE
+                             dup_count = dup_count + VALUES(dup_count),
+                             updated_at = NOW()
+    </insert>
+
+    <!-- ================================
+          DUP: REVOKE (-) 감소 반영
+    ================================= -->
+    <update id="applyRevokeDup">
+        UPDATE user_daily_stats s
+            JOIN (
+                SELECT
+                    l.action_date as stat_date,
+                    l.from_user_id,
+                    COUNT(d.duplicate_id) as cnt
+                FROM alloc_logs l
+                         INNER JOIN customers_duplicate d ON d.customer_id = l.customer_id
+                WHERE l.log_id > #{lastLogId} AND l.log_id &lt;= #{maxLogId}
+                  AND l.action_type = 'REVOKE'
+                  AND l.is_final_assign = 1
+                GROUP BY l.action_date, l.from_user_id
+            ) delta ON s.stat_date = delta.stat_date AND s.user_id = delta.from_user_id
+        SET s.dup_count = s.dup_count - delta.cnt,
+            s.updated_at = NOW()
+    </update>
+
+    <!-- ================================
+      커서 업데이트
+     ================================= -->
+    <update id="updateCursor">
+        UPDATE alloc_log_cursor SET last_log_id = #{newLastLogId} WHERE id = 1
+    </update>
+
+</mapper>
