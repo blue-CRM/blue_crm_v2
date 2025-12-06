@@ -26,6 +26,7 @@ public class SecurityConfig {
   
   @Bean
   // 시큐리티 필터
+  // TODO 권한 확장에 따른 수정 필요
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
         .cors(withDefaults())
@@ -54,7 +55,7 @@ public class SecurityConfig {
             .requestMatchers(
                 "/api/super/**").hasRole("SUPERADMIN")
             
-            // 관리자 (센터장)
+            // 관리자 (팀장)
             .requestMatchers(
                 "/api/admin/**").hasRole("MANAGER")
             

@@ -25,13 +25,6 @@ public interface MyInfoMapper {
                 @Param("startRow") int startRow,
                 @Param("sheetName") String sheetName);
   
-  // 센터 관리
-  List<CenterDto> findAll();
-  boolean existsByName(@Param("centerName") String centerName);
-  int insert(@Param("centerName") String centerName);
-  int countUsersInCenter(@Param("centerId") long centerId);
-  int delete(@Param("centerId") long centerId);
-  
   // 기간 내 원본 행 조회 (SELECT * 그대로, login_at 기준)
   List<java.util.Map<String, Object>> findLoginLogsRaw(
       @Param("fromYmd") String fromYmd,

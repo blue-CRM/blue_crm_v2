@@ -27,7 +27,7 @@ public interface CustomerDuplMapper {
                        @Param("category") String category,
                        @Param("visible") String visible);
   
-  // MANAGER (자기 센터)
+  // MANAGER (자기 팀)
   List<AllDbRowDto> findAllForManager(@Param("offset") int offset,
                                       @Param("size") int size,
                                       @Param("keyword") String keyword,

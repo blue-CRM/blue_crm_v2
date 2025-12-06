@@ -11,7 +11,7 @@
                 ['구분 전체', '최초', '유효', '중복'],
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5',
                   '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
-            :buttons="['구분별 보기', '상태별 보기', '중복DB로 이동']"
+            :buttons="['상태별 보기', '중복DB로 이동']"
             :active="adminActiveLabels"
             :showRefresh="true"
             :refreshing="isRefreshing"
@@ -29,6 +29,8 @@
               :rowSelectable="isRowSelectable"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
@@ -58,6 +60,8 @@
               :rowSelectable="isRowSelectable"
               :page="page"
               :totalPages="totalPages"
+              :page-size="size"
+              :loading="busy"
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
@@ -66,12 +70,14 @@
           />
         </ComponentCard>
 
-        <Memo
-            v-if="memoOpen"
-            :row="memoRow"
-            @close="closeMemo"
-            @saved="onMemoSaved"
-        />
+        <Teleport to="body">
+          <Memo
+              v-if="memoOpen"
+              :row="memoRow"
+              @close="closeMemo"
+              @saved="onMemoSaved"
+          />
+        </Teleport>
 
       </div>
     </div>
@@ -120,7 +126,7 @@ import { globalFilters } from "@/composables/globalFilters.js";
 import axios from "@/plugins/axios.js"
 
 const auth = useAuthStore();
-const role = auth.role;
+const role = auth.grants.role;
 const isManager = computed(() => role === 'MANAGER');
 const mineOnly = ref(false);
 
@@ -231,7 +237,7 @@ function notDuplicate(row) {
 ============================= */
 const adminColumns = [
   { key: "createdAt", label: "DB생성일", type: "text" },
-  { key: "staff", label: "담당자", type: "text" },
+  { key: "staff", label: "프로", type: "text" },
   { key: "division", label: "구분", type: "badge", options: ["최초", "중복", "유효"] },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
   // { key: "category", label: "카테고리", type: "badge", options: ["주식", "코인"] },
@@ -255,7 +261,7 @@ const adminColumns = [
 const commonColumns = [
   { key: "createdAt", label: "DB생성일", type: "text" },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
-  { key: "staff", label: "담당자", type: "text" },
+  { key: "staff", label: "프로", type: "text" },
   // { key: "category", label: "카테고리", type: "badge", options: ["주식", "코인"] },
   { key: "name", label: "이름", type: "text"},
   { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 150 } },
@@ -359,7 +365,7 @@ const adminActive = ref({ status: false, division: false })
 const adminActiveLabels = computed(() => {
   const arr = []
   if (adminActive.value.status) arr.push('상태별 보기')
-  if (adminActive.value.division) arr.push('구분별 보기')
+  // if (adminActive.value.division) arr.push('구분별 보기')
   return arr
 })
 
@@ -381,7 +387,7 @@ async function onAdminButtonClick(btn) {
       }
 
       try {
-        await axios.post("/api/lead/db/duplicate/hide", { ids: dupIds });
+        await axios.post("/api/work/db/duplicate/hide", { ids: dupIds });
         alert(`중복 ${dupIds.length}건을 중복DB 메뉴로 이동(숨김)했습니다.`);
 
         // 선택 초기화
@@ -400,7 +406,7 @@ async function onAdminButtonClick(btn) {
 
     // 2) 상태/구분 토글
     if (btn === "상태별 보기")   adminActive.value.status   = !adminActive.value.status;
-    if (btn === "구분별 보기")   adminActive.value.division = !adminActive.value.division;
+    // if (btn === "구분별 보기")   adminActive.value.division = !adminActive.value.division;
 
     // 3) sort 조합
     const sortParts = [];

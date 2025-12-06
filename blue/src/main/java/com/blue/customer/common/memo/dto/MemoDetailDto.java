@@ -16,7 +16,7 @@ public class MemoDetailDto {
   private String phone;
   private String category;
   
-  private String staff; // 현재 담당자명(옵션)
+  private String staff; // 현재 프로명(옵션)
   private List<String> staffHistory; // 이력(옵션)
   
   private String memo;

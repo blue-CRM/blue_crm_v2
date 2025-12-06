@@ -16,7 +16,7 @@ public class CustomerRevokeController {
   
   private final CustomerRevokeService service;
   
-  // 목록 (본사/센터장)
+  // 목록 (본사/팀장)
   @GetMapping("/work/revoke/list")
   public PagedResponse<RevokeListRowDto> list(Authentication auth,
                                               @RequestParam(defaultValue = "1") int page,
@@ -36,7 +36,7 @@ public class CustomerRevokeController {
     return service.revokeByHq(auth.getName(), req);
   }
   
-  // 센터장 회수 실행
+  // 팀장 회수 실행
   @PostMapping("/work/revoke/manager")
   public RevokeResult revokeByManager(Authentication auth, @RequestBody RevokeReq req) {
     return service.revokeByManager(auth.getName(), req);

@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.util.Map;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,8 @@ public class AuthService {
   
   private final PasswordEncoder passwordEncoder;
   private final JwtUtil jwtUtil;
+  
+  private final IpWhitelistService ipWhitelistService;
   
   // 운영과 개발 구분
   @Value("${jwt.cookie.secure:false}")
@@ -45,8 +49,18 @@ public class AuthService {
     response.addCookie(cookie);
   }
   
+  private String getClientIp(HttpServletRequest request) {
+    String header = request.getHeader("X-Forwarded-For");
+    if (header != null && !header.isBlank()) {
+      return header.split(",")[0].trim();
+    }
+    return request.getRemoteAddr();
+  }
+  
   // 로그인
-  public AuthResponse login(LoginRequest request, HttpServletResponse response) {
+  public AuthResponse login(LoginRequest request,
+                            HttpServletRequest httpRequest,
+                            HttpServletResponse response) {
     // DB 조회
     UserDto user = authMapper.findByEmail(request.getEmail());
     
@@ -58,6 +72,19 @@ public class AuthService {
     // 승인된 사용자만 로그인 허용
     if (!"Y".equals(user.getUserApproved())) {
       throw new AuthException("승인되지 않은 계정입니다.", HttpStatus.UNAUTHORIZED);
+    }
+
+    // IP 화이트리스트 확인
+    String clientIp = getClientIp(httpRequest);
+    if (!user.isSuper()) { // 슈퍼계정은 어떤 IP여도 로그인 가능
+      if (!ipWhitelistService.isAllowed(clientIp)) { // 그 외 계정은 사전에 등록된 IP만 허용
+        throw new AuthException(
+            "현재 접속하신 위치에서는 로그인할 수 없습니다.\n\n"
+                + "* 접속 IP : " + clientIp + "\n"
+                + "이 IP를 관리자에게 전달해 주시면 등록 후 다시 로그인하실 수 있습니다.",
+            HttpStatus.FORBIDDEN
+        );
+      }
     }
     
     String accessToken = jwtUtil.generateAccessToken(user);
@@ -85,36 +112,56 @@ public class AuthService {
       // 로깅 실패는 로그인 자체에는 영향 X
     }
     
-    return new AuthResponse(accessToken, null,
+    // 권한 목록 생성
+    var grants = new GrantsDto(
         user.getUserRole(),
+        user.isSuper(),
+        "Y".equals(user.getCanAllocate()),
+        "Y".equals(user.getManagerPhoneAccess())
+    );
+    
+    return new AuthResponse(
+        accessToken, null,
         user.getUserEmail(),
         user.getUserName(),
         refreshExp,
-        user.isSuper());
+        grants);
   }
   
   // 엑세스 토큰의 재발급
   public AuthResponse refresh(String refreshToken) {
     try {
       var claims = jwtUtil.validateRefreshToken(refreshToken);
+      String email = claims.getSubject();
       
-      // 과거 데이터 백업
-      UserDto user = new UserDto();
-      user.setUserEmail(claims.getSubject());
-      user.setUserRole(claims.get("role", String.class));
-      user.setUserName(claims.get("name", String.class));
-      user.setSuper(Boolean.TRUE.equals(claims.get("isSuper", Boolean.class)));
+      // DB에서 user 다시 조회
+      UserDto user = authMapper.findByEmail(email);
+      if (user == null) {
+        throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.UNAUTHORIZED);
+      }
+      if (!"Y".equals(user.getUserApproved())) {
+        throw new AuthException("승인되지 않은 계정입니다.", HttpStatus.UNAUTHORIZED);
+      }
       
       // 기존 refreshToken 그대로 쓰므로 exp도 동일
       long refreshExp = claims.getExpiration().getTime();
       
       String newAccessToken = jwtUtil.generateAccessToken(user);
-      return new AuthResponse(newAccessToken, null,
+      
+      // 권한 목록 생성
+      var grants = new GrantsDto(
           user.getUserRole(),
+          user.isSuper(),
+          "Y".equals(user.getCanAllocate()),
+          "Y".equals(user.getManagerPhoneAccess())
+      );
+      
+      return new AuthResponse(
+          newAccessToken, null,
           user.getUserEmail(),
           user.getUserName(),
           refreshExp,
-          user.isSuper());
+          grants);
     } catch (ExpiredJwtException e) {
       // Refresh Token 자체가 만료된 경우
       // 정상종료이므로 사용자의 재로그인이 필요함
@@ -132,20 +179,23 @@ public class AuthService {
     try {
       // 1) 기존 토큰 검증 + oldJti 추출
       var claims = jwtUtil.validateRefreshToken(refreshToken);
-      String oldJti = jwtUtil.extractJti(refreshToken);
+      String email = claims.getSubject();
       
-      // 2) 과거 데이터 백업
-      UserDto user = new UserDto();
-      user.setUserEmail(claims.getSubject());
-      user.setUserRole(claims.get("role", String.class));
-      user.setUserName(claims.get("name", String.class));
-      user.setSuper(Boolean.TRUE.equals(claims.get("isSuper", Boolean.class)));
+      // 2) DB에서 user 다시 조회
+      UserDto user = authMapper.findByEmail(email);
+      if (user == null) {
+        throw new AuthException("사용자를 찾을 수 없습니다.", HttpStatus.UNAUTHORIZED);
+      }
+      if (!"Y".equals(user.getUserApproved())) {
+        throw new AuthException("승인되지 않은 계정입니다.", HttpStatus.UNAUTHORIZED);
+      }
       
       // 3) 새 토큰 발급
       String newAccessToken = jwtUtil.generateAccessToken(user);
       String newRefreshToken = jwtUtil.generateRefreshToken(user);
       
       // 4) jti 회전 (열린 행만 대상)
+      String oldJti = jwtUtil.extractJti(refreshToken);
       String newJti = jwtUtil.extractJti(newRefreshToken);
       if (oldJti != null && newJti != null && !oldJti.equals(newJti)) {
         try {
@@ -163,12 +213,20 @@ public class AuthService {
       var newClaims = jwtUtil.validateRefreshToken(newRefreshToken);
       long refreshExp = newClaims.getExpiration().getTime();
       
-      return new AuthResponse(newAccessToken, null,
+      // 권한 목록 생성
+      var grants = new GrantsDto(
           user.getUserRole(),
+          user.isSuper(),
+          "Y".equals(user.getCanAllocate()),
+          "Y".equals(user.getManagerPhoneAccess())
+      );
+      
+      return new AuthResponse(
+          newAccessToken, null,
           user.getUserEmail(),
           user.getUserName(),
           refreshExp,
-          user.isSuper());
+          grants);
     } catch (ExpiredJwtException e) {
       // Refresh Token 자체가 만료된 경우
       // 정상종료이므로 사용자의 재로그인이 필요함
@@ -221,13 +279,13 @@ public class AuthService {
         if (sessionKey != null) {
           int n = loginLogMapper.updateLogoutLogBySession(sessionKey);
           if (n == 0) {
-            log.info("닫을 세션 로그가 없음 (이미 로그아웃 되었을 수 있음). sessionKey={}", sessionKey);
+            log.debug("닫을 세션 로그가 없음 (이미 로그아웃 되었을 수 있음). sessionKey={}", sessionKey);
           }
         } else {
-          log.info("refreshToken에서 jti를 추출할 수 없음 (만료/위조 가능). 이메일 기반 닫기는 생략.");
+          log.debug("refreshToken에서 jti를 추출할 수 없음 (만료/위조 가능). 이메일 기반 닫기는 생략.");
         }
       } else {
-        log.info("refreshToken 쿠키 없음. 이메일 기반 닫기는 생략.");
+        log.debug("refreshToken 쿠키 없음. 이메일 기반 닫기는 생략.");
       }
     } catch (Exception e) {
       log.warn("로그아웃 로그 기록 실패: {}", e.getMessage(), e);
@@ -264,12 +322,28 @@ public class AuthService {
     user.setUserApproved("N"); // 회원가입 시 무조건 회원상태 미승인
     
     // 권한에 따라 센터/가시권한 초기값 설정
-    if ("SUPERADMIN".equals(request.getRole())) {
-      user.setManagerPhoneAccess("N");
+    if ("SUPERADMIN".equals(request.getRole())) { // 본사관리자
+      // TODO 본사 -> 본사 지점 / 본사 팀으로 분할 필요
       user.setCenterId(1L); // 본사
-    } else {
-      user.setManagerPhoneAccess("Y");
-      user.setCenterId(null); // 미할당
+      user.setManagerPhoneAccess("N"); // 가시권한 X
+      user.setCanAllocate("Y"); // 분배권한 O
+    }
+    else if ("CENTERHEAD".equals(request.getRole()) // 센터장
+        || "EXPERT".equals(request.getRole())) { // 전문가일 경우
+      // TODO 본사 -> 본사 지점 / 본사 팀으로 분할 필요
+      user.setCenterId(1L); // 본사
+      user.setManagerPhoneAccess("N"); // 가시권한 X
+      user.setCanAllocate("Y"); // 분배권한 X
+    }
+    else if ("MANAGER".equals(request.getRole())) { // 팀장
+      user.setManagerPhoneAccess("Y"); // 가시권한 O
+      user.setCanAllocate("Y"); // 분배권한 O
+      user.setCenterId(null); // 팀 미할당
+    }
+    else { // 프로
+      user.setManagerPhoneAccess("Y"); // 가시권한 O
+      user.setCanAllocate("N"); // 분배권한 X
+      user.setCenterId(null); // 팀 미할당
     }
     
     authMapper.insertUser(user);

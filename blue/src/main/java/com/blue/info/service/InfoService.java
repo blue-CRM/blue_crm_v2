@@ -1,7 +1,7 @@
 package com.blue.info.service;
 
-import com.blue.customer.common.center.dto.CenterDto;
-import com.blue.customer.common.center.service.CenterService;
+
+import com.blue.info.dto.CenterDto;
 import com.blue.info.dto.UserRow;
 import com.blue.info.mapper.InfoMapper;
 import com.blue.user.dto.UpdateUserRequest;
@@ -19,7 +19,11 @@ import java.util.stream.Collectors;
 public class InfoService {
   
   private final InfoMapper infoMapper;
-  private final CenterService centerService;
+  
+  // 센터 목록 조회
+  public List<CenterDto> findCenters() {
+    return infoMapper.findCenters();
+  }
   
   // 회사명 상수
   private static final String COMPANY_NAME = "마크CRM";
@@ -28,7 +32,7 @@ public class InfoService {
    * 조직도 트리 + 현재 사용자
    * - centerId == null 사용자는 제외
    * - 보기 범위: STAFF=본인만, MANAGER=본인 센터 전체, HQ/SUPERADMIN=전체
-   * - 정렬: 권한(관리자>센터장>담당자) → 입사일(오름차순)
+   * - 정렬: 권한(관리자>센터장>전문가>팀장>프로) → 입사일(오름차순)
    */
   public Map<String, Object> getOrgTree(Authentication auth) {
     UserRow me = (auth != null) ? infoMapper.findByEmail(auth.getName()) : null;
@@ -59,7 +63,7 @@ public class InfoService {
         .sorted(
             Comparator
                 .comparing((UserRow u) -> u.isSuper() ? 0 : 1) //  superAccount 먼저
-                .thenComparingInt(u -> -rank(u.getUserRole())) // 권한: 관리자>센터장>담당자
+                .thenComparingInt(u -> -rank(u.getUserRole())) // 권한: 관리자>센터장>전문가>팀장>프로
                 .thenComparing(UserRow::getUserCreatedAt,
                     Comparator.nullsLast(Comparator.naturalOrder())) // 입사순
         )
@@ -83,7 +87,7 @@ public class InfoService {
     }
     
     // 센터 노드들
-    for (CenterDto c : centerService.getCenters()) {
+    for (CenterDto c : infoMapper.findCenters()) {
       if (Objects.equals(c.getCenterId(), 1L)) continue;
       
       // MANAGER/STAFF는 자신의 센터만
@@ -147,7 +151,7 @@ public class InfoService {
   
   /** 프론트 옵션: 센터명 목록 반환 */
   public List<String> centerNames() {
-    return centerService.getCenters().stream()
+    return infoMapper.findCenters().stream()
         .map(CenterDto::getCenterName)
         .toList();
   }
