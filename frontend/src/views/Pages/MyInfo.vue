@@ -960,7 +960,7 @@
               </div>
 
               <!-- 팀 관리 -->
-              <div class="col-span-2 mt-6">
+              <div class="col-span-2">
                 <div class="flex items-center justify-between">
                   <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">팀 관리</h3>
                   <div class="flex gap-2">
@@ -1203,6 +1203,247 @@
                                      disabled:opacity-50"
                               :disabled="!centersEditing"
                               @click="deleteCenter(c.centerId)"
+                          >
+                            삭제
+                          </button>
+                        </template>
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- ===== 전문가 관리 ===== -->
+              <div class="col-span-2">
+                <hr class="my-6 border-gray-200 dark:border-gray-700" />
+              </div>
+
+              <div class="col-span-2">
+                <div class="flex items-center justify-between">
+                  <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    전문가 관리
+                  </h3>
+                  <div class="flex gap-2">
+                    <button
+                        v-if="!expertsEditing"
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
+                        @click="expertsEditing = true"
+                    >
+                      수정
+                    </button>
+                    <button
+                        v-else
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
+                        @click="onExpertsCancel"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 전문가 검색 -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                검색
+              </div>
+              <div class="col-start-2">
+                <div class="flex gap-2 w-full">
+                  <div class="relative flex-1">
+                    <input
+                        v-model="expertSearchInput"
+                        type="text"
+                        placeholder="전문가명 검색"
+                        @keyup.enter="applyExpertSearch"
+                        class="h-10 w-full rounded-lg border px-3 pr-8 bg-white text-gray-800
+                             focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <button
+                        v-if="expertSearchInput"
+                        type="button"
+                        class="absolute inset-y-0 right-4 my-auto text-xs text-gray-400 hover:text-gray-600
+                             dark:text-gray-500 dark:hover:text-gray-300"
+                        @click="clearExpertSearch"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <button
+                      type="button"
+                      class="h-10 px-4 rounded-lg bg-brand-500 text-xs sm:text-sm font-medium text-white
+                           hover:bg-brand-600 disabled:opacity-50"
+                      @click="applyExpertSearch"
+                  >
+                    검색
+                  </button>
+                </div>
+              </div>
+
+              <!-- 신규 전문가 -->
+              <div v-if="expertsEditing" class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                신규 전문가
+              </div>
+              <div v-if="expertsEditing" class="col-start-2">
+                <div class="flex gap-2">
+                  <input
+                      v-model="newExpertName"
+                      placeholder="예) 리드남"
+                      class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                           focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  />
+                  <button
+                      type="button"
+                      class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                      :disabled="!expertsEditing || !canAddExpert"
+                      @click="addExpert"
+                  >
+                    추가
+                  </button>
+                </div>
+                <p v-if="expertFormError" class="text-xs text-error-500">
+                  {{ expertFormError }}
+                </p>
+              </div>
+
+              <!-- 전문가 목록 -->
+              <div class="col-span-2 mt-4">
+                <div
+                    class="ip-scroll rounded-md border border-gray-100 dark:border-gray-800
+                         max-h-60 overflow-auto spin-dark"
+                >
+                  <div v-if="expertsLoading" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    불러오는 중…
+                  </div>
+                  <div v-else-if="!experts || experts.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    등록된 전문가가 없습니다.
+                  </div>
+                  <div v-else-if="filteredExperts.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    검색 결과가 없습니다.
+                  </div>
+
+                  <table v-else class="min-w-full table-fixed text-sm">
+                    <thead
+                        class="sticky top-0 z-10 bg-white dark:bg-gray-900
+                             shadow-[0_1px_0_0_rgba(229,231,235,0.7)]
+                             dark:shadow-[0_1px_0_0_rgba(31,41,55,0.8)]"
+                    >
+                    <tr
+                        class="border-b border-gray-200 dark:border-gray-700
+                               text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
+                      <th class="px-3 py-2 text-left whitespace-nowrap">전문가명</th>
+                      <th class="w-28 px-3 py-2 text-right whitespace-nowrap">등록일</th>
+                      <th class="w-28 px-3 py-2 text-right whitespace-nowrap">수정일</th>
+                      <th class="w-24 px-3 py-2 text-center whitespace-nowrap">관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr
+                        v-for="(e, idx) in filteredExperts"
+                        :key="e.expertId ?? idx"
+                        :class="[
+                          'border-b border-gray-100 dark:border-gray-800',
+                          idx % 2 === 0
+                            ? 'bg-white dark:bg-gray-900'
+                            : 'bg-gray-50 dark:bg-gray-800/60'
+                        ]"
+                    >
+                      <!-- 번호 -->
+                      <td class="px-3 py-3 text-center text-xs text-gray-400 whitespace-nowrap">
+                        {{ idx + 1 }}
+                      </td>
+
+                      <!-- 전문가명 -->
+                      <td class="px-3 py-3">
+                        <template v-if="editingExpertId === e.expertId">
+                          <input
+                              v-model="editingExpertName"
+                              class="w-full rounded-md border border-gray-200 px-2 py-1 text-xs
+                                     bg-white text-gray-800
+                                     focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                              placeholder="전문가명"
+                          />
+                        </template>
+                        <template v-else>
+                            <span class="text-sm text-gray-800 dark:text-gray-200">
+                              {{ e.expertName }}
+                            </span>
+                        </template>
+                      </td>
+
+                      <!-- 등록일 -->
+                      <td class="px-3 py-3 text-right text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        <template v-if="e.createdAt">
+                            <span class="block">
+                              {{ splitDateTime(e.createdAt)[0] }}
+                            </span>
+                          <span class="block">
+                              {{ splitDateTime(e.createdAt)[1] }}
+                            </span>
+                        </template>
+                        <span v-else>-</span>
+                      </td>
+
+                      <!-- 수정일 -->
+                      <td class="px-3 py-3 text-right text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        <template v-if="e.updatedAt || e.createdAt">
+                            <span class="block">
+                              {{ splitDateTime(e.updatedAt || e.createdAt)[0] }}
+                            </span>
+                          <span class="block">
+                              {{ splitDateTime(e.updatedAt || e.createdAt)[1] }}
+                            </span>
+                        </template>
+                        <span v-else>-</span>
+                      </td>
+
+                      <!-- 관리 -->
+                      <td class="px-3 py-3 text-center whitespace-nowrap">
+                        <template v-if="editingExpertId === e.expertId">
+                          <button
+                              type="button"
+                              class="mr-1 px-2 py-1 text-xs rounded-md border border-brand-500
+                                     bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+                              @click="saveExpertRow(e)"
+                          >
+                            저장
+                          </button>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700"
+                              @click="cancelExpertEdit"
+                          >
+                            취소
+                          </button>
+                        </template>
+                        <template v-else>
+                          <button
+                              type="button"
+                              class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                                     bg-white text-gray-700 hover:bg-gray-50
+                                     dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700
+                                     disabled:opacity-50"
+                              :disabled="!expertsEditing"
+                              @click="startExpertEdit(e)"
+                          >
+                            수정
+                          </button>
+                          <button
+                              type="button"
+                              class="ml-1 px-2 py-1 text-xs rounded-md border border-red-200 dark:border-red-700
+                                     bg-white text-red-600 hover:bg-red-50
+                                     dark:bg-transparent dark:text-red-400 dark:hover:bg-red-900/40
+                                     disabled:opacity-50"
+                              :disabled="!expertsEditing"
+                              @click="deleteExpert(e.expertId)"
                           >
                             삭제
                           </button>
@@ -1969,6 +2210,172 @@ function onCentersCancel() {
   cancelCenterEdit()
 }
 
+/* ----- 전문가(Experts) ----- */
+
+// 목록 & 상태
+const experts = ref([])
+const expertsLoading = ref(false)
+const expertsEditing = ref(false)
+
+const newExpertName = ref('')
+const expertFormError = ref('')
+
+const editingExpertId = ref(null)
+const editingExpertName = ref('')
+
+// 검색 상태
+const expertSearchInput = ref('')
+const expertSearch = ref('')
+
+// 필터된 리스트
+const filteredExperts = computed(() => {
+  const list = experts.value || []
+  const q = (expertSearch.value || '').trim().toLowerCase()
+  if (!q) return list
+
+  return list.filter(e =>
+      String(e.expertName || '').toLowerCase().includes(q)
+  )
+})
+
+// 추가 가능 여부
+const canAddExpert = computed(() => {
+  const name = (newExpertName.value || '').trim()
+  if (!name) return false
+  return !expertFormError.value
+})
+
+// 이름 검증 (지점/팀과 동일한 룰)
+watch(newExpertName, (val) => {
+  const name = (val || '').trim()
+  if (!name) {
+    expertFormError.value = ''
+    return
+  }
+  if (name.length < 2) {
+    expertFormError.value = '전문가명은 2자 이상이어야 합니다.'
+  } else if (name.length > 100) {
+    expertFormError.value = '전문가명은 100자 이하로 입력하세요.'
+  } else {
+    expertFormError.value = ''
+  }
+})
+
+async function fetchExperts(keyword = '') {
+  try {
+    expertsLoading.value = true
+    const { data } = await axios.get('/api/me/experts', {
+      withCredentials: true,
+      params: { keyword: keyword || '' },
+    })
+    experts.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    alert(e?.response?.data || '전문가 목록을 불러오지 못했습니다.')
+  } finally {
+    expertsLoading.value = false
+  }
+}
+
+async function applyExpertSearch() {
+  expertSearch.value = (expertSearchInput.value || '').trim()
+  await fetchExperts(expertSearch.value)
+}
+
+async function clearExpertSearch() {
+  expertSearchInput.value = ''
+  expertSearch.value = ''
+  await fetchExperts('')
+}
+
+async function addExpert() {
+  const name = (newExpertName.value || '').trim()
+  if (!name) {
+    alert('전문가명을 입력하세요.')
+    return
+  }
+  if (expertFormError.value) {
+    alert(expertFormError.value)
+    return
+  }
+
+  try {
+    await axios.post(
+        '/api/me/experts',
+        { expertName: name },
+        { withCredentials: true },
+    )
+    newExpertName.value = ''
+    await fetchExperts(expertSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '이미 존재하는 전문가명입니다.')
+    else if (s === 400) alert(e?.response?.data || '요청 값이 올바르지 않습니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert('전문가 추가에 실패했습니다.')
+  }
+}
+
+function startExpertEdit(e) {
+  if (!expertsEditing.value) return
+  editingExpertId.value = e.expertId
+  editingExpertName.value = e.expertName || ''
+}
+
+function cancelExpertEdit() {
+  editingExpertId.value = null
+  editingExpertName.value = ''
+}
+
+async function saveExpertRow(e) {
+  const name = (editingExpertName.value || '').trim()
+  if (!name) {
+    alert('전문가명을 입력하세요.')
+    return
+  }
+
+  try {
+    await axios.put(
+        `/api/me/experts/${e.expertId}`,
+        { expertName: name },
+        { withCredentials: true },
+    )
+    cancelExpertEdit()
+    await fetchExperts(expertSearch.value)
+  } catch (err) {
+    const s = err?.response?.status
+    if (s === 409) alert(err?.response?.data || '이미 존재하는 전문가명입니다.')
+    else if (s === 404) alert(err?.response?.data || '존재하지 않는 전문가입니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert('전문가 수정에 실패했습니다.')
+  }
+}
+
+async function deleteExpert(expertId) {
+  const id = Number(expertId)
+  if (!Number.isFinite(id)) {
+    alert('잘못된 전문가 ID 입니다.')
+    return
+  }
+  if (!confirm('해당 전문가를 삭제하시겠습니까?')) return
+
+  try {
+    await axios.delete(`/api/me/experts/${id}`, { withCredentials: true })
+    await fetchExperts(expertSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 404) alert(e?.response?.data || '존재하지 않는 전문가입니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert('전문가 삭제에 실패했습니다.')
+  }
+}
+
+function onExpertsCancel() {
+  expertsEditing.value = false
+  newExpertName.value = ''
+  expertFormError.value = ''
+  cancelExpertEdit()
+}
+
 // -----------------------
 
 // 날짜 피커 + 다운로드 + 위임용 상태/메서드 (상단 import 아래쪽에 추가)
@@ -2518,6 +2925,7 @@ watch(
       await Promise.all([
         fetchBranches(branchSearch.value),
         fetchCenters(centerSearch.value),
+        fetchExperts(expertSearch.value),
         fetchIpWhitelist(),
       ])
     },
