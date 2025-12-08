@@ -94,7 +94,7 @@
             <!-- 배지 -->
             <div v-else-if="col.type === 'badge'" class="relative inline-block w-[60px] h-[28px]">
                 <span
-                    v-show="!(editState.row === rowIndex && editState.col === col.key)"
+                    v-if="!(editState.row === rowIndex && editState.col === col.key)"
                     class="absolute inset-0 flex items-center justify-center rounded-full px-2 py-0.5 text-theme-xs font-medium cursor-pointer transition"
                     :class="[badgeClass(row[col.key]), col.editable ? 'hover:opacity-80' : '']"
                     @click.stop="
@@ -117,13 +117,13 @@
                 </span>
 
               <select
-                  v-show="editState.row === rowIndex && editState.col === col.key"
+                  v-if="editState.row === rowIndex && editState.col === col.key"
                   v-model="editValue"
                   class="absolute inset-0 w-full h-full px-1 py-1 text-xs rounded-md border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                   @change="updateBadge(row, col.key)"
                   @blur="cancelEdit"
               >
-                <option v-for="opt in col.options" :key="opt" :value="opt">{{ opt }}</option>
+                <option v-for="opt in getOptions(col, row)" :key="opt" :value="opt">{{ opt }}</option>
               </select>
             </div>
 
@@ -249,6 +249,14 @@ const props = defineProps({
   loading: { type: Boolean, default: false }
 })
 const emit = defineEmits(["rowSelect", "badgeUpdate", "buttonClick", "changePage", "DateUpdate"])
+
+// 옵션이 함수인 경우 row를 인자로 실행, 배열인 경우 그대로 반환
+function getOptions(col, row) {
+  if (typeof col.options === 'function') {
+    return col.options(row) || []
+  }
+  return col.options || []
+}
 
 // 행번호 계산 함수
 const displayPage = ref(props.page)
@@ -596,6 +604,7 @@ const badgeClass = (value) => {
     case "허용":
       return "bg-[#E0D7F8] text-[#5B4B9A] dark:bg-[#312C5C] dark:text-[#B6A9E3]"
     case "가망":
+    case "미지정":
       return "bg-[#EADBC8] text-[#8F6842] dark:bg-[#3E2C1E] dark:text-[#D4A373]/80"
     default:
       return "bg-[#E5E7EB] text-[#4B5563] dark:bg-[#374151] dark:text-[#D1D5DB]"

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -39,10 +40,16 @@ public class UserService {
     return new PageResponse<>(items, totalPages, totalCount);
   }
   
-  // 프론트 사전 확인용 (본사면 0 반환)
+  // 특정 팀에 팀장 몇 명인지 조회 (본사면 0 반환)
   public int countManagersInCenter(String centerName, Long excludeUserId) {
     if ("본사".equals(centerName)) return 0;
     return userMapper.countManagersInCenter(centerName, excludeUserId);
+  }
+  
+  // 특정 센터에 센터장이 몇 명인지 조회 (본사면 0 반환)
+  public int countCenterHeadsInCenter(String centerName, Long excludeUserId) {
+    if ("본사".equals(centerName)) return 0;
+    return userMapper.countCenterHeadsInCenter(centerName, excludeUserId);
   }
   
   // 직원관리 페이지에서 배지 수정이 발생한 경우
@@ -98,14 +105,65 @@ public class UserService {
       }
     }
     
-    // 4-2) 소속을 바꾸는 경우 → 대상이 현재 MANAGER라면, 이동할 소속에 다른 팀장이 있으면 불가 (본사 제외)
+    // 4-2) 소속을 바꾸는 경우 → 센터/팀/본사 규칙 가드
     if ("center".equals(field)) {
-      boolean targetIsManager = "MANAGER".equals(target.getUserRole());
-      if (targetIsManager && value != null && !"본사".equals(value)) {
-        int cnt = countManagersInCenter(value, userId);
-        if (cnt > 0) {
-          throw new IllegalStateException("'" + value + "'에는 이미 팀장이 있습니다.");
+      boolean targetIsManager = "MANAGER".equals(targetRole);
+      boolean targetIsCenterHead = "CENTERHEAD".equals(targetRole);
+      
+      CenterDto newCenter = findCenterByNameInternal(value);
+      
+      if (newCenter != null) {
+        boolean centerType = isCenterType(newCenter); // 브랜치=본사, 센터≠본사센터
+        boolean teamType = isTeamType(newCenter);     // 브랜치≠본사
+        
+        // 6) 어떤 DB의 소속을 센터로 변경할 경우 → 권한이 센터장/전문가가 아니면 막기
+        if (centerType) {
+          if (!"CENTERHEAD".equals(targetRole) && !"EXPERT".equals(targetRole)) {
+            throw new IllegalStateException("센터 소속은 센터장/전문가만 가능합니다.");
+          }
         }
+        
+        // 7) 어떤 DB의 소속을 팀으로 변경할 경우 → 권한이 팀장/팀원이 아니면 막기
+        if (teamType) {
+          if (!"MANAGER".equals(targetRole) && !"STAFF".equals(targetRole)) {
+            throw new IllegalStateException("팀 소속은 팀장/팀원만 가능합니다.");
+          }
+        }
+        
+        // 팀장 1명 가드 (팀 타입에서만 의미 있음)
+        if (targetIsManager && teamType) {
+          int cnt = countManagersInCenter(value, userId);
+          if (cnt > 0) {
+            throw new IllegalStateException("'" + value + "'에는 이미 팀장이 있습니다.");
+          }
+        }
+        
+        // 센터장 1명 가드 (센터 타입에서만)
+        // 8) 어떤 DB의 소속을 센터로 변경하는데 해당 센터에 센터장이 이미 있을 경우
+        if (targetIsCenterHead && centerType) {
+          int cnt = userMapper.countCenterHeadsInCenter(value, userId);
+          if (cnt > 0) {
+            throw new IllegalStateException("'" + value + "'에는 이미 센터장이 있습니다.");
+          }
+        }
+      }
+    }
+    
+    // 4-3) 구분을 '센터장'으로 바꾸는 경우 → 현재 소속에 다른 센터장이 있으면 불가 (본사 제외)
+    if ("type".equals(field) && "센터장".equals(value)) {
+      String centerName = target.getCenterName();
+      if (centerName != null && !"본사".equals(centerName)) {
+        int cnt = userMapper.countCenterHeadsInCenter(centerName, userId);
+        if (cnt > 0) {
+          throw new IllegalStateException("'" + centerName + "'에는 이미 센터장이 있습니다.");
+        }
+      }
+    }
+    
+    // 5. 전문가 배지 변경 (experts 테이블 연동) — 다른 필드와 분리 처리
+    if ("expert".equals(field)) {
+      if (!"EXPERT".equals(targetRole)) {
+        throw new SecurityException("직책이 '전문가'인 직원만 전문가를 지정할 수 있습니다.");
       }
     }
     
@@ -117,23 +175,17 @@ public class UserService {
       if ("관리자".equals(value)) newRole = "SUPERADMIN";
       else if ("팀장".equals(value)) newRole = "MANAGER";
       else if ("프로".equals(value)) newRole = "STAFF";
+      else if ("센터장".equals(value)) newRole = "CENTERHEAD";
+      else if ("전문가".equals(value)) newRole = "EXPERT";
     }
     
     // 조건 통과한 경우만 실제 업데이트 실행
     userMapper.updateUserField(userId, field, value);
     
-    // 업데이트가 성공적일 경우
-    // 다음 각 경우에 대해 상태가 '없음'인 디비를 회수
+    // 업데이트가 성공적일 경우 + 역할이 변경된 경우
+    // 각각에 해당하는 부가적인 처리를 실행 (ex. 가시권한 변경 등)
     if ("type".equals(field)) {
-      // 1. 팀장이였다가 -> 프로로 강등된 경우
-      boolean demoteManagerToStaff = "MANAGER".equals(oldRole) && "STAFF".equals(newRole);
-      // 2. 팀장이였다가 -> 본사로 승급된 경우
-      boolean managerToHq = "MANAGER".equals(oldRole) && "SUPERADMIN".equals(newRole);
-      
-      // 위 두 경우중 하나라도 해당 된다면 회수 처리
-      if (demoteManagerToStaff || managerToHq) {
-        userMapper.autoRecallStatusNoneByOwner(userId);
-      }
+      handleRoleChangeSideEffects(userId, oldRole, newRole);
     }
   }
   
@@ -166,5 +218,131 @@ public class UserService {
     }
     
     return new BulkApproveResponse(approved, skipped);
+  }
+  
+  /**
+   * 역할 전환 시 부가 처리
+   * 팀장/팀원 -> 센터장/전문가 : 센터 미배정, 요청상태 유지, 분배권한 차단, 가시권한 차단
+   * 센터장 -> 전문가 : 센터 유지, 요청상태 유지, 가시권한 차단, 분배권한 차단, 전문가 미지정
+   * 전문가 -> 센터장 : 센터에 센터장이 없었다면 가능(사전 가드), 요청상태/센터 유지, 가시권한 차단, 분배권한 차단
+   * 센터장/전문가 -> 본사 : 소속 본사, 요청상태 유지, 가시권한 공개, 분배권한 허용, 전문가 미지정
+   * 본사 -> 센터장/전문가 : 소속 미배정, 요청상태 유지, 가시권한 차단, 분배권한 차단, 전문가 미지정
+   * + 기존 팀장 회수 로직 + 예전 CASE(관리자<->팀장/프로) 보완
+   */
+  private void handleRoleChangeSideEffects(Long userId, String oldRole, String newRole) {
+    boolean oldIsTeam        = "MANAGER".equals(oldRole) || "STAFF".equals(oldRole);
+    boolean newIsTeam        = "MANAGER".equals(newRole) || "STAFF".equals(newRole);
+    boolean oldIsCenterRole  = "CENTERHEAD".equals(oldRole) || "EXPERT".equals(oldRole);
+    boolean newIsCenterRole  = "CENTERHEAD".equals(newRole) || "EXPERT".equals(newRole);
+
+    /* =========================
+     A. 예전 CASE 보완: 관리자 <-> 팀장/프로
+     ========================= */
+    
+    // A-1) SUPERADMIN -> MANAGER/STAFF (관리자 → 팀장/프로)
+    // => 서비스 레벨에서도 의도를 명시적으로 표현
+    if ("SUPERADMIN".equals(oldRole) && newIsTeam) {
+      // 소속 제거 + 가시권한 공개
+      userMapper.updateUserField(userId, "center", null);   // center_id = NULL
+      userMapper.updateUserField(userId, "visible", "Y");// manager_phone_access = '공개'
+    }
+    
+    // A-2) MANAGER/STAFF -> SUPERADMIN (팀장/프로 → 관리자)
+    if (oldIsTeam && "SUPERADMIN".equals(newRole)) {
+      userMapper.updateUserField(userId, "center", "본사"); // center_id = 1
+      userMapper.updateUserField(userId, "visible", "N");// manager_phone_access = '차단'
+    }
+
+     /* =========================
+     B. 팀/센터/전문가/본사 규칙
+     ========================= */
+    
+    // B-1) 팀장/팀원 -> 센터장/전문가
+    if (oldIsTeam && newIsCenterRole) {
+      // 센터 미배정
+      userMapper.updateUserField(userId, "center", null);
+      // 가시권한/분배권한 차단
+      userMapper.updateUserField(userId, "visible", "N");
+      userMapper.updateUserField(userId, "allocate", "N");
+    }
+    
+    // B-2) 센터장 -> 전문가
+    if ("CENTERHEAD".equals(oldRole) && "EXPERT".equals(newRole)) {
+      userMapper.updateUserField(userId, "visible", "N");
+      userMapper.updateUserField(userId, "allocate", "N");
+      // 전문가 전환 시 배지는 '미지정'부터 시작
+      userMapper.updateUserField(userId, "expert", null);
+    }
+    
+    // B-3) 전문가 -> 센터장 (센터장 1명 가드는 updateUserField에서 이미 체크)
+    if ("EXPERT".equals(oldRole) && "CENTERHEAD".equals(newRole)) {
+      userMapper.updateUserField(userId, "visible", "N");
+      userMapper.updateUserField(userId, "allocate", "N");
+      // 센터장이 되면 전문가 배지 제거
+      userMapper.updateUserField(userId, "expert", null);
+    }
+    
+    // B-4) 센터장/전문가 -> 본사
+    if (oldIsCenterRole && "SUPERADMIN".equals(newRole)) {
+      // 소속 본사, 가시권한 공개, 분배권한 허용, 전문가 배지 제거
+      userMapper.updateUserField(userId, "center", "본사");
+      userMapper.updateUserField(userId, "visible", "N");
+      userMapper.updateUserField(userId, "allocate", "Y");
+      userMapper.updateUserField(userId, "expert", null);
+    }
+    
+    // B-5) 본사 -> 센터장/전문가
+    if ("SUPERADMIN".equals(oldRole) && newIsCenterRole) {
+      // 소속 미배정, 가시/분배 차단, 전문가 배지 제거
+      userMapper.updateUserField(userId, "center", null);
+      userMapper.updateUserField(userId, "visible", "N");
+      userMapper.updateUserField(userId, "allocate", "N");
+      userMapper.updateUserField(userId, "expert", null);
+    }
+
+    /* =========================
+     C. 팀장 → 다른 역할로 바뀔 때 상태 '없음' DB 자동 회수
+     ========================= */
+    
+    boolean managerToStaff      = "MANAGER".equals(oldRole) && "STAFF".equals(newRole);
+    boolean managerToHq         = "MANAGER".equals(oldRole) && "SUPERADMIN".equals(newRole);
+    boolean managerToCenterRole = "MANAGER".equals(oldRole)
+        && ("CENTERHEAD".equals(newRole) || "EXPERT".equals(newRole));
+    
+    if (managerToStaff || managerToHq || managerToCenterRole) {
+      userMapper.autoRecallStatusNoneByOwner(userId);
+    }
+  }
+  
+  // centerName(화면에서 선택한 소속 이름)으로 CenterDto 찾기
+  private CenterDto findCenterByNameInternal(String centerName) {
+    if (centerName == null || centerName.isBlank()) {
+      return null;
+    }
+    // 이미 있는 findCenters() 재사용 (센터 수가 많지 않으니 이 정도는 괜찮음)
+    List<CenterDto> centers = userMapper.findCenters();
+    for (CenterDto c : centers) {
+      if (centerName.equals(c.getCenterName())) {
+        return c;
+      }
+    }
+    return null;
+  }
+  
+  // "센터 타입" 판별
+  //  - 브랜치가 본사지점(1)
+  //  - 센터아이디가 본사센터(1)은 아님
+  private boolean isCenterType(CenterDto center) {
+    if (center == null) return false;
+    return Objects.equals(center.getBranchId(), 1L)
+        && !Objects.equals(center.getCenterId(), 1L);
+  }
+  
+  // "팀 타입" 판별
+  //  - 브랜치가 본사지점이 아닌 경우
+  private boolean isTeamType(CenterDto center) {
+    if (center == null) return false;
+    return center.getBranchId() != null
+        && !Objects.equals(center.getBranchId(), 1L);
   }
 }

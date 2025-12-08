@@ -43,4 +43,8 @@ public interface UserMapper {
   // 팀장에서 다른 역할로 변경 직후: 해당 팀장이 들고 있던 디비중 상태='없음'만 회수
   int autoRecallStatusNoneByOwner(Long userId);
   
+  // 해당 center에 '다른' CENTERHEAD가 있는지 (본사 제외, 본인 제외 가능)
+  int countCenterHeadsInCenter(@Param("centerName") String centerName,
+                               @Param("excludeUserId") Long excludeUserId);
+  
 }
