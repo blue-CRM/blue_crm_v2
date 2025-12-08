@@ -39,9 +39,11 @@
         u.user_approved AS userApproved,
         u.manager_phone_access AS managerPhoneAccess,
         u.can_allocate AS canAllocate,
-        c.center_name AS centerName
+        c.center_name AS centerName,
+        e.expert_name AS expertName
         FROM users u
         LEFT JOIN centers c ON u.center_id = c.center_id
+        LEFT JOIN experts e ON u.expert_id = e.expert_id
         <where>
             <if test="keyword != null and keyword != ''">
                 AND (u.user_name LIKE CONCAT('%', #{keyword}, '%')
@@ -73,8 +75,22 @@
             <choose>
                 <!-- 소속 수정 -->
                 <when test="field == 'center'">
-                    center_id = (SELECT center_id FROM centers WHERE center_name = #{value})
+                    center_id =
+                    <choose>
+                        <!-- null 이면 센터 미배정 -->
+                        <when test="value == null or value == ''">
+                            NULL
+                        </when>
+                        <!-- 그 외에는 center_name 으로 center_id 매핑 -->
+                        <otherwise>
+                            (SELECT center_id
+                            FROM centers
+                            WHERE center_name = #{value}
+                            LIMIT 1)
+                        </otherwise>
+                    </choose>
                 </when>
+
                 <!-- 요청상태 수정 -->
                 <when test="field == 'requestStatus'">
                     user_approved =
@@ -85,42 +101,17 @@
                     ELSE 'N'
                     END
                 </when>
+
                 <!-- 권한 수정 -->
                 <when test="field == 'type'">
-                    <!-- 팀 수정 규칙 -->
-                    center_id =
-                    CASE
-                    <!-- 관리자 → 본사 -->
-                    WHEN #{value} = '관리자'
-                    THEN 1
-                    WHEN #{value} IN ('팀장','프로')
-                    AND user_role = 'SUPERADMIN' <!-- 업데이트 전 권한이 관리자라면 -->
-                    THEN NULL  <!-- 관리자 → 팀장/프로 → 소속 제거 -->
-                    ELSE center_id  <!-- 팀장↔프로 이동 → 소속 유지 -->
-                    END,
-
-                    <!-- 가시권한 규칙 -->
-                    manager_phone_access =
-                    CASE
-                    -- 관리자 → 팀장/프로 → 가시권한 Y
-                    WHEN #{value} IN ('팀장','프로')
-                    AND user_role = 'SUPERADMIN'
-                    THEN 'Y'
-
-                    -- 팀장/프로 → 관리자 → 가시권한 N
-                    WHEN #{value} = '관리자'
-                    AND user_role IN ('MANAGER','STAFF')
-                    THEN 'N'
-
-                    ELSE manager_phone_access
-                    END,
-
-                    <!-- 권한 자체 변경 -->
                     user_role =
                     CASE
                     WHEN #{value} = '관리자' THEN 'SUPERADMIN'
-                    WHEN #{value} = '팀장' THEN 'MANAGER'
-                    WHEN #{value} = '프로' THEN 'STAFF'
+                    WHEN #{value} = '팀장'   THEN 'MANAGER'
+                    WHEN #{value} = '프로'   THEN 'STAFF'
+                    WHEN #{value} = '센터장' THEN 'CENTERHEAD'
+                    WHEN #{value} = '전문가' THEN 'EXPERT'
+                    ELSE user_role
                     END
                 </when>
 
@@ -132,6 +123,25 @@
                 <!-- 분배권한(Y/N) 수정 -->
                 <when test="field == 'allocate'">
                     can_allocate = #{value}
+                </when>
+
+                <!-- 전문가 배지 -->
+                <when test="field == 'expert'">
+                    expert_id =
+                    <choose>
+                        <when test="value == null or value == '' or value == '미지정'">
+                            NULL
+                        </when>
+
+                        <otherwise>
+                            (
+                            SELECT expert_id
+                            FROM experts
+                            WHERE expert_name = #{value}
+                            LIMIT 1
+                            )
+                        </otherwise>
+                    </choose>
                 </when>
 
             </choose>
@@ -159,9 +169,11 @@
         u.user_approved AS userApproved,
         u.manager_phone_access AS managerPhoneAccess,
         u.can_allocate  AS canAllocate,
-        c.center_name   AS centerName
+        c.center_name   AS centerName,
+        e.expert_name AS expertName
         FROM users u
         LEFT JOIN centers c ON u.center_id = c.center_id
+        LEFT JOIN experts e ON u.expert_id = e.expert_id
         WHERE u.user_id IN
         <foreach item="id" collection="ids" open="(" separator="," close=")">
             #{id}
@@ -179,9 +191,11 @@
             u.user_approved AS userApproved,
             u.manager_phone_access AS managerPhoneAccess,
             u.can_allocate  AS canAllocate,
-            c.center_name   AS centerName
+            c.center_name   AS centerName,
+            e.expert_name AS expertName
         FROM users u
                  LEFT JOIN centers c ON u.center_id = c.center_id
+                 LEFT JOIN experts e ON u.expert_id = e.expert_id
         WHERE u.user_id = #{userId}
     </select>
 
@@ -211,5 +225,22 @@
         WHERE user_id = #{userId}
           AND customer_status = '없음'
     </update>
+
+    <!-- 해당 center에 '다른' CENTERHEAD가 있는지 (본사 제외, 본인 제외 가능) -->
+    <select id="countCenterHeadsInCenter" resultType="int">
+        SELECT COUNT(*)
+        FROM users u
+        WHERE u.user_role = 'CENTERHEAD'
+        AND u.center_id = (
+        SELECT c.center_id
+        FROM centers c
+        WHERE c.center_name = #{centerName}
+        AND c.center_id != 1      <!-- 본사센터 제외 -->
+        LIMIT 1
+        )
+        <if test="excludeUserId != null">
+            AND u.user_id != #{excludeUserId}  <!-- 본인 제외 -->
+        </if>
+    </select>
 
 </mapper>

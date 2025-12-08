@@ -69,6 +69,7 @@ public class CustomerAllocateService {
     if (ok == null || ok == 0) {
       throw new IllegalArgumentException("선택한 직원이 해당 팀 소속이 아닙니다.");
     }
+    
     String targetRole = mapper.findUserRole(targetUserId);
     
     // 조건에 맞는 대상만 잠금
@@ -82,24 +83,27 @@ public class CustomerAllocateService {
     mapper.updateOwner(lockIds, targetUserId);
     
     // 본사 기준 상태 변경 규칙
-    if ("MANAGER".equals(targetRole)) {
-      // - 팀장에게 분배: 상태를 '없음'으로 통일(회수도 없음으로 전환)
-      mapper.updateStatusToNone(lockIds);
-    } else {
-      // - 프로에게 분배: '신규'
+    // 1. 대상이 직원이거나
+    // 2. 대상이 팀장이지만 '개인(Staff)처럼 분배(treatAsPersonal)' 옵션이 켜져있는 경우
+    boolean treatAsPersonal = !"MANAGER".equals(targetRole) || Boolean.TRUE.equals(req.getAssignToManagerAsStaff());
+    if (treatAsPersonal) {
+      // 확정 분배: 상태 '신규' (팀장에게 직접 꽂아줄 때도 포함)
       mapper.updateStatusToNew(lockIds);
+    } else {
+      // 팀으로 분배: 상태 '없음' (팀장이 관리하는 Pool)
+      mapper.updateStatusToNone(lockIds);
     }
     
     // ---- 분배 로그 기록 ----
     // HQ → MANAGER : 팀장풀에 쌓이는 것이므로 isFinalAssign = 0
     // HQ → STAFF   : 확정 DB 이므로 isFinalAssign = 1
-    boolean isFinalAssign = !"MANAGER".equals(targetRole);
+    // boolean isFinalAssign = !"MANAGER".equals(targetRole);
     writeAssignLogs(
         lockIds,
         me.getUserId(),       // 분배를 실행한 사람 (현재 로그인한 사람)
         null,                 // from_user_id (담당자 없음 상태에서 분배되는 것이므로 null)
         targetUserId,
-        isFinalAssign,
+        treatAsPersonal,
         null                  // memo (필요하면 나중에 req.getMemo() 등으로 교체)
     );
     

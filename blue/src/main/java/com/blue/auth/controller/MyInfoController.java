@@ -1,6 +1,7 @@
 package com.blue.auth.controller;
 
 import com.blue.auth.dto.*;
+import com.blue.auth.service.ExpertAdminService;
 import com.blue.auth.service.IpWhitelistService;
 import com.blue.auth.service.MyInfoService;
 import com.blue.auth.service.OrgAdminService;
@@ -21,6 +22,7 @@ public class MyInfoController {
   private final MyInfoService myInfoService;
   private final IpWhitelistService ipWhitelistService;
   private final OrgAdminService orgAdminService;
+  private final ExpertAdminService expertAdminService;
   
   // 내 정보 조회
   @GetMapping
@@ -214,6 +216,48 @@ public class MyInfoController {
                                            Authentication auth) {
     String email = auth.getName();
     orgAdminService.deleteCenter(email, id);
+    return ResponseEntity.ok().build();
+  }
+  
+  // ============================
+  //   전문가(Expert) 관리
+  // ============================
+  
+  /** 전문가 목록 */
+  @GetMapping("/experts")
+  public ResponseEntity<List<ExpertDto>> listExperts(
+      @RequestParam(value = "keyword", required = false) String keyword,
+      Authentication auth
+  ) {
+    String email = auth.getName();
+    return ResponseEntity.ok(expertAdminService.getExperts(email, keyword));
+  }
+  
+  /** 전문가 추가 */
+  @PostMapping("/experts")
+  public ResponseEntity<Void> addExpert(@RequestBody ExpertDto body,
+                                        Authentication auth) {
+    String email = auth.getName();
+    expertAdminService.createExpert(email, body);
+    return ResponseEntity.ok().build();
+  }
+  
+  /** 전문가 이름 수정 */
+  @PutMapping("/experts/{expertId}")
+  public ResponseEntity<Void> updateExpert(@PathVariable Long expertId,
+                                           @RequestBody ExpertDto body,
+                                           Authentication auth) {
+    String email = auth.getName();
+    expertAdminService.renameExpert(email, expertId, body);
+    return ResponseEntity.ok().build();
+  }
+  
+  /** 전문가 삭제 */
+  @DeleteMapping("/experts/{expertId}")
+  public ResponseEntity<Void> deleteExpert(@PathVariable Long expertId,
+                                           Authentication auth) {
+    String email = auth.getName();
+    expertAdminService.deleteExpert(email, expertId);
     return ResponseEntity.ok().build();
   }
   

@@ -16,11 +16,7 @@
 
     <!-- 과거 이력 확인 -->
     <select id="selectPastStaffByPhone" parameterType="string" resultType="string">
-        SELECT CONCAT(
-                       u.user_name, ' (',
-                       RIGHT(REPLACE(u.user_phone, '-', ''), 4),
-                       ')'
-               ) AS label
+        SELECT u.user_name AS label
         FROM customer_past_users cpu
                  JOIN users u ON u.user_id = cpu.user_id
         WHERE cpu.customer_phone = #{phone}
