@@ -47,6 +47,7 @@
                     t.name  LIKE CONCAT('%', #{keyword}, '%')
                     OR t.staff LIKE CONCAT('%', #{keyword}, '%')
                     OR t.phone LIKE CONCAT('%', #{keyword}, '%')
+                    OR t.memo  LIKE CONCAT('%', #{keyword}, '%')
                     )
                 </otherwise>
             </choose>
@@ -267,7 +268,8 @@
         <if test="keyword != null and keyword != ''">
             AND (c.customer_name LIKE CONCAT('%', #{keyword}, '%')
             OR u.user_name LIKE CONCAT('%', #{keyword}, '%')
-            OR  c.customer_phone LIKE CONCAT('%', #{keyword}, '%'))
+            OR  c.customer_phone LIKE CONCAT('%', #{keyword}, '%')
+            OR c.customer_memo LIKE CONCAT('%', #{keyword}, '%') )
         </if>
         <if test="dateFrom != null and dateFrom != ''">
             AND c.customer_created_at &gt;= #{dateFrom}
