@@ -34,6 +34,13 @@
                     AND (
                     c.customer_name   LIKE CONCAT('%', #{keyword}, '%')
                     OR c.customer_phone LIKE CONCAT('%', #{keyword}, '%')
+                    OR EXISTS (
+                        SELECT 1
+                        FROM customer_past_users cpu
+                        JOIN users u_past ON u_past.user_id = cpu.user_id
+                        WHERE cpu.customer_phone = c.customer_phone
+                        AND u_past.user_name LIKE CONCAT('%', #{keyword}, '%')
+                    )
                     )
                 </otherwise>
             </choose>
@@ -74,11 +81,7 @@
 
             IFNULL((
                 SELECT GROUP_CONCAT(
-                    CONCAT(
-                        u2.user_name, '(',
-                        RIGHT(REGEXP_REPLACE(u2.user_phone, '[^0-9]', ''), 4),
-                        ')'
-                    )
+                    u2.user_name
                     ORDER BY cpu.past_user_id
                     SEPARATOR ', '
                 )
