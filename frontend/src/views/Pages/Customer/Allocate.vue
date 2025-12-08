@@ -206,8 +206,14 @@ function onMgrButton(btn:string){ if (btn==='분배하기'){ if (!needSelection(
 function closeModal(){ modal.value.open = false }
 
 // ===== 실제 분배 호출 =====
-async function onConfirmAllocate(payload: { centerId?:number|null, userId?:number|null }){
-  const ids = needSelection(); if (!ids.length) return
+async function onConfirmAllocate(payload: {
+  centerId?:number|null,
+  userId?:number|null,
+  assignToManagerAsStaff?: boolean
+}) {
+  const ids = needSelection();
+  if (!ids.length) return
+
   await runBusy(async () => {
     // 관리자가 분배할 경우: 팀 + 대상자(팀장/프로) 선택 필수
     if (modal.value.mode === 'HQ' && (!payload.centerId)) {
@@ -222,9 +228,12 @@ async function onConfirmAllocate(payload: { centerId?:number|null, userId?:numbe
       await axios.post('/api/work/allocate/hq', {
         customerIds: ids,
         targetCenterId: payload.centerId,   // 필수 (모달에서 강제)
-        targetUserId: payload.userId || null
+        targetUserId: payload.userId || null,
+        // (true: 팀장에게 개인분배, false/undefined: 팀 공용분배)
+        assignToManagerAsStaff: payload.assignToManagerAsStaff || false
       })
     } else {
+      // 팀장 재분배 로직
       await axios.post('/api/work/allocate/manager', {
         customerIds: ids,
         targetUserId: payload.userId || null
