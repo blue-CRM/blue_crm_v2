@@ -1,6 +1,7 @@
 package com.blue.customer.all.mapper;
 
 import com.blue.customer.all.dto.AllDbRowDto;
+import com.blue.customer.all.dto.ExpertDto;
 import com.blue.customer.all.dto.UserContextDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -23,6 +24,7 @@ public interface CustomerAllMapper {
                                     @Param("category") String category,
                                     @Param("division") String division,
                                     @Param("sort") String sort,
+                                    @Param("expertName") String expertName,
                                     @Param("status") String status,
                                     @Param("visible") String visible);
   int countAllForAdmin(@Param("keyword") String keyword,
@@ -30,6 +32,7 @@ public interface CustomerAllMapper {
                        @Param("dateTo") String dateTo,
                        @Param("category") String category,
                        @Param("division") String division,
+                       @Param("expertName") String expertName,
                        @Param("status") String status,
                        @Param("visible") String visible);
   
@@ -42,6 +45,7 @@ public interface CustomerAllMapper {
                                       @Param("category") String category,
                                       @Param("division") String division,
                                       @Param("sort") String sort,
+                                      @Param("expertName") String expertName,
                                       @Param("pStatus") String status,
                                       @Param("centerId") Long centerId);
   int countAllForManager(@Param("keyword") String keyword,
@@ -49,6 +53,7 @@ public interface CustomerAllMapper {
                          @Param("dateTo") String dateTo,
                          @Param("category") String category,
                          @Param("division") String division,
+                         @Param("expertName") String expertName,
                          @Param("pStatus") String status,
                          @Param("centerId") Long centerId);
   
@@ -61,6 +66,7 @@ public interface CustomerAllMapper {
                                     @Param("category") String category,
                                     @Param("division") String division,
                                     @Param("sort") String sort,
+                                    @Param("expertName") String expertName,
                                     @Param("pStatus") String status,
                                     @Param("userId") Long userId);
   int countAllForStaff(@Param("keyword") String keyword,
@@ -68,6 +74,7 @@ public interface CustomerAllMapper {
                        @Param("dateTo") String dateTo,
                        @Param("category") String category,
                        @Param("division") String division,
+                       @Param("expertName") String expertName,
                        @Param("pStatus") String status,
                        @Param("userId") Long userId);
   
@@ -82,4 +89,8 @@ public interface CustomerAllMapper {
   
   // 중복 숨김
   int hideDuplicates(@Param("ids") List<Long> duplicateIds);
+  
+  // 전문가 리스트 조회
+  List<ExpertDto> findAllExperts();
+  List<ExpertDto> findExpertsByCenterId(@Param("centerId") Long centerId);
 }

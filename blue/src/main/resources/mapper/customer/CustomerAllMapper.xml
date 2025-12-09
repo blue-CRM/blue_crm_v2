@@ -58,6 +58,9 @@
         <if test="division != null and division != ''">
             AND t.division = #{division}
         </if>
+        <if test="expertName != null and expertName != ''">
+            AND t.source = #{expertName}
+        </if>
         <if test="status != null and status != ''">
             <choose>
                 <when test="status == '모든 부재'">
@@ -174,6 +177,9 @@
         <if test="division != null and division != ''">
             AND c.customer_division = #{division}
         </if>
+        <if test="expertName != null and expertName != ''">
+            AND c.customer_source = #{expertName}
+        </if>
         <if test="status != null and status != ''">
             <choose>
                 <when test="status == '모든 부재'">
@@ -253,6 +259,9 @@
         <if test="division != null and division != ''">
             AND c.customer_division = #{division}
         </if>
+        <if test="expertName != null and expertName != ''">
+            AND c.customer_source = #{expertName}
+        </if>
         <if test="status != null and status != ''">
             <choose>
                 <when test="status == '모든 부재'">
@@ -320,6 +329,9 @@
         </if>
         <if test="division != null and division != ''">
             AND c.customer_division = #{division}  <!-- '최초','유효' -->
+        </if>
+        <if test="expertName != null and expertName != ''">
+            AND c.customer_source = #{expertName}
         </if>
         <if test="pStatus != null and pStatus != ''">
             <choose>
@@ -489,5 +501,25 @@
             #{id}
         </foreach>
     </update>
+
+    <!-- 모든 전문가 리스트 조회 -->
+    <select id="findAllExperts" resultType="com.blue.customer.all.dto.ExpertDto">
+        SELECT
+            e.expert_id   AS expertId,
+            e.expert_name AS expertName
+        FROM experts e
+        ORDER BY expert_name ASC
+    </select>
+
+    <!-- 특정 센터 소속 전문가 리스트만 조회 -->
+    <select id="findExpertsByCenterId" parameterType="long" resultType="com.blue.customer.all.dto.ExpertDto">
+        SELECT DISTINCT
+            e.expert_id   AS expertId,
+            e.expert_name AS expertName
+        FROM experts e
+                 INNER JOIN users u ON u.expert_id = e.expert_id
+        WHERE u.center_id = #{centerId}
+        ORDER BY e.expert_name ASC
+    </select>
 
 </mapper>

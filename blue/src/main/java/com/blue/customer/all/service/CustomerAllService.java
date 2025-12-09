@@ -1,9 +1,6 @@
 package com.blue.customer.all.service;
 
-import com.blue.customer.all.dto.AllDbRowDto;
-import com.blue.customer.all.dto.PagedResponse;
-import com.blue.customer.all.dto.UpdateFieldDto;
-import com.blue.customer.all.dto.UserContextDto;
+import com.blue.customer.all.dto.*;
 import com.blue.customer.all.mapper.CustomerAllMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,7 +10,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +20,7 @@ public class CustomerAllService {
   public PagedResponse<AllDbRowDto> getAll(
       String callerEmail, int page, int size,
       String keyword, String dateFrom, String dateTo,
-      String category, String division, String sort,
+      String category, String division, String sort, String expertName,
       String status, String mine, Long staffUserId
   ) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
@@ -38,8 +34,8 @@ public class CustomerAllService {
       case "SUPERADMIN" -> {
 //        System.out.println("datefrom: " + dateFrom);
 //        System.out.println("dateto: " + dateTo);
-        items = mapper.findAllForAdmin(offset, size, keyword, dateFrom, dateTo, category, division, sort, status, me.getVisible());
-        total = mapper.countAllForAdmin(keyword, dateFrom, dateTo, category, division, status, me.getVisible());
+        items = mapper.findAllForAdmin(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getVisible());
+        total = mapper.countAllForAdmin(keyword, dateFrom, dateTo, category, division, expertName, status, me.getVisible());
       }
       case "MANAGER" -> {
         // mine=Y이면 '내 DB만' → 클라 staffUserId 무시, 토큰의 본인 ID 강제
@@ -47,25 +43,25 @@ public class CustomerAllService {
         if (mineOnly) {
           Long myUserId = me.getUserId();
           items = mapper.findAllForStaff(
-              offset, size, keyword, dateFrom, dateTo, category, division, sort, status, myUserId
+              offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, myUserId
           );
           total = mapper.countAllForStaff(
-              keyword, dateFrom, dateTo, category, division, status, myUserId
+              keyword, dateFrom, dateTo, category, division, expertName, status, myUserId
           );
         } else {
           // 팀 범위
           items = mapper.findAllForManager(
-              offset, size, keyword, dateFrom, dateTo, category, division, sort, status, me.getCenterId()
+              offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getCenterId()
           );
           total = mapper.countAllForManager(
-              keyword, dateFrom, dateTo, category, division, status, me.getCenterId()
+              keyword, dateFrom, dateTo, category, division, expertName, status, me.getCenterId()
           );
         }
       }
       case "STAFF" -> {
         // STAFF는 원래 '내 DB'만
-        items = mapper.findAllForStaff(offset, size, keyword, dateFrom, dateTo, category, division, sort, status, me.getUserId());
-        total = mapper.countAllForStaff(keyword, dateFrom, dateTo, category, division, status, me.getUserId());
+        items = mapper.findAllForStaff(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getUserId());
+        total = mapper.countAllForStaff(keyword, dateFrom, dateTo, category, division, expertName, status, me.getUserId());
       }
       default -> throw new IllegalStateException("Unknown role: " + me.getRole());
     }
@@ -148,5 +144,22 @@ public class CustomerAllService {
     if (duplicateIds == null || duplicateIds.isEmpty()) return;
     
     mapper.hideDuplicates(duplicateIds); // duplicate_display = 0
+  }
+  
+  // 전문가 목록 조회
+  public List<ExpertDto> getExpertList(String callerEmail) {
+    UserContextDto me = mapper.findUserContextByEmail(callerEmail);
+    if (me == null) throw new IllegalArgumentException("사용자 정보를 찾을 수 없습니다.");
+    
+    return switch (me.getRole()) {
+      // 1. 본사, 매니저, 스탭 -> 모든 전문가 조회
+      case "SUPERADMIN", "MANAGER", "STAFF" -> mapper.findAllExperts();
+      
+      // 2. 센터헤드 -> 자기 센터 소속원이 담당하는 전문가만 조회
+      case "CENTERHEAD" -> mapper.findExpertsByCenterId(me.getCenterId());
+      
+      // 3. 그 외(EXPERT 등) -> 조회 권한 없음 (빈 리스트)
+      default -> List.of();
+    };
   }
 }

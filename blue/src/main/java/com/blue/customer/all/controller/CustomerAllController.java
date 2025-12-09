@@ -1,6 +1,7 @@
 package com.blue.customer.all.controller;
 
 import com.blue.customer.all.dto.AllDbRowDto;
+import com.blue.customer.all.dto.ExpertDto;
 import com.blue.customer.all.dto.PagedResponse;
 import com.blue.customer.all.dto.UpdateFieldDto;
 import com.blue.customer.all.dto.IdsDto;
@@ -10,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,11 +34,12 @@ public class CustomerAllController {
       @RequestParam(required = false) String category,
       @RequestParam(required = false) String division, // SUPERADMIN만 의미: 최초/유효/중복
       @RequestParam(required = false) String sort,     // status | division | null
+      @RequestParam(required = false) String expertName,
       @RequestParam(required = false) String status,
       @RequestParam(required = false) String mine,     // "Y"면 내 DB만 (MANAGER 토글용)
       @RequestParam(required = false) Long staffUserId // (보안상 서비스에서 무시/강제)
   ) {
-    return service.getAll(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, sort, status, mine, staffUserId);
+    return service.getAll(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, mine, staffUserId);
   }
   
   // 인라인 업데이트(배지 status / 예약 reservation) — customers만 수정 가능
@@ -57,5 +61,11 @@ public class CustomerAllController {
   ) {
     service.hideDuplicates(auth.getName(), req.getIds()); // 서비스에서 SUPERADMIN 재검증
     return ResponseEntity.ok().build();
+  }
+  
+  // 전문가 목록 조회
+  @GetMapping("/work/db/experts")
+  public ResponseEntity<List<ExpertDto>> getExpertList(Authentication auth) {
+    return ResponseEntity.ok(service.getExpertList(auth.getName()));
   }
 }

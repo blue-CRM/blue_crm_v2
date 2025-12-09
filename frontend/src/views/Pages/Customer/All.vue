@@ -7,10 +7,7 @@
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
             v-if="role === 'SUPERADMIN'"
-            :selects="[
-                ['구분 전체', '최초', '유효', '중복'],
-                ['상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
-                  '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
+            :selects="adminSelects"
             :buttons="adminButtons"
             :active="activeLabels"
             :showRefresh="true"
@@ -42,8 +39,7 @@
         <!-- MANAGER / STAFF -->
         <ComponentCard
             v-else
-            :selects="[['상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
-                      '재콜', '신규', '가망', '자연풀', '카피', '거절']]"
+            :selects="managerSelects"
             :buttons="managerButtons"
             :active="activeLabels"
             :showRefresh="true"
@@ -190,7 +186,8 @@ const {
     mine: "mine",
     staffUserId: "staffUserId",
     status: "status",
-    division: "division"
+    division: "division",
+    expertName: "expertName"
   },
   mapper: (res) => ({
     items: res.data.items,
@@ -342,6 +339,61 @@ function closeMemo() {
 }
 
 /* =============================
+   드롭박스 필터 관련
+============================= */
+
+// 1. 정적 옵션 정의 (변하지 않는 값)
+const divisionOptions = ['구분 전체', '최초', '유효', '중복'];
+const statusOptions = [
+  '상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
+  '기타', '결번', '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'
+];
+
+// 2. 동적 옵션 정의 (서버에서 가져올 전문가 리스트)
+const expertOptions = ref(['전문가 전체']); // 기본값 설정
+
+// 3. onMounted에서 전문가 리스트 로드
+
+// 4. 권한별 최종 Select 배열 생성 (Computed)
+const adminSelects = computed(() => {
+  // [0:구분, 1:상태, 2:전문가]
+  return [divisionOptions, statusOptions, expertOptions.value];
+});
+const managerSelects = computed(() => {
+  // [0:상태, 1:전문가] (매니저는 구분 없음)
+  return [statusOptions, expertOptions.value];
+});
+
+// 필터 동작
+function onAdminSelectChange({ idx, value }) {
+  return runBusy(async () => {
+    // idx 순서: 0=구분, 1=상태, 2=전문가
+    if (idx === 0) {
+      // '구분 전체'면 해제
+      setFilter("division", value === "구분 전체" ? null : value);
+    } else if (idx === 1) {
+      // '상태 전체'면 해제
+      setFilter("status", value === "상태 전체" ? null : value);
+    } else if (idx === 2) {
+      // '전문가 전체'면 해제
+      setFilter("expertName", value === "전문가 전체" ? null : value);
+    }
+  })
+}
+function onManagerStatusSelect({ idx, value }) {
+  return runBusy(async () => {
+    // idx 순서: 0=상태, 1=전문가 (매니저는 구분 필터 없음)
+    if (idx === 0) {
+      // '상태 전체'면 해제
+      setFilter("status", value === "상태 전체" ? null : value);
+    } else if (idx === 1) {
+      // '전문가 전체'면 해제
+      setFilter("expertName", value === "전문가 전체" ? null : value);
+    }
+  })
+}
+
+/* =============================
    정렬 버튼 관련
 ============================= */
 
@@ -369,31 +421,7 @@ const managerButtons = computed(() => {
   return arr;
 });
 
-function onAdminSelectChange({ idx, value }) {
-  return runBusy(async () => {
-    // idx: 0=구분, 1=상태
-    if (idx === 0) {
-      // '구분 전체'면 해제
-      setFilter("division", value === "구분 전체" ? null : value);
-    } else if (idx === 1) {
-      // '상태 전체'면 해제
-      setFilter("status", value === "상태 전체" ? null : value);
-    }
-    changePage(1);
-  })
-}
-
-function onManagerStatusSelect({ idx, value }) {
-  return runBusy(async () => {
-    // 매니저/스태프는 상태 셀렉트만 있음. '상태 전체'면 해제
-    setFilter("status", value === "상태 전체" ? null : value);
-    changePage(1);
-  })
-}
-
-// 버튼 토클
-const adminActive = ref({ status: false, division: false })
-
+// 버튼 동작
 async function onCommonButtonClick(btn) {
   // busy 가드
   if (uiLoading.value) return;
@@ -490,12 +518,26 @@ async function refetchAndClamp() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (isManager.value) {
     mineOnly.value = true;
     setFilter('mine', null);
     setFilter('staffUserId', null);
     if (page.value !== 1) changePage(1);
+  }
+
+  try {
+    // 전문가 리스트 조회
+    const {data} = await axios.get('/api/work/db/experts');
+    console.log(data)
+
+    // 이름만 추출하여 배열 생성
+    const names = data.map(expert => expert.expertName);
+
+    // '전문가 전체' 뒤에 붙이기
+    expertOptions.value = ['전문가 전체', ...names];
+  } catch (err) {
+    console.error("전문가 리스트 로딩 실패", err);
   }
 });
 
