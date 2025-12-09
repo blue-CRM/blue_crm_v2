@@ -394,13 +394,6 @@ function onManagerStatusSelect({ idx, value }) {
 // 버튼 토클
 const adminActive = ref({ status: false, division: false })
 
-const adminActiveLabels = computed(() => {
-  const arr = []
-  if (adminActive.value.status) arr.push('상태별 보기')
-  // if (adminActive.value.division) arr.push('구분별 보기')
-  return arr
-})
-
 async function onCommonButtonClick(btn) {
   // busy 가드
   if (uiLoading.value) return;
@@ -462,65 +455,6 @@ async function onCommonButtonClick(btn) {
     uiLoading.value = false;
   }
 }
-//
-// // 정렬 모드
-// const sortMode = ref('date')
-//
-// const managerButtons = computed(() => {
-//   const primary = sortMode.value === 'status' ? '최신순 보기' : '상태별 보기'
-//   const arr = [primary]
-//
-//   // MANAGER면 "내 DB만 보기" 토글 버튼 추가, STAFF면 기존 그대로
-//   if (isManager.value) arr.push(mineOnly.value ? '전체 보기' : '내 DB만 보기')
-//   return arr
-// })
-//
-// function onCommonButtonClick(btn) {
-//   if (btn === "상태별 보기" || btn === "최신순 보기") {
-//     sortMode.value = (sortMode.value === 'status') ? 'date' : 'status'
-//
-//     setFilter("sort", sortMode.value === 'status' ? "status" : null)
-//     setFilter("mine", mineOnly.value ? "Y" : null)
-//     setFilter("staffUserId", mineOnly.value ? auth.userId : null)
-//
-//     // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-//     selectedRows.value = [];
-//     tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-//     tableKey.value++; // 강제 리렌더로 selection state 초기화
-//     fetchData();
-//     return
-//   }
-//
-//  // MANAGER 전용: 내 DB만 보기 / 전체 보기 토글
-//   if (btn === "내 DB만 보기" && isManager.value) {
-//     mineOnly.value = true;
-//     setFilter("mine", "Y");
-//     setFilter("staffUserId", auth.userId);
-//     // 현재 정렬도 유지해서 함께 적용
-//     setFilter("sort", sortMode.value === 'status' ? "status" : null)
-//
-//     // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-//     selectedRows.value = [];
-//     tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-//     tableKey.value++; // 강제 리렌더로 selection state 초기화
-//     fetchData();
-//     return;
-//   }
-//
-//   if (btn === "전체 보기" && isManager.value) {
-//     mineOnly.value = false;
-//     setFilter("mine", null);
-//     setFilter("staffUserId", null);
-//     // 정렬은 유지
-//     setFilter("sort", sortMode.value === 'status' ? "status" : null)
-//
-//     // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-//     selectedRows.value = [];
-//     tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-//     tableKey.value++; // 강제 리렌더로 selection state 초기화
-//     fetchData();
-//   }
-// }
 
 // 모달 갱신
 function onMemoSaved(patch) {

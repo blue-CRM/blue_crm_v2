@@ -8,7 +8,7 @@
         <ComponentCard
             v-if="role === 'SUPERADMIN'"
             :selects="[[ '전체','최초','유효' ]]"
-            :buttons="['분배하기']"
+            :buttons="hqButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
@@ -33,7 +33,7 @@
         <!-- MANAGER (팀장) -->
         <ComponentCard
             v-else-if="role === 'MANAGER'"
-            :buttons="['분배하기']"
+            :buttons="mgrButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
@@ -120,7 +120,7 @@ const pageTitle = ref('DB 분배하기')
 const { items, page, size, totalPages, fetchData, changePage, setSize, setFilter, loading: tableLoading } = useTableQuery({
   url: '/api/work/allocate/list',
   externalFilters: globalFilters,
-  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword' },
+  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword', sort: 'sort' },
   mapper: (res:any) => ({ items: res.data.items, totalPages: res.data.totalPages, totalCount: res.data.totalCount })
 })
 
@@ -199,10 +199,59 @@ function needSelection(): number[] {
   return ids
 }
 
+/* =============================
+   정렬 버튼 관련
+============================= */
+
+// 정렬 상태 관리
+// 1. 상태 변수 선언 (가장 먼저)
+const viewOptions = ref({ oldest: false })
+
+// 2. 버튼 라벨 동적 계산 (viewOptions 사용)
+const sortLabel = computed(() => viewOptions.value.oldest ? '최신순 보기' : '과거순 보기')
+
+// 3. 버튼 배열 생성 (sortLabel 사용)
+const hqButtons = computed(() => [sortLabel.value, '분배하기'])
+const mgrButtons = computed(() => [sortLabel.value, '분배하기'])
+
+// 공통 정렬 토글 로직
+async function toggleSort() {
+  await runBusy(async () => {
+    viewOptions.value.oldest = !viewOptions.value.oldest
+    setFilter('sort', viewOptions.value.oldest ? 'oldest' : null)
+
+    // 정렬 변경 시 선택 초기화
+    selectedRows.value = []
+    tableRef.value?.clearSelection?.()
+
+    // await changePage(1)
+  })
+}
+
 // ===== 모달 열기/닫기 =====
 const modal = ref<{ open:boolean, mode:'HQ'|'MANAGER' }>({ open:false, mode: 'HQ' })
-function onHqButton(btn:string){ if (btn==='분배하기'){ if (!needSelection().length) return; modal.value={open:true, mode:'HQ'} } }
-function onMgrButton(btn:string){ if (btn==='분배하기'){ if (!needSelection().length) return; modal.value={open:true, mode:'MANAGER'} } }
+function onHqButton(btn:string){
+  // 현재 떠있는 정렬 버튼 텍스트와 같으면 토글 실행
+  if (btn === sortLabel.value) {
+    toggleSort();
+    return;
+  }
+  if (btn==='분배하기'){
+    if (!needSelection().length) return;
+    modal.value={open:true, mode:'HQ'}
+  }
+}
+function onMgrButton(btn:string){
+  // 현재 떠있는 정렬 버튼 텍스트와 같으면 토글 실행
+  if (btn === sortLabel.value) {
+    toggleSort();
+    return;
+  }
+  if (btn==='분배하기'){
+    if (!needSelection().length) return;
+    modal.value={open:true, mode:'MANAGER'}
+  }
+}
 function closeModal(){ modal.value.open = false }
 
 // ===== 실제 분배 호출 =====
