@@ -74,6 +74,7 @@
         <bind name="hasStatus"   value="sort != null and sort.contains('status')" />
         <bind name="hasDivision" value="sort != null and sort.contains('division')" />
         <bind name="isRecall"    value="status != null and status.equals('재콜')" />
+        <bind name="isOldest"    value="sort != null and sort.contains('oldest')" />
 
         <choose>
             <!-- status=재콜이면 재콜 전용 정렬 강제 -->
@@ -94,7 +95,11 @@
                 CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
                 CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
                 /* 재콜 이외: 최신 생성일 우선 */
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END DESC
+                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
 
             <!-- 상태만: 1) 상태 2) (재콜:예약↑ / 그외:생성일↓) -->
@@ -105,19 +110,31 @@
                 '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
                 CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
                 CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END DESC
+                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
 
             <!-- 구분만: 1) 구분 2) 생성일 최신 -->
             <when test="hasDivision">
                 ORDER BY
                 FIELD(t.division, '최초','유효','중복'),
-                t.createdAt DESC
+                t.createdAt
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
 
-            <!-- 아무 것도 안 켜짐: 최신순 -->
+            <!-- 날짜: 안 켜지면 최신순, 켜지면 오래된순 -->
             <otherwise>
-                ORDER BY t.createdAt DESC
+                ORDER BY t.createdAt
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </otherwise>
         </choose>
     </sql>
@@ -318,6 +335,8 @@
 
     <sql id="CUSTOMER_ONLY_ORDER">
         <bind name="isRecall" value="pStatus != null and pStatus.equals('재콜')" />
+        <bind name="hasStatus" value="sort != null and sort.contains('status')" />
+        <bind name="isOldest"  value="sort != null and sort.contains('oldest')" />
 
         <choose>
             <!-- 재콜 필터면 전용 정렬 -->
@@ -327,17 +346,27 @@
                 c.customer_promise_time ASC
             </when>
 
-            <when test="sort == 'status'">
+            <when test="hasStatus">
                 ORDER BY
                     FIELD(c.customer_status,
                     '부재1','부재2','부재3','부재4','부재5','기타','결번',
                     '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
                     CASE WHEN c.customer_status='재콜' THEN (c.customer_promise_time IS NULL) END ASC,
                     CASE WHEN c.customer_status='재콜' THEN c.customer_promise_time END ASC,
-                    CASE WHEN c.customer_status&lt;&gt;'재콜' THEN c.customer_created_at END DESC
+                    CASE WHEN c.customer_status&lt;&gt;'재콜' THEN c.customer_created_at END
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
+
+            <!-- 날짜: 안 켜지면 최신순, 켜지면 오래된순 -->
             <otherwise>
-                ORDER BY c.customer_created_at DESC
+                ORDER BY c.customer_created_at
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </otherwise>
         </choose>
     </sql>

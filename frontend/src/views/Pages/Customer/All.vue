@@ -11,14 +11,14 @@
                 ['구분 전체', '최초', '유효', '중복'],
                 ['상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
                   '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
-            :buttons="['상태별 보기', '중복DB로 이동']"
-            :active="adminActiveLabels"
+            :buttons="adminButtons"
+            :active="activeLabels"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
             @changeSize="setSize"
             @selectChange="onAdminSelectChange"
-            @buttonClick="onAdminButtonClick"
+            @buttonClick="onCommonButtonClick"
         >
           <PsnsTable
               :key="tableKey"
@@ -42,8 +42,10 @@
         <!-- MANAGER / STAFF -->
         <ComponentCard
             v-else
-            :selects="[['전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번', '재콜', '신규', '가망', '자연풀', '카피', '거절']]"
-            :buttons=managerButtons
+            :selects="[['상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
+                      '재콜', '신규', '가망', '자연풀', '카피', '거절']]"
+            :buttons="managerButtons"
+            :active="activeLabels"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
@@ -138,6 +140,7 @@ const memoOpen = ref(false); // 메모 모달 상태
 const memoRow = ref(null); // 메모 모달에 넘길 행
 const isRefreshing = ref(false); // 새로고침 스피너/비활성
 
+// 수동 새로고침
 async function onRefresh() {
   if (isRefreshing.value) return;
   isRefreshing.value = true;
@@ -249,8 +252,8 @@ const adminColumns = [
   { key: "status", label: "상태", type: "badge",
       editable: notDuplicate,
       // 회수와 신규 상태는 수동으로 줄 수 없음
-      // 회수 : DB회수하기 메뉴에서
-      // 신규 : 한번도 분배가 되지 않은 항목만
+      // 회수 : 팀장풀 혹은 개인에게 분배된 이후 회수된 데이터
+      // 신규 : 최초의 확정분배 시에만 신규
       options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
   { key: "reservation", label: "예약", type: "date", editable: notDuplicate }
 ];
@@ -302,6 +305,7 @@ function onBadgeUpdate(row, key, newValue) {
   // console.log("배지 수정:", row, key, newValue);
 }
 
+// 재콜 : 예약일 저장
 async function onDateUpdate(row, key, newValue) {
   // 중복DB는 클릭 불가
   if (row.origin === 'DUPLICATE') {
@@ -337,6 +341,34 @@ function closeMemo() {
   memoRow.value = null;
 }
 
+/* =============================
+   정렬 버튼 관련
+============================= */
+
+// 뷰 옵션 상태 관리
+const viewOptions = ref({
+  status: false, // 상태별 보기
+  oldest: false, // 과거순 보기
+  mine: false    // 내 DB만 보기 (Manager 전용)
+});
+
+// 활성화된 버튼 라벨 계산
+const activeLabels = computed(() => {
+  const arr = [];
+  if (viewOptions.value.status) arr.push('상태별 보기');
+  if (viewOptions.value.oldest) arr.push('과거순 보기');
+  if (viewOptions.value.mine)   arr.push('내 DB만 보기');
+  return arr;
+});
+
+// 버튼 목록 정의
+const adminButtons = ['상태별 보기', '과거순 보기', '중복DB로 이동'];
+const managerButtons = computed(() => {
+  const arr = ['상태별 보기', '과거순 보기'];
+  if (isManager.value) arr.push('내 DB만 보기'); // 매니저만 추가
+  return arr;
+});
+
 function onAdminSelectChange({ idx, value }) {
   return runBusy(async () => {
     // idx: 0=구분, 1=상태
@@ -353,8 +385,8 @@ function onAdminSelectChange({ idx, value }) {
 
 function onManagerStatusSelect({ idx, value }) {
   return runBusy(async () => {
-    // 매니저/스태프는 상태 셀렉트만 있음. '전체'면 해제
-    setFilter("status", value === "전체" ? null : value);
+    // 매니저/스태프는 상태 셀렉트만 있음. '상태 전체'면 해제
+    setFilter("status", value === "상태 전체" ? null : value);
     changePage(1);
   })
 }
@@ -369,7 +401,7 @@ const adminActiveLabels = computed(() => {
   return arr
 })
 
-async function onAdminButtonClick(btn) {
+async function onCommonButtonClick(btn) {
   // busy 가드
   if (uiLoading.value) return;
   uiLoading.value = true;
@@ -405,83 +437,90 @@ async function onAdminButtonClick(btn) {
     }
 
     // 2) 상태/구분 토글
-    if (btn === "상태별 보기")   adminActive.value.status   = !adminActive.value.status;
-    // if (btn === "구분별 보기")   adminActive.value.division = !adminActive.value.division;
+    if (btn === "상태별 보기") viewOptions.value.status = !viewOptions.value.status;
+    if (btn === "과거순 보기") viewOptions.value.oldest = !viewOptions.value.oldest;
+    if (btn === "내 DB만 보기") viewOptions.value.mine = !viewOptions.value.mine;
 
     // 3) sort 조합
     const sortParts = [];
-    if (adminActive.value.status)   sortParts.push('status');
-    if (adminActive.value.division) sortParts.push('division');
+    if (viewOptions.value.status) sortParts.push("status");
+    if (viewOptions.value.oldest) sortParts.push('oldest');
     setFilter("sort", sortParts.length ? sortParts.join(",") : null);
+
+    // 3-1) Mine 파라미터 조합 (Manager만 해당)
+    if (isManager.value) {
+      setFilter("mine", viewOptions.value.mine ? "Y" : null);
+      setFilter("staffUserId", viewOptions.value.mine ? auth.userId : null);
+    }
 
     // 선택 초기화
     selectedRows.value = [];
     tableRef.value?.clearSelection?.();
-    tableKey.value++;
+    tableKey.value++; // 테이블 강제 리렌더
 
   } finally {
     uiLoading.value = false;
   }
 }
-
-// 정렬 모드
-const sortMode = ref('date')
-
-const managerButtons = computed(() => {
-  const primary = sortMode.value === 'status' ? '최신순 보기' : '상태별 보기'
-  const arr = [primary]
-
-  // MANAGER면 "내 DB만 보기" 토글 버튼 추가, STAFF면 기존 그대로
-  if (isManager.value) arr.push(mineOnly.value ? '전체 보기' : '내 DB만 보기')
-  return arr
-})
-
-function onCommonButtonClick(btn) {
-  if (btn === "상태별 보기" || btn === "최신순 보기") {
-    sortMode.value = (sortMode.value === 'status') ? 'date' : 'status'
-
-    setFilter("sort", sortMode.value === 'status' ? "status" : null)
-    setFilter("mine", mineOnly.value ? "Y" : null)
-    setFilter("staffUserId", mineOnly.value ? auth.userId : null)
-
-    // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-    selectedRows.value = [];
-    tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-    tableKey.value++; // 강제 리렌더로 selection state 초기화
-    fetchData();
-    return
-  }
-
- // MANAGER 전용: 내 DB만 보기 / 전체 보기 토글
-  if (btn === "내 DB만 보기" && isManager.value) {
-    mineOnly.value = true;
-    setFilter("mine", "Y");
-    setFilter("staffUserId", auth.userId);
-    // 현재 정렬도 유지해서 함께 적용
-    setFilter("sort", sortMode.value === 'status' ? "status" : null)
-
-    // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-    selectedRows.value = [];
-    tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-    tableKey.value++; // 강제 리렌더로 selection state 초기화
-    fetchData();
-    return;
-  }
-
-  if (btn === "전체 보기" && isManager.value) {
-    mineOnly.value = false;
-    setFilter("mine", null);
-    setFilter("staffUserId", null);
-    // 정렬은 유지
-    setFilter("sort", sortMode.value === 'status' ? "status" : null)
-
-    // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-    selectedRows.value = [];
-    tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-    tableKey.value++; // 강제 리렌더로 selection state 초기화
-    fetchData();
-  }
-}
+//
+// // 정렬 모드
+// const sortMode = ref('date')
+//
+// const managerButtons = computed(() => {
+//   const primary = sortMode.value === 'status' ? '최신순 보기' : '상태별 보기'
+//   const arr = [primary]
+//
+//   // MANAGER면 "내 DB만 보기" 토글 버튼 추가, STAFF면 기존 그대로
+//   if (isManager.value) arr.push(mineOnly.value ? '전체 보기' : '내 DB만 보기')
+//   return arr
+// })
+//
+// function onCommonButtonClick(btn) {
+//   if (btn === "상태별 보기" || btn === "최신순 보기") {
+//     sortMode.value = (sortMode.value === 'status') ? 'date' : 'status'
+//
+//     setFilter("sort", sortMode.value === 'status' ? "status" : null)
+//     setFilter("mine", mineOnly.value ? "Y" : null)
+//     setFilter("staffUserId", mineOnly.value ? auth.userId : null)
+//
+//     // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
+//     selectedRows.value = [];
+//     tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
+//     tableKey.value++; // 강제 리렌더로 selection state 초기화
+//     fetchData();
+//     return
+//   }
+//
+//  // MANAGER 전용: 내 DB만 보기 / 전체 보기 토글
+//   if (btn === "내 DB만 보기" && isManager.value) {
+//     mineOnly.value = true;
+//     setFilter("mine", "Y");
+//     setFilter("staffUserId", auth.userId);
+//     // 현재 정렬도 유지해서 함께 적용
+//     setFilter("sort", sortMode.value === 'status' ? "status" : null)
+//
+//     // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
+//     selectedRows.value = [];
+//     tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
+//     tableKey.value++; // 강제 리렌더로 selection state 초기화
+//     fetchData();
+//     return;
+//   }
+//
+//   if (btn === "전체 보기" && isManager.value) {
+//     mineOnly.value = false;
+//     setFilter("mine", null);
+//     setFilter("staffUserId", null);
+//     // 정렬은 유지
+//     setFilter("sort", sortMode.value === 'status' ? "status" : null)
+//
+//     // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
+//     selectedRows.value = [];
+//     tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
+//     tableKey.value++; // 강제 리렌더로 selection state 초기화
+//     fetchData();
+//   }
+// }
 
 // 모달 갱신
 function onMemoSaved(patch) {
@@ -520,8 +559,8 @@ async function refetchAndClamp() {
 onMounted(() => {
   if (isManager.value) {
     mineOnly.value = true;
-    setFilter('mine', 'Y');
-    setFilter('staffUserId', auth.userId);
+    setFilter('mine', null);
+    setFilter('staffUserId', null);
     if (page.value !== 1) changePage(1);
   }
 });
