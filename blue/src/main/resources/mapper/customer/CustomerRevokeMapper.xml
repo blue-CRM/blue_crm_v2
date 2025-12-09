@@ -47,6 +47,9 @@
         <if test="category != null and category != ''">
             AND c.customer_category = #{category}
         </if>
+        <if test="status != null and status != ''">
+            AND c.customer_status = #{status}
+        </if>
     </sql>
 
     <sql id="ORDER_DEFAULT">
@@ -54,6 +57,9 @@
             <when test="sort == 'status'">
                 ORDER BY FIELD(c.customer_status,'회수','없음','신규','가망','재콜','부재1','부재2','부재3','부재4','부재5','기타','결번','거절','자연풀','카피'),
                 c.customer_created_at DESC
+            </when>
+            <when test="sort == 'oldest'">
+                ORDER BY c.customer_created_at ASC
             </when>
             <otherwise>
                 ORDER BY c.customer_created_at DESC

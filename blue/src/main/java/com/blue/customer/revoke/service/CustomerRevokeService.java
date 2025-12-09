@@ -25,7 +25,7 @@ public class CustomerRevokeService {
   public PagedResponse<RevokeListRowDto> list(String callerEmail,
                                               int page, int size,
                                               String keyword, String dateFrom, String dateTo,
-                                              String category, String division, String sort) {
+                                              String category, String division, String status, String sort) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
     
@@ -35,12 +35,12 @@ public class CustomerRevokeService {
     
     switch (me.getRole()) {
       case "SUPERADMIN" -> {
-        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getVisible());
-        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, me.getVisible());
+        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, status, sort, me.getVisible());
+        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, status, me.getVisible());
       }
       case "MANAGER" -> {
-        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, sort, me.getCenterId(), me.getVisible(), me.getUserId());
-        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, me.getCenterId(), me.getVisible(), me.getUserId());
+        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, status, sort, me.getCenterId(), me.getVisible(), me.getUserId());
+        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, status, me.getCenterId(), me.getVisible(), me.getUserId());
       }
       default -> throw new IllegalArgumentException("이 메뉴는 본사/팀장만 사용할 수 있습니다.");
     }

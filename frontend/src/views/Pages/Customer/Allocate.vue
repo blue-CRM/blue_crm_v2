@@ -217,14 +217,15 @@ const mgrButtons = computed(() => [sortLabel.value, '분배하기'])
 // 공통 정렬 토글 로직
 async function toggleSort() {
   await runBusy(async () => {
+    // 1. 상태 반전
     viewOptions.value.oldest = !viewOptions.value.oldest
+
+    // 2. 필터 설정 (백엔드는 'oldest' 값이 오면 과거순, 없으면 최신순으로 처리)
     setFilter('sort', viewOptions.value.oldest ? 'oldest' : null)
 
-    // 정렬 변경 시 선택 초기화
+    // 3. UX 편의상 선택 초기화 (정렬 바뀌면 선택된 행들의 위치가 섞이므로)
     selectedRows.value = []
     tableRef.value?.clearSelection?.()
-
-    // await changePage(1)
   })
 }
 
