@@ -6,9 +6,9 @@
 
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
-            v-if="role === 'SUPERADMIN'"
+            v-if="['SUPERADMIN', 'CENTERHEAD', 'EXPERT'].includes(role)"
             :selects="[[ '전체','최초','유효' ]]"
-            :buttons="hqButtons"
+            :buttons="allocatorButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
@@ -229,7 +229,14 @@ const viewOptions = ref({ oldest: false })
 const sortLabel = computed(() => viewOptions.value.oldest ? '최신순 보기' : '과거순 보기')
 
 // 3. 버튼 배열 생성 (sortLabel 사용)
-const hqButtons = computed(() => [sortLabel.value, '분배하기', '이력초기화'])
+const allocatorButtons = computed(() => {
+  const btns = [sortLabel.value, '분배하기']
+  // 이력초기화는 오직 본사(SUPERADMIN)만 가능
+  if (role === 'SUPERADMIN') {
+    btns.push('이력초기화')
+  }
+  return btns
+})
 const mgrButtons = computed(() => [sortLabel.value, '분배하기'])
 
 // 공통 정렬 토글 로직
@@ -281,6 +288,11 @@ function onMgrButton(btn:string){
 function onTableButtonClick(row: any, key: string) {
   // 컬럼 정의에서 설정한 key가 'actions'일 때 동작
   if (key === 'actions') {
+    if (role !== 'SUPERADMIN') {
+      alert('권한이 없습니다.')
+      return
+    }
+
     const id = row.customer_id || row.id
     resetModal.value = { open: true, targetId: id }
   }
@@ -303,28 +315,38 @@ async function onConfirmAllocate(payload: {
   if (!ids.length) return
 
   await runBusy(async () => {
-    // 관리자가 분배할 경우: 팀 + 대상자(팀장/프로) 선택 필수
-    if (modal.value.mode === 'HQ' && (!payload.centerId)) {
-      alert('팀을 선택하세요.')
-      return
-    } else if (modal.value.mode === 'HQ' && (!payload.userId)) {
-      alert('직원을 선택하세요.')
-      return
+    // 1. 유효성 검사
+    // 상위 분배자는 팀/직원 모두 필수
+    if (modal.value.mode === 'HQ') {
+      if (!payload.centerId) { alert('팀을 선택하세요.'); return; }
+      if (!payload.userId) { alert('직원을 선택하세요.'); return; }
+    } else {
+      // 매니저는 직원 필수
+      if (!payload.userId) { alert('직원을 선택하세요.'); return; }
     }
 
-    if (modal.value.mode === 'HQ') {
+    // 2. API 호출 분기
+    if (role === 'SUPERADMIN') {
+      // [본사]
       await axios.post('/api/work/allocate/hq', {
         customerIds: ids,
-        targetCenterId: payload.centerId,   // 필수 (모달에서 강제)
-        targetUserId: payload.userId || null,
-        // (true: 팀장에게 개인분배, false/undefined: 팀 공용분배)
+        targetCenterId: payload.centerId,
+        targetUserId: payload.userId,
+        assignToManagerAsStaff: payload.assignToManagerAsStaff || false
+      })
+    } else if (role === 'CENTERHEAD' || role === 'EXPERT') {
+      // [센터장/전문가]
+      await axios.post('/api/work/allocate/experthead', {
+        customerIds: ids,
+        targetCenterId: payload.centerId,
+        targetUserId: payload.userId,
         assignToManagerAsStaff: payload.assignToManagerAsStaff || false
       })
     } else {
-      // 팀장 재분배 로직
+      // [팀장]
       await axios.post('/api/work/allocate/manager', {
         customerIds: ids,
-        targetUserId: payload.userId || null
+        targetUserId: payload.userId
       })
     }
 
@@ -341,9 +363,9 @@ async function onConfirmAllocate(payload: {
   })
 }
 
-// 일괄 이력 초기화
+// 일괄 이력 초기화 (본사 전용)
 async function resetHistoryBulk() {
-  const ids = needSelection();
+  const ids = needSelection_Reset();
   if (!ids.length) return;
 
   if (!confirm(`선택한 ${ids.length}건에 대해 현재 담당자를 제외한 모든 이력을 초기화하시겠습니까?`)) return;

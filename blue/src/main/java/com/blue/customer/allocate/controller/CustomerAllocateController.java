@@ -4,6 +4,7 @@ import com.blue.customer.all.dto.PagedResponse;
 import com.blue.customer.allocate.dto.*;
 import com.blue.customer.allocate.service.CustomerAllocateService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +41,12 @@ public class CustomerAllocateController {
   @PostMapping("/work/allocate/manager")
   public AllocateResult allocateByManager(Authentication auth, @RequestBody AllocateMgrReq req) {
     return service.allocateByManager(auth.getName(), req);
+  }
+  
+  // 센터장/전문가 분배
+  @PostMapping("/work/allocate/experthead")
+  public AllocateResult allocateByExpertHead(Authentication auth, @RequestBody AllocateHqReq req) {
+    return service.allocateByExpertHead(auth.getName(), req);
   }
   
   // 직원 검색

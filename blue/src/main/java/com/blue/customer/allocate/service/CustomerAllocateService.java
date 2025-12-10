@@ -42,7 +42,22 @@ public class CustomerAllocateService {
         items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, sort, me.getUserId(), me.getVisible());
         total = mapper.countListForManager(keyword, dateFrom, dateTo, category, me.getUserId(), me.getVisible());
       }
-      default -> throw new IllegalArgumentException("이 메뉴는 본사/팀장만 사용할 수 있습니다.");
+      case "CENTERHEAD" -> {
+        if (!"Y".equals(me.getCanAllocate())) {
+          return new PagedResponse<>(Collections.emptyList(), 0, 0);
+        }
+        items = mapper.findListForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getUserId(), me.getVisible(), me.getCenterId());
+        total = mapper.countListForCenterHead(keyword, dateFrom, dateTo, category, division, me.getUserId(), me.getVisible(), me.getCenterId());
+      }
+      case "EXPERT" -> {
+        if (!"Y".equals(me.getCanAllocate())) {
+          return new PagedResponse<>(Collections.emptyList(), 0, 0);
+        }
+        items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getUserId(), me.getVisible(), me.getExpertId());
+        total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, division, me.getUserId(), me.getVisible(), me.getExpertId());
+      }
+      
+      default -> throw new IllegalArgumentException("권한이 없습니다.");
     }
     
     int totalPages = (int) Math.ceil((double) total / size);
@@ -53,7 +68,7 @@ public class CustomerAllocateService {
   public AllocateResult allocateByHq(String callerEmail, AllocateHqReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"SUPERADMIN".equals(me.getRole())) {
-      throw new IllegalArgumentException("본사만 수행할 수 있습니다.");
+      throw new IllegalArgumentException("권한이 없습니다.");
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new AllocateResult(0, 0);
@@ -115,7 +130,7 @@ public class CustomerAllocateService {
   public AllocateResult allocateByManager(String callerEmail, AllocateMgrReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"MANAGER".equals(me.getRole())) {
-      throw new IllegalArgumentException("팀장만 수행할 수 있습니다.");
+      throw new IllegalArgumentException("권한이 없습니다.");
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new AllocateResult(0, 0);
@@ -174,6 +189,60 @@ public class CustomerAllocateService {
     return new AllocateResult(lockIds.size(), req.getCustomerIds().size() - lockIds.size());
   }
   
+  @Transactional
+  public AllocateResult allocateByExpertHead(String callerEmail, AllocateHqReq req) {
+    UserContextDto me = mapper.findUserContextByEmail(callerEmail);
+    if (me == null) throw new IllegalArgumentException("사용자 정보가 없습니다.");
+    
+    // 1. 권한 체크
+    boolean isCenterHead = "CENTERHEAD".equals(me.getRole());
+    boolean isExpert = "EXPERT".equals(me.getRole());
+    
+    if (!isCenterHead && !isExpert) throw new IllegalArgumentException("권한이 없습니다.");
+    if (!"Y".equals(me.getCanAllocate())) throw new IllegalArgumentException("분배 권한이 없습니다.");
+    
+    // 2. 검증
+    if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) return new AllocateResult(0, 0);
+    if (req.getTargetCenterId() == null) throw new IllegalArgumentException("팀을 선택하세요.");
+    if (req.getTargetUserId() == null) throw new IllegalArgumentException("팀장 또는 직원을 반드시 선택해야 합니다.");
+    
+    // 3. 타겟 직원이 "타겟 센터"에 소속되어 있는지는 확인해야 함 (데이터 무결성)
+    Integer ok = mapper.userBelongsToCenter(req.getTargetUserId(), req.getTargetCenterId());
+    if (ok == null || ok == 0) {
+      throw new IllegalArgumentException("선택한 직원이 해당 팀 소속이 아닙니다.");
+    }
+    
+    // 4. 잠금 (Lock) - 내 권한(출처)에 맞는 DB인지 확인
+    List<Long> lockIds;
+    if (isCenterHead) {
+      lockIds = mapper.lockCustomersForCenterHead(req.getCustomerIds(), me.getUserId(), me.getCenterId());
+    } else {
+      lockIds = mapper.lockCustomersForExpert(req.getCustomerIds(), me.getUserId(), me.getExpertId());
+    }
+    if (lockIds.isEmpty()) return new AllocateResult(0, req.getCustomerIds().size());
+    
+    // 5. 분배 실행
+    Long targetUserId = req.getTargetUserId();
+    String targetRole = mapper.findUserRole(targetUserId);
+    
+    // 이력 추가 & 소유자 변경
+    mapper.insertPastForNewOwner(lockIds, targetUserId);
+    mapper.updateOwner(lockIds, targetUserId);
+    
+    // 상태 변경
+    boolean treatAsPersonal = !"MANAGER".equals(targetRole) || Boolean.TRUE.equals(req.getAssignToManagerAsStaff());
+    if (treatAsPersonal) {
+      mapper.updateStatusToNew(lockIds);
+    } else {
+      mapper.updateStatusToNone(lockIds);
+    }
+    
+    // 로그
+    writeAssignLogs(lockIds, me.getUserId(), me.getUserId(), targetUserId, treatAsPersonal, null);
+    
+    return new AllocateResult(lockIds.size(), req.getCustomerIds().size() - lockIds.size());
+  }
+  
   // 직원 검색
   public List<UserPickDto> searchUsersForAllocate(String email, Long centerId, String q) {
     UserContextDto me = mapper.findUserContextByEmail(email);
@@ -181,7 +250,7 @@ public class CustomerAllocateService {
     
     Long targetCenterId = null;
     switch (me.getRole()) {
-      case "SUPERADMIN" -> {
+      case "SUPERADMIN", "CENTERHEAD", "EXPERT" -> {
         targetCenterId = centerId; // null이면 전체
       }
       case "MANAGER" -> {
@@ -199,8 +268,12 @@ public class CustomerAllocateService {
   // 팀 조회
   public List<CenterPickDto> centersForAllocate(String callerEmail) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null || !"SUPERADMIN".equals(me.getRole())) {
-      throw new IllegalArgumentException("본사만 조회할 수 있습니다.");
+    if (me == null || (
+        !"SUPERADMIN".equals(me.getRole()) &&
+        !"CENTERHEAD".equals(me.getRole()) &&
+        !"EXPERT".equals(me.getRole())
+    )) {
+      throw new IllegalArgumentException("권한이 없습니다.");
     }
     return mapper.findCentersForAllocate();
   }
