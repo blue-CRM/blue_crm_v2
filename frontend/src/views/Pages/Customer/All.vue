@@ -6,7 +6,7 @@
 
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
-            v-if="role === 'SUPERADMIN'"
+            v-if="isAdminView"
             :selects="adminSelects"
             :buttons="adminButtons"
             :active="activeLabels"
@@ -196,6 +196,11 @@ const {
     totalPages: res.data.totalPages,
     totalCount: res.data.totalCount
   })
+});
+
+// 본사, 센터장, 전문가는 '관리자형 뷰' (구분 칼럼 O, 매출 칼럼 O)
+const isAdminView = computed(() => {
+  return ['SUPERADMIN', 'CENTERHEAD', 'EXPERT'].includes(role);
 });
 
 // 로딩 오버레이 설정
@@ -402,8 +407,15 @@ const expertOptions = ref(['전문가 전체']); // 기본값 설정
 
 // 4. 권한별 최종 Select 배열 생성 (Computed)
 const adminSelects = computed(() => {
-  // [0:구분, 1:상태, 2:전문가]
-  return [divisionOptions, statusOptions, expertOptions.value];
+  // 기본: [0:구분, 1:상태]
+  const base = [divisionOptions, statusOptions];
+
+  // 전문가(EXPERT)가 아닐 때만 '전문가 선택' 드롭박스 추가
+  if (role !== 'EXPERT') {
+    base.push(expertOptions.value); // 2:전문가
+  }
+
+  return base;
 });
 const managerSelects = computed(() => {
   // [0:상태, 1:전문가] (매니저는 구분 없음)
@@ -421,7 +433,7 @@ function onAdminSelectChange({ idx, value }) {
       // '상태 전체'면 해제
       setFilter("status", value === "상태 전체" ? null : value);
     } else if (idx === 2) {
-      // '전문가 전체'면 해제
+      // '전문가 전체'면 해제 (EXPERT/전문가 권한은 해당사항 없음)
       setFilter("expertName", value === "전문가 전체" ? null : value);
     }
   })
@@ -565,6 +577,7 @@ async function refetchAndClamp() {
 }
 
 onMounted(async () => {
+  // 매니저 초기 세팅
   if (isManager.value) {
     mineOnly.value = true;
     setFilter('mine', null);
@@ -572,18 +585,21 @@ onMounted(async () => {
     if (page.value !== 1) changePage(1);
   }
 
-  try {
-    // 전문가 리스트 조회
-    const {data} = await axios.get('/api/work/db/experts');
-    // console.log(data)
+  // 전문가 권한이 아닐 때만 전문가 리스트 API 호출
+  if (role !== 'EXPERT') {
+    try {
+      // 전문가 리스트 조회
+      const {data} = await axios.get('/api/work/db/experts');
+      // console.log(data)
 
-    // 이름만 추출하여 배열 생성
-    const names = data.map(expert => expert.expertName);
+      // 이름만 추출하여 배열 생성
+      const names = data.map(expert => expert.expertName);
 
-    // '전문가 전체' 뒤에 붙이기
-    expertOptions.value = ['전문가 전체', ...names];
-  } catch (err) {
-    console.error("전문가 리스트 로딩 실패", err);
+      // '전문가 전체' 뒤에 붙이기
+      expertOptions.value = ['전문가 전체', ...names];
+    } catch (err) {
+      console.error("전문가 리스트 로딩 실패", err);
+    }
   }
 });
 
