@@ -57,4 +57,22 @@ public class CustomerAllocateController {
   public List<CenterPickDto> centers(Authentication auth) {
     return service.centersForAllocate(auth.getName());
   }
+  
+  // 담당자이력 - 일괄 초기화
+  @PostMapping("/work/history/reset/bulk")
+  public void resetHistoryBulk(Authentication auth, @RequestBody List<Long> customerIds) {
+    service.resetHistory(auth.getName(), customerIds);
+  }
+  
+  // 모달에서 : 담당자 이력 리스트 조회
+  @GetMapping("/work/history/{customerId}")
+  public List<CustomerHistoryRowDto> getHistory(@PathVariable Long customerId) {
+    return service.getHistory(customerId);
+  }
+  
+  // 모달에서 : 담당자 이력 선택 삭제
+  @PostMapping("/work/history/delete")
+  public void deleteHistory(@RequestBody HistoryDeleteRequest request) {
+    service.deleteHistory(request.getLogIds());
+  }
 }

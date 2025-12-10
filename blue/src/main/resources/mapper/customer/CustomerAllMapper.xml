@@ -58,8 +58,18 @@
         <if test="division != null and division != ''">
             AND t.division = #{division}
         </if>
+        <if test="expertName != null and expertName != ''">
+            AND t.source = #{expertName}
+        </if>
         <if test="status != null and status != ''">
-            AND t.status = #{status}
+            <choose>
+                <when test="status == '모든 부재'">
+                    AND t.status IN ('부재1', '부재2', '부재3', '부재4', '부재5')
+                </when>
+                <otherwise>
+                    AND t.status = #{status}
+                </otherwise>
+            </choose>
         </if>
     </sql>
 
@@ -67,6 +77,7 @@
         <bind name="hasStatus"   value="sort != null and sort.contains('status')" />
         <bind name="hasDivision" value="sort != null and sort.contains('division')" />
         <bind name="isRecall"    value="status != null and status.equals('재콜')" />
+        <bind name="isOldest"    value="sort != null and sort.contains('oldest')" />
 
         <choose>
             <!-- status=재콜이면 재콜 전용 정렬 강제 -->
@@ -81,36 +92,52 @@
                 ORDER BY
                 FIELD(t.division, '최초','유효','중복'),
                 FIELD(t.status,
-                '부재1','부재2','부재3','부재4','부재5',
+                '부재1','부재2','부재3','부재4','부재5','기타','결번',
                 '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
                 /* 재콜 묶음 내부: 예약 없는 것 뒤로, 예약 빠른 순 */
                 CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
                 CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
                 /* 재콜 이외: 최신 생성일 우선 */
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END DESC
+                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
 
             <!-- 상태만: 1) 상태 2) (재콜:예약↑ / 그외:생성일↓) -->
             <when test="hasStatus">
                 ORDER BY
                 FIELD(t.status,
-                '부재1','부재2','부재3','부재4','부재5',
+                '부재1','부재2','부재3','부재4','부재5','기타','결번',
                 '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
                 CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
                 CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END DESC
+                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
 
             <!-- 구분만: 1) 구분 2) 생성일 최신 -->
             <when test="hasDivision">
                 ORDER BY
                 FIELD(t.division, '최초','유효','중복'),
-                t.createdAt DESC
+                t.createdAt
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
 
-            <!-- 아무 것도 안 켜짐: 최신순 -->
+            <!-- 날짜: 안 켜지면 최신순, 켜지면 오래된순 -->
             <otherwise>
-                ORDER BY t.createdAt DESC
+                ORDER BY t.createdAt
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </otherwise>
         </choose>
     </sql>
@@ -119,7 +146,8 @@
     <select id="findAllForAdmin" resultType="com.blue.customer.all.dto.AllDbRowDto">
         SELECT
         t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
-        t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation
+        t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation,
+        t.initialPrice, t.upsellPrice
         FROM (
         /* ===== customers 분기 ===== */
         SELECT
@@ -136,7 +164,9 @@
         c.customer_memo         AS memo,
         c.customer_status       AS status,
         c.customer_promise_time AS promiseAt,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price         AS initialPrice,
+        c.upsell_price          AS upsellPrice
         FROM customers c
         LEFT JOIN users u ON u.user_id = c.user_id
         WHERE 1=1
@@ -150,8 +180,18 @@
         <if test="division != null and division != ''">
             AND c.customer_division = #{division}
         </if>
+        <if test="expertName != null and expertName != ''">
+            AND c.customer_source = #{expertName}
+        </if>
         <if test="status != null and status != ''">
-            AND c.customer_status = #{status}
+            <choose>
+                <when test="status == '모든 부재'">
+                    AND c.customer_status IN ('부재1', '부재2', '부재3', '부재4', '부재5')
+                </when>
+                <otherwise>
+                    AND c.customer_status = #{status}
+                </otherwise>
+            </choose>
         </if>
 
         UNION ALL
@@ -171,7 +211,9 @@
         d.duplicate_memo        AS memo,
         '없음'                  AS status,
         NULL                    AS promiseAt,
-        NULL                    AS reservation
+        NULL                    AS reservation,
+        0                       AS initialPrice,
+        0                       AS upsellPrice
         FROM customers_duplicate d
         JOIN customers c2 ON c2.customer_id = d.customer_id
         LEFT JOIN users u2 ON u2.user_id = c2.user_id
@@ -222,8 +264,18 @@
         <if test="division != null and division != ''">
             AND c.customer_division = #{division}
         </if>
+        <if test="expertName != null and expertName != ''">
+            AND c.customer_source = #{expertName}
+        </if>
         <if test="status != null and status != ''">
-            AND c.customer_status = #{status}
+            <choose>
+                <when test="status == '모든 부재'">
+                    AND c.customer_status IN ('부재1', '부재2', '부재3', '부재4', '부재5')
+                </when>
+                <otherwise>
+                    AND c.customer_status = #{status}
+                </otherwise>
+            </choose>
         </if>
 
         UNION ALL
@@ -283,13 +335,25 @@
         <if test="division != null and division != ''">
             AND c.customer_division = #{division}  <!-- '최초','유효' -->
         </if>
+        <if test="expertName != null and expertName != ''">
+            AND c.customer_source = #{expertName}
+        </if>
         <if test="pStatus != null and pStatus != ''">
-            AND c.customer_status = #{pStatus}
+            <choose>
+                <when test="pStatus == '모든 부재'">
+                    AND c.customer_status IN ('부재1', '부재2', '부재3', '부재4', '부재5')
+                </when>
+                <otherwise>
+                    AND c.customer_status = #{pStatus}
+                </otherwise>
+            </choose>
         </if>
     </sql>
 
     <sql id="CUSTOMER_ONLY_ORDER">
         <bind name="isRecall" value="pStatus != null and pStatus.equals('재콜')" />
+        <bind name="hasStatus" value="sort != null and sort.contains('status')" />
+        <bind name="isOldest"  value="sort != null and sort.contains('oldest')" />
 
         <choose>
             <!-- 재콜 필터면 전용 정렬 -->
@@ -299,17 +363,27 @@
                 c.customer_promise_time ASC
             </when>
 
-            <when test="sort == 'status'">
+            <when test="hasStatus">
                 ORDER BY
                     FIELD(c.customer_status,
-                    '부재1','부재2','부재3','부재4','부재5',
+                    '부재1','부재2','부재3','부재4','부재5','기타','결번',
                     '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
                     CASE WHEN c.customer_status='재콜' THEN (c.customer_promise_time IS NULL) END ASC,
                     CASE WHEN c.customer_status='재콜' THEN c.customer_promise_time END ASC,
-                    CASE WHEN c.customer_status&lt;&gt;'재콜' THEN c.customer_created_at END DESC
+                    CASE WHEN c.customer_status&lt;&gt;'재콜' THEN c.customer_created_at END
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </when>
+
+            <!-- 날짜: 안 켜지면 최신순, 켜지면 오래된순 -->
             <otherwise>
-                ORDER BY c.customer_created_at DESC
+                ORDER BY c.customer_created_at
+                <choose>
+                    <when test="isOldest"> ASC</when>
+                    <otherwise> DESC</otherwise>
+                </choose>
             </otherwise>
         </choose>
     </sql>
@@ -329,7 +403,9 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price AS initialPrice,
+        c.upsell_price  AS upsellPrice
         FROM customers c
         JOIN users u ON u.user_id = c.user_id
 
@@ -367,7 +443,9 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price AS initialPrice,
+        c.upsell_price  AS upsellPrice
         FROM customers c
         LEFT JOIN users u ON u.user_id = c.user_id
 
@@ -432,5 +510,55 @@
             #{id}
         </foreach>
     </update>
+
+    <!-- 모든 전문가 리스트 조회 -->
+    <select id="findAllExperts" resultType="com.blue.customer.all.dto.ExpertDto">
+        SELECT
+            e.expert_id   AS expertId,
+            e.expert_name AS expertName
+        FROM experts e
+        ORDER BY expert_name ASC
+    </select>
+
+    <!-- 특정 센터 소속 전문가 리스트만 조회 -->
+    <select id="findExpertsByCenterId" parameterType="long" resultType="com.blue.customer.all.dto.ExpertDto">
+        SELECT DISTINCT
+            e.expert_id   AS expertId,
+            e.expert_name AS expertName
+        FROM experts e
+                 INNER JOIN users u ON u.expert_id = e.expert_id
+        WHERE u.center_id = #{centerId}
+        ORDER BY e.expert_name ASC
+    </select>
+
+    <!-- 매출 업데이트 (최초) -->
+    <update id="updateCustomerInitialPrice">
+        UPDATE customers
+        SET initial_price = #{amount}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <!-- 매출 업데이트 (업셀) -->
+    <update id="updateCustomerUpsellPrice">
+        UPDATE customers
+        SET upsell_price = #{amount}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <!-- 매출 로그 기록 -->
+    <insert id="insertSalesLog">
+        INSERT INTO sales_logs (customer_id, sales_type, amount, created_by, action_at)
+        VALUES (#{customerId}, #{type}, #{amount}, #{userId}, NOW())
+    </insert>
+
+    <!-- 업데이트 전, 현재 값을 읽어 변동사항이 있는지 확인하는 용도 -->
+    <select id="findSalesInfo" resultType="com.blue.customer.all.dto.SalesUpdateDto">
+        SELECT
+            customer_id   AS customerId,
+            initial_price AS initialPrice,
+            upsell_price  AS upsellPrice
+        FROM customers
+        WHERE customer_id = #{customerId}
+    </select>
 
 </mapper>

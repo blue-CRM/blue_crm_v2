@@ -26,8 +26,9 @@ public class CustomerRevokeController {
                                               @RequestParam(required = false) String dateTo,
                                               @RequestParam(required = false) String category,
                                               @RequestParam(required = false) String division, // HQ only
+                                              @RequestParam(required = false) String status,
                                               @RequestParam(required = false) String sort) {
-    return service.list(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, sort);
+    return service.list(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, status, sort);
   }
   
   // 본사 회수 실행

@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import com.blue.customer.alloclog.mapper.AllocLogMapper;
 import com.blue.customer.alloclog.dto.AllocLogInsertDto;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -230,5 +231,40 @@ public class CustomerAllocateService {
     }
     
     allocLogMapper.insertLogs(logs);
+  }
+  
+  // 담당자 이력 초기화 함수
+  @Transactional
+  public void resetHistory(String callerEmail, List<Long> customerIds) {
+    // 1. 권한 검사
+    UserContextDto me = mapper.findUserContextByEmail(callerEmail);
+    if (me == null || !"SUPERADMIN".equals(me.getRole())) {
+      throw new AccessDeniedException("권한이 없습니다.");
+    }
+    
+    // 2. 유효성 검사
+    if (customerIds == null || customerIds.isEmpty()) {
+      return;
+    }
+    
+    // 3. 삭제 실행
+    mapper.deleteHistoryByCustomerIds(customerIds);
+  }
+  
+  // 모달에서 : 담당자 이력 리스트 조회
+  public List<CustomerHistoryRowDto> getHistory(Long customerId) {
+    if (customerId == null) {
+      return Collections.emptyList();
+    }
+    return mapper.findHistoryByCustomerId(customerId);
+  }
+  
+  // 모달에서 : 담당자 이력 선택 삭제
+  @Transactional
+  public int deleteHistory(List<Long> logIds) {
+    if (logIds == null || logIds.isEmpty()) {
+      return 0;
+    }
+    return mapper.deleteHistorySafely(logIds);
   }
 }

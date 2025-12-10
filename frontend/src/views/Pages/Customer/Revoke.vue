@@ -7,12 +7,15 @@
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
             v-if="role === 'SUPERADMIN'"
-            :buttons="['회수하기']"
+            :selects="[
+                ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
+                  '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
+            :buttons="hqButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
             @changeSize="setSize"
-            @selectChange="onDivisionSelect"
+            @selectChange="onSelectChange"
             @buttonClick="onHqButton"
         >
           <PsnsTable
@@ -32,11 +35,15 @@
         <!-- MANAGER (팀장) -->
         <ComponentCard
             v-else-if="role === 'MANAGER'"
-            :buttons="['회수하기']"
+            :selects="[
+                ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
+                  '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
+            :buttons="mgrButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
             @changeSize="setSize"
+            @selectChange="onSelectChange"
             @buttonClick="onMgrButton"
         >
           <PsnsTable
@@ -114,7 +121,7 @@ const {
 } = useTableQuery({
   url: '/api/work/revoke/list',
   externalFilters: globalFilters,
-  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword' },
+  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword', status: 'status', sort: 'sort' },
   mapper: (res: any) => ({
     items: res.data.items,
     totalPages: res.data.totalPages,
@@ -157,14 +164,6 @@ function needSelection(): number[] {
   const ids = selectedRows.value.map((r: any) => r.id)
   if (!ids.length) alert('회수할 고객을 선택해주세요.')
   return ids
-}
-
-/** HQ 전용 구분 필터 */
-function onDivisionSelect({ value }: { value: string }) {
-  return runBusy(async () => {
-    setFilter('division', value === '전체' ? null : value)
-    await fetchData()
-  })
 }
 
 /** 컬럼 정의 */
@@ -212,8 +211,59 @@ const mgrColumns = [
   { key: 'staff',     label: '프로',    type: 'text' },
 ]
 
-/** 버튼 핸들러 */
+/* =============================
+   드롭다운 필터 관련
+============================= */
+
+// 상단 드롭다운(Select) 변경 시 호출
+function onSelectChange({ idx, value }: { idx: number; value: string }) {
+  // 첫 번째 드롭다운(index 0) : '상태(status)' 필터
+  if (idx === 0) {
+    // '상태 전체'를 선택하면 필터를 해제(null)하고, 그 외에는 해당 값을 전송
+    const filterValue = value === '상태 전체' ? null : value
+
+    // useTableQuery의 setFilter를 호출하여 API 재요청
+    setFilter('status', filterValue)
+  }
+}
+
+/* =============================
+   정렬 버튼 관련
+============================= */
+
+// 1. 정렬 상태 변수 선언 (가장 먼저)
+const viewOptions = ref({ oldest: false })  // false: 최신순, true: 과거순(오래된순)
+
+// 2. 버튼 라벨 동적 계산 (viewOptions 사용)
+const sortLabel = computed(() =>
+    viewOptions.value.oldest ? '최신순 보기' : '과거순 보기'
+)
+
+// 3. 버튼 배열 생성 (sortLabel 사용)
+const hqButtons = computed(() => [sortLabel.value, '회수하기'])
+const mgrButtons = computed(() => [sortLabel.value, '회수하기'])
+
+// 공통 정렬 토글 로직
+async function toggleSort() {
+  await runBusy(async () => {
+    // 1. 상태 반전
+    viewOptions.value.oldest = !viewOptions.value.oldest
+
+    // 2. 필터 설정 (백엔드는 'oldest' 값이 오면 과거순, 없으면 최신순으로 처리)
+    setFilter('sort', viewOptions.value.oldest ? 'oldest' : null)
+
+    // 3. UX 편의상 선택 초기화 (정렬 바뀌면 선택된 행들의 위치가 섞이므로)
+    selectedRows.value = []
+    tableRef.value?.clearSelection?.()
+  })
+}
+
+// ===== 모달 및 버튼 핸들러 =====
 function onHqButton(btn: string) {
+  if (btn === sortLabel.value) {
+    toggleSort();
+    return;
+  }
   if (btn === '회수하기') {
     const ids = needSelection()
 
@@ -224,6 +274,10 @@ function onHqButton(btn: string) {
   }
 }
 function onMgrButton(btn: string) {
+  if (btn === sortLabel.value) {
+    toggleSort();
+    return;
+  }
   if (btn === '회수하기') {
     const ids = needSelection()
 

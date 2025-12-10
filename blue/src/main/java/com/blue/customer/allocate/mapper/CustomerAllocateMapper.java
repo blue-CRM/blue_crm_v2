@@ -1,9 +1,6 @@
 package com.blue.customer.allocate.mapper;
 
-import com.blue.customer.allocate.dto.AllocateListRowDto;
-import com.blue.customer.allocate.dto.CenterPickDto;
-import com.blue.customer.allocate.dto.UserContextDto;
-import com.blue.customer.allocate.dto.UserPickDto;
+import com.blue.customer.allocate.dto.*;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -79,5 +76,14 @@ public interface CustomerAllocateMapper {
   
   // 센터 조회
   List<CenterPickDto> findCentersForAllocate();
+  
+  // 담당자 이력 일괄 초기화
+  void deleteHistoryByCustomerIds(@Param("ids") List<Long> ids);
+  
+  // 모달에서 - 담당자 이력 리스트 조회
+  List<CustomerHistoryRowDto> findHistoryByCustomerId(@Param("customerId") Long customerId);
+  
+  // 모달에서 - 담당자 이력 선택 삭제 (현재 담당자는 실제로도 안 지워지게 가드)
+  int deleteHistorySafely(@Param("ids") List<Long> ids);
   
 }

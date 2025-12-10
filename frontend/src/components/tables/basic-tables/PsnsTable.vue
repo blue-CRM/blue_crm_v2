@@ -150,7 +150,8 @@
                   class="absolute inset-0 flex items-center px-2 text-xs leading-5
                        text-gray-500 dark:text-gray-400
                        rounded-md border border-transparent
-                       overflow-hidden whitespace-nowrap text-ellipsis cursor-pointer bg-transparent"
+                       overflow-hidden whitespace-nowrap text-ellipsis cursor-pointer bg-transparent
+                       transition-colors hover:text-blue-600 dark:hover:text-blue-400"
                   @click.stop="startDateEdit(rowIndex, col.key, row[col.key])"
               >
                 {{ row[col.key] || '없음' }}
@@ -166,6 +167,37 @@
                        dark:bg-gray-800 dark:text-white
                        focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+
+            <!-- 최초/업셀 매출 -->
+            <div v-else-if="col.type === 'money'" class="relative h-9 min-w-[6rem]">
+              <span
+                  v-if="col.editable(row) && !(editState.row === rowIndex && editState.col === col.key)"
+                  class="absolute inset-0 flex items-center justify-end px-2 text-xs leading-5
+                         text-gray-500 dark:text-gray-400
+                         cursor-pointer transition-colors hover:text-blue-600 dark:hover:text-blue-400"
+                  @click.stop="startEdit(rowIndex, col.key, row[col.key])"
+              >
+                {{ (row[col.key] && Number(row[col.key]) > 0) ? Number(row[col.key]).toLocaleString() : '없음' }} $
+              </span>
+
+              <div
+                  v-else-if="editState.row === rowIndex && editState.col === col.key"
+                  class="money-edit-wrapper absolute inset-0 z-10 flex items-center shadow-sm"
+              >
+                <input
+                    :ref="el => setFocusInput(rowIndex, col.key, el)"
+                    v-model="editValue"
+                    type="number"
+                    class="no-spinner w-full h-full min-w-0 px-2 text-right text-xs border border-blue-500 rounded-l outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-blue-400"
+                    placeholder="0"
+                    @blur="updateMoney(row, col.key)"
+                    @keyup.enter="$event.target.blur()"
+                />
+                <span class="flex items-center justify-center h-full px-1.5 text-[10px] text-gray-500 bg-gray-100 border-y border-r border-gray-300 rounded-r dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 whitespace-nowrap">
+                  $
+                </span>
+              </div>
             </div>
           </td>
         </tr>
@@ -248,7 +280,7 @@ const props = defineProps({
   pageSize: { type: Number, default: null },
   loading: { type: Boolean, default: false }
 })
-const emit = defineEmits(["rowSelect", "badgeUpdate", "buttonClick", "changePage", "DateUpdate"])
+const emit = defineEmits(["rowSelect", "badgeUpdate", "buttonClick", "changePage", "DateUpdate", "salesUpdate"])
 
 // 옵션이 함수인 경우 row를 인자로 실행, 배열인 경우 그대로 반환
 function getOptions(col, row) {
@@ -358,6 +390,30 @@ function updateBadge(row, key) {
   row[key] = editValue.value
   emit("badgeUpdate", row, key, editValue.value)
   cancelEdit()
+}
+
+// 금액 저장 함수
+function updateMoney(row, key) {
+  const val = editValue.value;
+
+  // 1. 빈 문자열, null, 숫자가 아닌 경우 -> 저장 안 하고 그냥 편집 종료
+  if (val === '' || val === null || isNaN(val)) {
+    cancelEdit();
+    return;
+  }
+
+  // 2. 값이 유효할 때만 부모에게 이벤트 전송
+  emit("salesUpdate", row, key, val);
+
+  // 3. 편집 모드 종료
+  cancelEdit();
+}
+
+// 입력창 자동 포커스용
+function setFocusInput(rowIndex, colKey, el) {
+  if (editState.value.row === rowIndex && editState.value.col === colKey && el) {
+    el.focus();
+  }
 }
 
 /* --- 날짜/시간: flatpickr --- */
@@ -553,7 +609,7 @@ onBeforeUnmount(() => {
   Object.values(fpInstances.value || {}).forEach(ins => { try { ins.destroy() } catch {} })
 })
 
-/* 바깥 클릭 시 편집 종료 (달력/입력/select/배지는 예외) */
+/* 바깥 클릭 시 편집 종료 (달력/입력/select/배지/머니인풋은 예외) */
 function onDocMouseDown(e) {
   if (editState.value.row === null) return
   const t = e.target
@@ -562,7 +618,8 @@ function onDocMouseDown(e) {
       t?.closest?.("input.flatpickr-input") ||
       t?.closest?.("select") ||
       t?.closest?.(".editable-badge") ||
-      t?.closest?.(".fp-clear-btn")
+      t?.closest?.(".fp-clear-btn") ||
+      t?.closest?.(".money-edit-wrapper")
   ) return
   cancelEdit()
 }
@@ -728,3 +785,17 @@ onBeforeUnmount(() => {
 })
 
 </script>
+
+<style scoped>
+/* 크롬, 사파리, 엣지, 오페라 */
+input.no-spinner::-webkit-outer-spin-button,
+input.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 파이어폭스 */
+input.no-spinner {
+  -moz-appearance: textfield;
+}
+</style>
