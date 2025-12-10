@@ -358,13 +358,29 @@
                 LIMIT 1
             )                AS customerName,
 
-            -- 최근 배정 시각
-            (
-                SELECT MAX(c2.customer_created_at)
-                FROM customers c2
-                WHERE c2.customer_phone = cpu.customer_phone
-                  AND c2.user_id = cpu.user_id
-            )                            AS assignedAt,
+            -- 최근 배정 시각: 분배로그 기준
+            COALESCE(
+                    (
+                        SELECT c3.customer_created_at
+                        FROM alloc_logs l
+                                 JOIN customers c3 ON c3.customer_id = l.customer_id
+                        WHERE c3.customer_phone = cpu.customer_phone   -- 같은 전화번호 묶음
+                          AND l.to_user_id      = cpu.user_id          -- 이 담당자에게
+                          AND l.action_type     = 'ASSIGN'
+                          AND l.is_final_assign = 1                    -- 확정 분배만
+                        ORDER BY l.action_at DESC                      -- 가장 마지막에 행해진 분배
+                        LIMIT 1                                        -- 그 분배 대상의 생성일만 가져오기
+                    ),
+                    -- 로그가 없던 시절 데이터 fallback: 기존 로직
+                    (
+                        SELECT MAX(c2.customer_created_at)
+                        FROM customers c2
+                        WHERE c2.customer_phone = cpu.customer_phone
+                          AND c2.user_id        = cpu.user_id
+                    )
+            ) AS assignedAt,
+
+            -- 현재담당자 여부 판단
             CASE
                 WHEN EXISTS (
                     SELECT 1
@@ -372,7 +388,28 @@
                     WHERE cur.customer_phone = cpu.customer_phone
                       AND cur.user_id = cpu.user_id
                 ) THEN TRUE ELSE FALSE
-                END                          AS isCurrent
+                END                          AS isCurrent,
+
+
+            -- 팀장 풀 여부: MANAGER + 상태 '없음'
+            CASE
+                WHEN u.user_role = 'MANAGER'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM customers cur
+                        WHERE cur.customer_phone = cpu.customer_phone
+                          AND cur.user_id        = cpu.user_id
+                          AND cur.customer_status != '없음'   -- 해당 전화번호에 대해 확정 분배 DB가 단 1개라도 있으면 팀장풀이 아님
+                    )
+                    AND EXISTS (
+                        SELECT 1
+                        FROM customers cur
+                        WHERE cur.customer_phone = cpu.customer_phone
+                          AND cur.user_id        = cpu.user_id
+                          AND cur.customer_status = '없음'    -- 해당 전화번호에 대해 팀장풀 DB가 최소 1개는 있어야 함
+                    )
+                    THEN TRUE ELSE FALSE
+                END AS isManagerPool
 
         FROM customers c
                  JOIN customer_past_users cpu

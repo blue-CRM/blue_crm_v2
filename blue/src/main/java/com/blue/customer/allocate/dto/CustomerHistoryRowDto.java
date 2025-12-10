@@ -14,4 +14,7 @@ public class CustomerHistoryRowDto {
   
   @JsonProperty("isCurrent")
   private boolean isCurrent;   // 지금 이 전화번호를 맡고 있는지 여부
+  
+  @JsonProperty("isManagerPool")
+  private boolean isManagerPool;   // 팀장풀 여부 확인
 }

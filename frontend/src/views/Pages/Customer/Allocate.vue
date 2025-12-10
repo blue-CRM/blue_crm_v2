@@ -351,7 +351,6 @@ async function resetHistoryBulk() {
   await runBusy(async () => {
     try {
       await axios.post('/api/work/history/reset/bulk', ids)
-      alert('초기화 완료')
       await fetchData()
       selectedRows.value = []
       tableRef.value?.clearSelection?.()

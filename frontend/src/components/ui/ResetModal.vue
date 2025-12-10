@@ -69,16 +69,32 @@
                     <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {{ item.userName }}
                     </span>
-                    <span v-if="item.isCurrent" class="inline-flex items-center gap-1.5 px-1 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
-                    <span class="relative flex h-2 w-2">
-                      <span class="absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+                    <!-- 팀장 풀 / 현재 담당자 뱃지 -->
+                    <span
+                        v-if="item.isManagerPool"
+                        class="inline-flex items-center gap-1.5 px-1 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300"
+                    >
+                      <span class="relative flex h-2 w-2">
+                        <span class="absolute inline-flex h-full w-full rounded-full bg-green-600 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-700"></span>
+                      </span>
+                      팀장 풀
                     </span>
-                    현재 담당자
-                  </span>
+
+                    <span
+                        v-else-if="item.isCurrent"
+                        class="inline-flex items-center gap-1.5 px-1 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300"
+                    >
+                      <span class="relative flex h-2 w-2">
+                        <span class="absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+                      </span>
+                      현재 담당자
+                    </span>
                   </div>
                   <span v-if="item.isCurrent"
-                        class="mt-1 text-xs text-gray-500">{{ item.assignedAt }} · {{ item.customerName }}</span>
+                        class="mt-1 text-xs text-gray-500">{{ formatDate(item.assignedAt) }} · {{ item.customerName }}
+                  </span>
                 </div>
 
                 <div v-if="!item.isCurrent">
@@ -192,7 +208,6 @@ const confirmDelete = async () => {
     await axios.post('/api/work/history/delete', {
       logIds: Array.from(selectedIds.value)
     })
-    alert('삭제되었습니다.')
     emit('refresh') // 부모에게 새로고침 요청
     close()
   } catch (e) {
@@ -211,4 +226,10 @@ watch(() => props.isOpen, (newVal) => {
     fetchHistory()
   }
 })
+
+// 날짜 포맷 함수
+const formatDate = (isoString: string) => {
+  if (!isoString) return ''
+  return isoString.replace('T', ' ')
+}
 </script>
