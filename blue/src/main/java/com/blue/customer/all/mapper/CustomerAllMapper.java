@@ -2,6 +2,7 @@ package com.blue.customer.all.mapper;
 
 import com.blue.customer.all.dto.AllDbRowDto;
 import com.blue.customer.all.dto.ExpertDto;
+import com.blue.customer.all.dto.SalesUpdateDto;
 import com.blue.customer.all.dto.UserContextDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -93,4 +94,16 @@ public interface CustomerAllMapper {
   // 전문가 리스트 조회
   List<ExpertDto> findAllExperts();
   List<ExpertDto> findExpertsByCenterId(@Param("centerId") Long centerId);
+  
+  // 매출 업데이트 (최초)
+  void updateCustomerInitialPrice(@Param("customerId") Long customerId, @Param("amount") Long amount);
+  // 매출 업데이트 (업셀)
+  void updateCustomerUpsellPrice(@Param("customerId") Long customerId, @Param("amount") Long amount);
+  // 매출 로그 기록
+  void insertSalesLog(@Param("customerId") Long customerId,
+                      @Param("type") String type,
+                      @Param("amount") Long amount,
+                      @Param("userId") Long userId);
+  // 현재 매출 상태 조회
+  SalesUpdateDto findSalesInfo(@Param("customerId") Long customerId);
 }

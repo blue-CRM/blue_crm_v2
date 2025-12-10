@@ -162,4 +162,59 @@ public class CustomerAllService {
       default -> List.of();
     };
   }
+  
+  // 최초/업셀 매출 금액 업데이트 및 로그 기록
+  @Transactional
+  public void updateSales(String callerEmail, SalesUpdateDto dto) {
+    UserContextDto me = mapper.findUserContextByEmail(callerEmail);
+    if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
+    
+    Long customerId = dto.getCustomerId();
+    
+    // 1. DB 존재 확인
+    Integer exists = mapper.existsCustomerById(customerId);
+    if (exists == null || exists == 0) throw new IllegalArgumentException("존재하지 않거나 중복 DB입니다.");
+    
+    // 2. 권한 검증
+    switch (me.getRole()) {
+      case "SUPERADMIN" -> { }
+      case "MANAGER" -> {
+        Integer ownsCenter = mapper.customerOwnedByCenter(customerId, me.getCenterId());
+        if (ownsCenter == null || ownsCenter == 0) throw new IllegalArgumentException("권한이 없습니다.");
+      }
+      case "STAFF" -> {
+        Integer ownsSelf = mapper.customerOwnedByUser(customerId, me.getUserId());
+        if (ownsSelf == null || ownsSelf == 0) throw new IllegalArgumentException("권한이 없습니다.");
+      }
+      default -> throw new IllegalStateException("권한이 없습니다.");
+    }
+    
+    // 3. 기존값과 비교하여, 변동사항이 있는지 체크
+    SalesUpdateDto current = mapper.findSalesInfo(customerId);
+    long newAmount = (dto.getAmount() == null) ? 0L : dto.getAmount();
+    long currentAmount = 0L;
+    
+    if ("INITIAL".equalsIgnoreCase(dto.getType())) {
+      currentAmount = (current.getInitialPrice() == null) ? 0L : current.getInitialPrice();
+    } else if ("UPSELL".equalsIgnoreCase(dto.getType())) {
+      currentAmount = (current.getUpsellPrice() == null) ? 0L : current.getUpsellPrice();
+    }
+    
+    // 값이 같으면 조용히 종료 (로그 X, 업데이트 X)
+    if (newAmount == currentAmount) {
+      return;
+    }
+    
+    // 4. 로그 기록
+    mapper.insertSalesLog(customerId, dto.getType(), dto.getAmount(), me.getUserId());
+    
+    // 5. Customer 테이블 값 업데이트
+    if ("INITIAL".equalsIgnoreCase(dto.getType())) {
+      mapper.updateCustomerInitialPrice(customerId, dto.getAmount());
+    } else if ("UPSELL".equalsIgnoreCase(dto.getType())) {
+      mapper.updateCustomerUpsellPrice(customerId, dto.getAmount());
+    } else {
+      throw new IllegalArgumentException("잘못된 매출 타입입니다.");
+    }
+  }
 }

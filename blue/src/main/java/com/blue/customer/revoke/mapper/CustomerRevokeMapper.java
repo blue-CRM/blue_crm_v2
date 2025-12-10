@@ -56,4 +56,7 @@ public interface CustomerRevokeMapper {
                                              @Param("excludeUserId") Long excludeUserId);
   
   int updateToRevoked(@Param("ids") List<Long> ids);
+  
+  // 회수 후 매출 로그 작성
+  void insertRevokeSalesLogs(@Param("ids") List<Long> ids, @Param("userId") Long userId);
 }

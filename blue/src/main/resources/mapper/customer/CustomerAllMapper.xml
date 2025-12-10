@@ -146,7 +146,8 @@
     <select id="findAllForAdmin" resultType="com.blue.customer.all.dto.AllDbRowDto">
         SELECT
         t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
-        t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation
+        t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation,
+        t.initialPrice, t.upsellPrice
         FROM (
         /* ===== customers 분기 ===== */
         SELECT
@@ -163,7 +164,9 @@
         c.customer_memo         AS memo,
         c.customer_status       AS status,
         c.customer_promise_time AS promiseAt,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price         AS initialPrice,
+        c.upsell_price          AS upsellPrice
         FROM customers c
         LEFT JOIN users u ON u.user_id = c.user_id
         WHERE 1=1
@@ -208,7 +211,9 @@
         d.duplicate_memo        AS memo,
         '없음'                  AS status,
         NULL                    AS promiseAt,
-        NULL                    AS reservation
+        NULL                    AS reservation,
+        0                       AS initialPrice,
+        0                       AS upsellPrice
         FROM customers_duplicate d
         JOIN customers c2 ON c2.customer_id = d.customer_id
         LEFT JOIN users u2 ON u2.user_id = c2.user_id
@@ -398,7 +403,9 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price AS initialPrice,
+        c.upsell_price  AS upsellPrice
         FROM customers c
         JOIN users u ON u.user_id = c.user_id
 
@@ -436,7 +443,9 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price AS initialPrice,
+        c.upsell_price  AS upsellPrice
         FROM customers c
         LEFT JOIN users u ON u.user_id = c.user_id
 
@@ -520,6 +529,36 @@
                  INNER JOIN users u ON u.expert_id = e.expert_id
         WHERE u.center_id = #{centerId}
         ORDER BY e.expert_name ASC
+    </select>
+
+    <!-- 매출 업데이트 (최초) -->
+    <update id="updateCustomerInitialPrice">
+        UPDATE customers
+        SET initial_price = #{amount}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <!-- 매출 업데이트 (업셀) -->
+    <update id="updateCustomerUpsellPrice">
+        UPDATE customers
+        SET upsell_price = #{amount}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <!-- 매출 로그 기록 -->
+    <insert id="insertSalesLog">
+        INSERT INTO sales_logs (customer_id, sales_type, amount, created_by, action_at)
+        VALUES (#{customerId}, #{type}, #{amount}, #{userId}, NOW())
+    </insert>
+
+    <!-- 업데이트 전, 현재 값을 읽어 변동사항이 있는지 확인하는 용도 -->
+    <select id="findSalesInfo" resultType="com.blue.customer.all.dto.SalesUpdateDto">
+        SELECT
+            customer_id   AS customerId,
+            initial_price AS initialPrice,
+            upsell_price  AS upsellPrice
+        FROM customers
+        WHERE customer_id = #{customerId}
     </select>
 
 </mapper>

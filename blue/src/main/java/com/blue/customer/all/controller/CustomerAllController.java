@@ -1,10 +1,6 @@
 package com.blue.customer.all.controller;
 
-import com.blue.customer.all.dto.AllDbRowDto;
-import com.blue.customer.all.dto.ExpertDto;
-import com.blue.customer.all.dto.PagedResponse;
-import com.blue.customer.all.dto.UpdateFieldDto;
-import com.blue.customer.all.dto.IdsDto;
+import com.blue.customer.all.dto.*;
 import com.blue.customer.all.service.CustomerAllService;
 import com.blue.customer.common.memo.service.MemoService;
 import lombok.RequiredArgsConstructor;
@@ -67,5 +63,15 @@ public class CustomerAllController {
   @GetMapping("/work/db/experts")
   public ResponseEntity<List<ExpertDto>> getExpertList(Authentication auth) {
     return ResponseEntity.ok(service.getExpertList(auth.getName()));
+  }
+  
+  // 매출(최초/업셀) 금액 저장
+  @PostMapping("/work/db/sales")
+  public ResponseEntity<Void> updateSales(
+      Authentication auth,
+      @RequestBody SalesUpdateDto dto
+  ) {
+    service.updateSales(auth.getName(), dto);
+    return ResponseEntity.ok().build();
   }
 }

@@ -31,6 +31,7 @@
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
+              @salesUpdate="onSalesUpdate"
               @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
@@ -63,6 +64,7 @@
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
+              @salesUpdate="onSalesUpdate"
               @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
@@ -232,6 +234,11 @@ function notDuplicate(row) {
   return row.origin !== 'DUPLICATE';
 }
 
+// 매출(최초/업셀) 칼럼 편집 가능 여부 (자연풀 or 카피 상태만)
+function isSalesEditable(row) {
+  return row.origin !== 'DUPLICATE' && ['자연풀', '카피'].includes(row.status);
+}
+
 /* =============================
    SUPERADMIN 전용 컬럼
 ============================= */
@@ -252,7 +259,9 @@ const adminColumns = [
       // 회수 : 팀장풀 혹은 개인에게 분배된 이후 회수된 데이터
       // 신규 : 최초의 확정분배 시에만 신규
       options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
-  { key: "reservation", label: "예약", type: "date", editable: notDuplicate }
+  { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
+  { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
+  { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
 ];
 
 /* =============================
@@ -271,7 +280,9 @@ const commonColumns = [
   { key: "status", label: "상태", type: "badge",
       editable: notDuplicate,
       options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
-  { key: "reservation", label: "예약", type: "date", editable: notDuplicate }
+  { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
+  { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
+  { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
 ];
 
 /* =============================
@@ -318,6 +329,41 @@ async function onDateUpdate(row, key, newValue) {
   } catch (err) {
     console.error("예약일 저장 실패", err)
     alert("예약일 저장 중 오류가 발생했습니다.")
+  }
+}
+
+// 최초/업셀 매출 금액 저장 핸들러
+async function onSalesUpdate(row, key, newValue) {
+  // 1. 편집 가능 상태인지 재확인
+  if (!isSalesEditable(row)) return;
+
+// 2. 유효성 검사: 값이 없거나 숫자가 아니면 저장하지 않고 return
+  if (newValue === '' || newValue === null || isNaN(newValue)) {
+    // alert("숫자만 입력해주세요.");
+    return;
+  }
+
+  // 3. 정수로 변환
+  const amount = parseInt(newValue);
+
+  // 4. API 호출 타입 결정
+  const type = key === 'initialPrice' ? 'INITIAL' : 'UPSELL';
+
+  try {
+    await axios.post(`/api/work/db/sales`, {
+      customerId: row.id,
+      type: type,
+      amount: amount
+    });
+
+    // 성공 시 로컬 데이터 업데이트
+    row[key] = amount;
+    console.log("매출 저장 성공:", type, amount);
+
+  } catch (err) {
+    console.error("매출 저장 실패", err);
+    alert("매출 금액 저장 중 오류가 발생했습니다.");
+    // 에러나면 원래 값으로 되돌리거나 새로고침 하는 로직 필요시 추가
   }
 }
 

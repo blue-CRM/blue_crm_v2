@@ -195,10 +195,28 @@
     <update id="updateToRevoked">
         UPDATE customers
         SET customer_status = '회수',
-        user_id = NULL,
-        customer_promise_time = NULL
+        user_id = NULL,                      -- 회수시 현재 담당자 초기화
+        customer_promise_time = NULL,        -- 회수시 예약 날짜 초기화
+        initial_price = 0,  upsell_price = 0 -- 회수시 최초/업셀 매출값 초기화
         WHERE customer_id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </update>
+
+    <!-- 회수 후 매출 로그 작성 -->
+    <insert id="insertRevokeSalesLogs">
+        INSERT INTO sales_logs (customer_id, sales_type, amount, created_by, action_at)
+        SELECT
+        customer_id,
+        'RESET',
+        0,
+        #{userId},
+        NOW()
+        FROM customers
+        WHERE customer_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND (initial_price > 0 OR upsell_price > 0)
+    </insert>
 
 </mapper>
