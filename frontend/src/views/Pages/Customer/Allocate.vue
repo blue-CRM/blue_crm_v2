@@ -26,6 +26,7 @@
               :page-size="size"
               :loading="busy"
               @rowSelect="onRowSelect"
+              @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
         </ComponentCard>
@@ -50,6 +51,7 @@
               :page-size="size"
               :loading="busy"
               @rowSelect="onRowSelect"
+              @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
         </ComponentCard>
@@ -65,6 +67,13 @@
             :selected-count="selectedRows.length"
             @close="closeModal"
             @confirm="onConfirmAllocate"
+        />
+
+        <ResetModal
+          :is-open="resetModal.open"
+          :customer-id="resetModal.targetId"
+          @close="closeResetModal"
+          @refresh="fetchData"
         />
 
       </div>
@@ -107,6 +116,8 @@ import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import PsnsTable from '@/components/tables/basic-tables/PsnsTable.vue'
 import AllocateModal from '@/components/ui/AllocateModal.vue'
+import ResetModal from '@/components/ui/ResetModal.vue'
+import { ClipboardDocumentListIcon } from "@heroicons/vue/24/outline";
 import { useAuthStore } from '@/stores/auth'
 import { useTableQuery } from '@/composables/useTableQuery'
 import { globalFilters } from '@/composables/globalFilters'
@@ -179,6 +190,7 @@ const hqColumns = [
     // 회수 : DB회수하기 메뉴에서
     // 신규 : 한번도 분배가 되지 않은 항목만
     options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
+  { key: 'actions', label: '관리', type: 'iconButton', icon: ClipboardDocumentListIcon }, // HQ 전용
   { key: 'paststaff',     label: '과거 이력', type: 'text', ellipsis: { width: 200 } }, // HQ 전용
 ]
 
@@ -199,6 +211,12 @@ function needSelection(): number[] {
   return ids
 }
 
+function needSelection_Reset(): number[] {
+  const ids = selectedRows.value.map((r:any) => r.id)
+  if (!ids.length) alert('초기화할 고객을 선택해주세요.')
+  return ids
+}
+
 /* =============================
    정렬 버튼 관련
 ============================= */
@@ -211,7 +229,7 @@ const viewOptions = ref({ oldest: false })
 const sortLabel = computed(() => viewOptions.value.oldest ? '최신순 보기' : '과거순 보기')
 
 // 3. 버튼 배열 생성 (sortLabel 사용)
-const hqButtons = computed(() => [sortLabel.value, '분배하기'])
+const hqButtons = computed(() => [sortLabel.value, '분배하기', '이력초기화'])
 const mgrButtons = computed(() => [sortLabel.value, '분배하기'])
 
 // 공통 정렬 토글 로직
@@ -231,6 +249,7 @@ async function toggleSort() {
 
 // ===== 모달 열기/닫기 =====
 const modal = ref<{ open:boolean, mode:'HQ'|'MANAGER' }>({ open:false, mode: 'HQ' })
+const resetModal = ref<{ open: boolean, targetId: number|null }>({ open: false, targetId: null })
 function onHqButton(btn:string){
   // 현재 떠있는 정렬 버튼 텍스트와 같으면 토글 실행
   if (btn === sortLabel.value) {
@@ -240,6 +259,10 @@ function onHqButton(btn:string){
   if (btn==='분배하기'){
     if (!needSelection().length) return;
     modal.value={open:true, mode:'HQ'}
+  }
+  if (btn === '이력초기화') {
+    resetHistoryBulk();
+    return;
   }
 }
 function onMgrButton(btn:string){
@@ -253,7 +276,22 @@ function onMgrButton(btn:string){
     modal.value={open:true, mode:'MANAGER'}
   }
 }
-function closeModal(){ modal.value.open = false }
+
+// 개별 모달 열기
+function onTableButtonClick(row: any, key: string) {
+  // 컬럼 정의에서 설정한 key가 'actions'일 때 동작
+  if (key === 'actions') {
+    const id = row.customer_id || row.id
+    resetModal.value = { open: true, targetId: id }
+  }
+}
+function closeResetModal() {
+  resetModal.value.open = false
+  resetModal.value.targetId = null
+}
+function closeModal(){
+  modal.value.open = false
+}
 
 // ===== 실제 분배 호출 =====
 async function onConfirmAllocate(payload: {
@@ -300,6 +338,27 @@ async function onConfirmAllocate(payload: {
   }).catch((e:any) => {
     console.error(e)
     alert(e?.response?.data || '분배 중 오류가 발생했습니다.')
+  })
+}
+
+// 일괄 이력 초기화
+async function resetHistoryBulk() {
+  const ids = needSelection();
+  if (!ids.length) return;
+
+  if (!confirm(`선택한 ${ids.length}건에 대해 현재 담당자를 제외한 모든 이력을 초기화하시겠습니까?`)) return;
+
+  await runBusy(async () => {
+    try {
+      await axios.post('/api/work/history/reset/bulk', ids)
+      alert('초기화 완료')
+      await fetchData()
+      selectedRows.value = []
+      tableRef.value?.clearSelection?.()
+    } catch (e: any) {
+      console.error(e)
+      alert(e?.response?.data || '오류 발생')
+    }
   })
 }
 

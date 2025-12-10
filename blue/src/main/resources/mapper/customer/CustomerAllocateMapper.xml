@@ -320,4 +320,82 @@
             ORDER BY c.center_name ASC
     </select>
 
+    <!-- 담당자 이력 일괄 초기화 -->
+    <delete id="deleteHistoryByCustomerIds">
+        DELETE cpu
+        FROM customer_past_users cpu
+
+        -- 1) 현재 담당자인 customers 와 LEFT JOIN
+        LEFT JOIN customers cur
+        ON cur.customer_phone = cpu.customer_phone
+        AND cur.user_id        = cpu.user_id   -- 이 번호를 지금 맡고 있는지
+        WHERE cpu.customer_phone IN (
+        SELECT DISTINCT c.customer_phone
+        FROM customers c
+        WHERE c.customer_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        )
+        -- 2) 현재 담당자인 customers 가 하나도 없을 때만 이력 삭제
+        AND cur.customer_id IS NULL;
+    </delete>
+
+    <!-- 모달에서 : 담당자 이력 리스트 조회 -->
+    <select id="findHistoryByCustomerId"
+            resultType="com.blue.customer.allocate.dto.CustomerHistoryRowDto">
+        SELECT
+            cpu.past_user_id            AS logId,
+            u.user_name                 AS userName,
+
+            -- 최근에 이 담당자에게 배정됐던 고객 이름
+            (
+                SELECT c2.customer_name
+                FROM customers c2
+                WHERE c2.customer_phone = cpu.customer_phone
+                  AND c2.user_id        = cpu.user_id
+                ORDER BY c2.customer_created_at DESC
+                LIMIT 1
+            )                AS customerName,
+
+            -- 최근 배정 시각
+            (
+                SELECT MAX(c2.customer_created_at)
+                FROM customers c2
+                WHERE c2.customer_phone = cpu.customer_phone
+                  AND c2.user_id = cpu.user_id
+            )                            AS assignedAt,
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM customers cur
+                    WHERE cur.customer_phone = cpu.customer_phone
+                      AND cur.user_id = cpu.user_id
+                ) THEN TRUE ELSE FALSE
+                END                          AS isCurrent
+
+        FROM customers c
+                 JOIN customer_past_users cpu
+                      ON cpu.customer_phone = c.customer_phone
+                 JOIN users u
+                      ON u.user_id = cpu.user_id
+        WHERE c.customer_id = #{customerId}
+        GROUP BY cpu.past_user_id, u.user_name
+        ORDER BY isCurrent DESC, assignedAt DESC, cpu.past_user_id DESC
+    </select>
+
+    <!-- 모달에서 : 담당자 이력 선택 삭제 -->
+    <delete id="deleteHistorySafely">
+        DELETE cpu
+        FROM customer_past_users cpu
+        LEFT JOIN customers cur
+        ON cur.customer_phone = cpu.customer_phone
+        AND cur.user_id        = cpu.user_id
+        WHERE cpu.past_user_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND cur.customer_id IS NULL
+    </delete>
+
 </mapper>

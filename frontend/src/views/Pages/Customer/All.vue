@@ -529,7 +529,7 @@ onMounted(async () => {
   try {
     // 전문가 리스트 조회
     const {data} = await axios.get('/api/work/db/experts');
-    console.log(data)
+    // console.log(data)
 
     // 이름만 추출하여 배열 생성
     const names = data.map(expert => expert.expertName);
