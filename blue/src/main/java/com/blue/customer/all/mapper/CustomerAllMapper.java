@@ -15,6 +15,8 @@ public interface CustomerAllMapper {
   
   // 로그인 사용자 컨텍스트
   UserContextDto findUserContextByEmail(@Param("email") String email);
+  // 전문가 id로 출처 id 조회
+  Long findExpertIdByUserId(@Param("userId") Long userId);
   
   // SUPERADMIN — customers + customers_duplicate(display=1)
   List<AllDbRowDto> findAllForAdmin(@Param("offset") int offset,
@@ -78,6 +80,60 @@ public interface CustomerAllMapper {
                        @Param("expertName") String expertName,
                        @Param("pStatus") String status,
                        @Param("userId") Long userId);
+  
+  // CENTERHEAD - 자기 센터 소속 전문가 담당 출처
+  List<AllDbRowDto> findAllForCenterHead(
+      @Param("offset") int offset,
+      @Param("size") int size,
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("division") String division,
+      @Param("sort") String sort,
+      @Param("expertName") String expertName,
+      @Param("status") String status,
+      @Param("visible") String visible,
+      @Param("centerId") Long centerId
+  );
+  int countAllForCenterHead(
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("division") String division,
+      @Param("expertName") String expertName,
+      @Param("status") String status,
+      @Param("visible") String visible,
+      @Param("centerId") Long centerId
+  );
+  
+  // EXPERT - 본인 담당 출처
+  List<AllDbRowDto> findAllForExpert(
+      @Param("offset") int offset,
+      @Param("size") int size,
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("division") String division,
+      @Param("sort") String sort,
+      @Param("expertName") String expertName,
+      @Param("status") String status,
+      @Param("visible") String visible,
+      @Param("myExpertId") Long myExpertId
+  );
+  int countAllForExpert(
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("division") String division,
+      @Param("expertName") String expertName,
+      @Param("status") String status,
+      @Param("visible") String visible,
+      @Param("myExpertId") Long myExpertId
+  );
   
   // 검사/권한
   Integer existsCustomerById(@Param("customerId") Long customerId);

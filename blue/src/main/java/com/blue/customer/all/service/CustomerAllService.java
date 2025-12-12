@@ -63,11 +63,29 @@ public class CustomerAllService {
         items = mapper.findAllForStaff(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getUserId());
         total = mapper.countAllForStaff(keyword, dateFrom, dateTo, category, division, expertName, status, me.getUserId());
       }
+      case "CENTERHEAD" -> {
+        // 센터장: 본인 센터 소속 전문가들의 출처 데이터 조회 (중복DB 포함, 이동 권한 O)
+        items = mapper.findAllForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getVisible(), me.getCenterId());
+        total = mapper.countAllForCenterHead(keyword, dateFrom, dateTo, category, division, expertName, status, me.getVisible(), me.getCenterId());
+      }
+      case "EXPERT" -> {
+        // 전문가: 본인 출처 데이터 조회 (중복DB 포함, 이동 권한 O)
+        Long myExpertId = mapper.findExpertIdByUserId(me.getUserId());
+        if (myExpertId == null) {
+          // 전문가 계정인데 연결된 전문가 정보가 없는 경우
+          // 조회 결과 없음
+          items = List.of();
+          total = 0;
+        } else {
+          items = mapper.findAllForExpert(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getVisible(), myExpertId);
+          total = mapper.countAllForExpert(keyword, dateFrom, dateTo, category, division, expertName, status, me.getVisible(), myExpertId);
+        }
+      }
       default -> throw new IllegalStateException("Unknown role: " + me.getRole());
     }
     
-    // SUPERADMIN이지만 가시권한이 N이면 전화번호 마스킹
-    if ("SUPERADMIN".equals(me.getRole()) && "N".equalsIgnoreCase(me.getVisible())) {
+    // SUPERADMIN, CENTERHEAD, EXPERT이지만 가시권한이 N이면 전화번호 마스킹
+    if (List.of("SUPERADMIN", "CENTERHEAD", "EXPERT").contains(me.getRole()) && "N".equalsIgnoreCase(me.getVisible())) {
       items.forEach(r -> r.setPhone(maskPhone(r.getPhone())));
     }
     
@@ -140,7 +158,7 @@ public class CustomerAllService {
   public void hideDuplicates(String callerEmail, List<Long> duplicateIds) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
-    if (!"SUPERADMIN".equals(me.getRole())) throw new IllegalArgumentException("본사만 수행할 수 있습니다.");
+    if (!List.of("SUPERADMIN", "CENTERHEAD", "EXPERT").contains(me.getRole())) throw new IllegalArgumentException("권한이 없습니다.");
     if (duplicateIds == null || duplicateIds.isEmpty()) return;
     
     mapper.hideDuplicates(duplicateIds); // duplicate_display = 0

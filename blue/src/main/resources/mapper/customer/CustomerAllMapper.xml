@@ -17,6 +17,11 @@
         LIMIT 1
     </select>
 
+    <!-- 전문가 id로 출처 id 조회 -->
+    <select id="findExpertIdByUserId" resultType="long">
+        SELECT expert_id FROM users WHERE user_id = #{userId}
+    </select>
+
     <!-- Admin 공통 필터/정렬 -->
     <sql id="ADMIN_FILTERS">
         <if test="keyword != null and keyword != ''">
@@ -466,6 +471,231 @@
             AND c.customer_status != '없음'
 
         <include refid="CUSTOMER_ONLY_FILTERS"/>
+    </select>
+
+    <!-- CENTERHEAD: 자기 팀 소속 전문가 담당 출처 -->
+    <select id="findAllForCenterHead" resultType="com.blue.customer.all.dto.AllDbRowDto">
+        SELECT
+        t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
+        t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation,
+        t.initialPrice, t.upsellPrice
+        FROM (
+        /* 1. customers */
+        SELECT
+        c.customer_id AS id,
+        'CUSTOMER' AS origin,
+        c.customer_created_at AS createdAt,
+        u.user_name AS staff,
+        c.customer_division AS division,
+        c.customer_category AS category,
+        c.customer_name AS name,
+        c.customer_phone AS phone,
+        c.customer_source AS source,
+        c.customer_content AS content,
+        c.customer_memo AS memo,
+        c.customer_status AS status,
+        c.customer_promise_time AS promiseAt,
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price AS initialPrice, c.upsell_price AS upsellPrice
+        FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE 1=1
+        AND c.customer_source IN (
+        SELECT DISTINCT e.expert_name FROM experts e JOIN users u2 ON u2.expert_id = e.expert_id WHERE u2.center_id = #{centerId}
+        )
+        <if test="dateFrom != null and dateFrom != ''"> AND c.customer_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+
+        UNION ALL
+
+        /* 2. customers_duplicate */
+        SELECT
+        d.duplicate_id AS id,
+        'DUPLICATE' AS origin,
+        d.duplicate_created_at AS createdAt,
+        u2.user_name AS staff,
+        '중복' AS division,
+        d.duplicate_category AS category,
+        d.duplicate_name AS name,
+        c2.customer_phone AS phone,
+        d.duplicate_source AS source,
+        d.duplicate_content AS content,
+        d.duplicate_memo AS memo,
+        '없음' AS status,
+        NULL AS promiseAt,
+        NULL AS reservation,
+        0 AS initialPrice,
+        0 AS upsellPrice
+        FROM customers_duplicate d
+        JOIN customers c2 ON c2.customer_id = d.customer_id
+        LEFT JOIN users u2 ON u2.user_id = c2.user_id
+        WHERE d.duplicate_display = 1
+        AND d.duplicate_source IN (
+        SELECT DISTINCT e.expert_name FROM experts e JOIN users u3 ON u3.expert_id = e.expert_id WHERE u3.center_id = #{centerId}
+        )
+        <if test="dateFrom != null and dateFrom != ''"> AND d.duplicate_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND d.duplicate_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+        ) t
+        WHERE 1=1
+        <include refid="ADMIN_FILTERS"/>
+        <include refid="ADMIN_ORDER"/>
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAllForCenterHead" resultType="int">
+        SELECT COUNT(*) FROM (
+        SELECT
+        c.customer_id AS id,
+        'CUSTOMER' AS origin,
+        c.customer_created_at AS createdAt,
+        u.user_name AS staff,
+        c.customer_division AS division,
+        c.customer_category AS category,
+        c.customer_name AS name,
+        c.customer_phone AS phone,
+        c.customer_source AS source,
+        c.customer_status AS status,
+        c.customer_memo AS memo
+        FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE 1=1
+        AND c.customer_source IN (
+        SELECT DISTINCT e.expert_name FROM experts e JOIN users u2 ON u2.expert_id = e.expert_id WHERE u2.center_id = #{centerId}
+        )
+        <if test="dateFrom != null and dateFrom != ''"> AND c.customer_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+
+        UNION ALL
+
+        SELECT
+        d.duplicate_id AS id,
+        'DUPLICATE' AS origin,
+        d.duplicate_created_at AS createdAt,
+        u2.user_name AS staff,
+        '중복' AS division,
+        d.duplicate_category AS category,
+        d.duplicate_name AS name,
+        c2.customer_phone AS phone,
+        d.duplicate_source AS source,
+        '없음' AS status,
+        d.duplicate_memo AS memo
+        FROM customers_duplicate d JOIN customers c2 ON c2.customer_id = d.customer_id LEFT JOIN users u2 ON u2.user_id = c2.user_id
+        WHERE d.duplicate_display = 1
+        AND d.duplicate_source IN (
+        SELECT DISTINCT e.expert_name FROM experts e JOIN users u3 ON u3.expert_id = e.expert_id WHERE u3.center_id = #{centerId}
+        )
+        <if test="dateFrom != null and dateFrom != ''"> AND d.duplicate_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND d.duplicate_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+        ) t
+        WHERE 1=1
+        <include refid="ADMIN_FILTERS"/>
+    </select>
+
+    <!-- EXPERT: 본인 담당 출처 -->
+    <select id="findAllForExpert" resultType="com.blue.customer.all.dto.AllDbRowDto">
+        SELECT
+        t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
+        t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation,
+        t.initialPrice, t.upsellPrice
+        FROM (
+        /* 1. customers */
+        SELECT
+        c.customer_id AS id,
+        'CUSTOMER' AS origin,
+        c.customer_created_at AS createdAt,
+        u.user_name AS staff,
+        c.customer_division AS division,
+        c.customer_category AS category,
+        c.customer_name AS name,
+        c.customer_phone AS phone,
+        c.customer_source AS source,
+        c.customer_content AS content,
+        c.customer_memo AS memo,
+        c.customer_status AS status,
+        c.customer_promise_time AS promiseAt,
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        c.initial_price AS initialPrice,
+        c.upsell_price AS upsellPrice
+        FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE 1=1
+        AND c.customer_source = (SELECT expert_name FROM experts WHERE expert_id = #{myExpertId})
+        <if test="dateFrom != null and dateFrom != ''"> AND c.customer_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+
+        UNION ALL
+
+        /* 2. customers_duplicate */
+        SELECT
+        d.duplicate_id AS id,
+        'DUPLICATE' AS origin,
+        d.duplicate_created_at AS createdAt,
+        u2.user_name AS staff,
+        '중복' AS division,
+        d.duplicate_category AS category,
+        d.duplicate_name AS name,
+        c2.customer_phone AS phone,
+        d.duplicate_source AS source,
+        d.duplicate_content AS content,
+        d.duplicate_memo AS memo,
+        '없음' AS status,
+        NULL AS promiseAt,
+        NULL AS reservation,
+        0 AS initialPrice,
+        0 AS upsellPrice
+        FROM customers_duplicate d
+        JOIN customers c2 ON c2.customer_id = d.customer_id
+        LEFT JOIN users u2 ON u2.user_id = c2.user_id
+        WHERE d.duplicate_display = 1
+        AND d.duplicate_source = (SELECT expert_name FROM experts WHERE expert_id = #{myExpertId})
+        <if test="dateFrom != null and dateFrom != ''"> AND d.duplicate_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND d.duplicate_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+        ) t
+        WHERE 1=1
+        <include refid="ADMIN_FILTERS"/>
+        <include refid="ADMIN_ORDER"/>
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAllForExpert" resultType="int">
+        SELECT COUNT(*) FROM (
+        SELECT
+        c.customer_id AS id,
+        'CUSTOMER' AS origin,
+        c.customer_created_at AS createdAt,
+        u.user_name AS staff,
+        c.customer_division AS division,
+        c.customer_category AS category,
+        c.customer_name AS name,
+        c.customer_phone AS phone,
+        c.customer_source AS source,
+        c.customer_status AS status,
+        c.customer_memo AS memo
+        FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE 1=1
+        AND c.customer_source = (SELECT expert_name FROM experts WHERE expert_id = #{myExpertId})
+        <if test="dateFrom != null and dateFrom != ''"> AND c.customer_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+
+        UNION ALL
+
+        SELECT
+        d.duplicate_id AS id,
+        'DUPLICATE' AS origin,
+        d.duplicate_created_at AS createdAt,
+        u2.user_name AS staff,
+        '중복' AS division,
+        d.duplicate_category AS category,
+        d.duplicate_name AS name,
+        c2.customer_phone AS phone,
+        d.duplicate_source AS source,
+        '없음' AS status,
+        d.duplicate_memo AS memo
+        FROM customers_duplicate d JOIN customers c2 ON c2.customer_id = d.customer_id LEFT JOIN users u2 ON u2.user_id = c2.user_id
+        WHERE d.duplicate_display = 1
+        AND d.duplicate_source = (SELECT expert_name FROM experts WHERE expert_id = #{myExpertId})
+        <if test="dateFrom != null and dateFrom != ''"> AND d.duplicate_created_at &gt;= #{dateFrom} </if>
+        <if test="dateTo != null and dateTo != ''"> AND d.duplicate_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
+        ) t
+        WHERE 1=1
+        <include refid="ADMIN_FILTERS"/>
     </select>
 
     <!-- 검사/권한 -->
