@@ -65,4 +65,7 @@ public class AllDbRowDto {
   
   /** 약속시간(예약). 고객: customer_promise_time / 중복: 항상 null */
   private String reservation;
+  
+  private Long initialPrice; // 최초 매출
+  private Long upsellPrice;  // 업셀 매출
 }

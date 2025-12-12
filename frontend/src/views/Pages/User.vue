@@ -93,19 +93,66 @@ async function onRefresh() {
   }
 }
 
+// DB에서 전문가 목록 불러오기
+const expertOptions = ref([]) // [{ expertId, expertName }]
+onMounted(async () => {
+  try {
+    const res = await axios.get("/api/me/experts")
+    // 기대 응답: [{ expertId, expertName, ... }, ...]
+    expertOptions.value = res.data.map(e => ({
+      expertId: e.expertId,
+      expertName: e.expertName
+    }))
+  } catch (err) {
+    console.error("전문가 목록 불러오기 실패:", err.response?.data || err.message)
+    expertOptions.value = []
+  }
+})
+
 // DB에서 centers 불러오기
-const centerOptions = ref([]);
+const fullCenterList = ref([]); // { centerId, centerName, branchId } 객체 배열
+
+// 드롭다운용 분리된 목록
+const centerUnitOptions = ref([]); // 센터장/전문가용 (지점)
+const teamUnitOptions = ref([]);   // 팀장/프로용 (팀)
 onMounted(async () => {
   try {
     const res = await axios.get("/api/super/users/centers");
+
+    // 로직 판단을 위해 전체 데이터 저장
     // console.log(res)
-    centerOptions.value = res.data.map(c => c.centerName);
-    // console.log(centerOptions.value)
+    fullCenterList.value = res.data;
+
+    // 테이블 드롭다운에는 이름만 전달
+    // 1. 센터(지점) 목록: 본사(branch_id=1) 소속이면서, ID가 1(본사)이 아닌 것
+    centerUnitOptions.value = res.data
+        .filter(c => c.branchId === 1 && c.centerId !== 1)
+        .map(c => c.centerName);
+    // console.log(centerUnitOptions.value);
+
+    // 2. 팀 목록: 본사(branch_id=1) 소속이 아닌 것
+    teamUnitOptions.value = res.data
+        .filter(c => c.branchId !== 1)
+        .map(c => c.centerName);
+    // console.log(teamUnitOptions.value);
   } catch (err) {
     console.error("센터 목록 불러오기 실패:", err.response?.data || err.message);
     centerOptions.value = [] // 실패 시 안전하게 초기화
   }
 });
+
+// 팀/센터 구분 헬퍼 함수
+// 팀: branch_id != 1
+function isTeamUnit(centerName) {
+  const target = fullCenterList.value.find(c => c.centerName === centerName);
+  // target이 없거나, branchId가 1이 아니면 팀으로 간주 (본사 예외 처리 필요 시 추가)
+  return target && target.branchId !== 1;
+}
+// 센터: branch_id == 1 && center_id != 1
+function isCenterUnit(centerName) {
+  const target = fullCenterList.value.find(c => c.centerName === centerName);
+  return target && target.branchId === 1 && target.centerId !== 1;
+}
 
 // 테이블 데이터 훅 연결
 const {
@@ -123,6 +170,7 @@ const {
   externalFilters: globalFilters, // Header.vue에서 keyword 값 반영됨
   useExternalKeys: { keyword: "keyword" }, // 딱 검색어만 API 파라미터로 넘김
   mapper: (res) => {
+    // console.log("서버에서 받은 원본 데이터(첫번째 줄):", res.data.items[0]);
     // API 응답 매핑 (백엔드 형식 맞게 조정 필요)
     return {
       items: res.data.items.map(u => ({
@@ -142,7 +190,8 @@ const {
             u.userApproved === 'N' ? '대기' :
             u.userApproved === 'X' ? '탈퇴' : u.userApproved,
         visible: u.managerPhoneAccess === 'N' ? '차단' : '공개',
-        allocate: u.canAllocate === 'Y' ? '허용' : '차단'
+        allocate: u.canAllocate === 'Y' ? '허용' : '차단',
+        expert: u.expertName || '미지정',
       })),
       totalPages: res.data.totalPages,
       totalCount: res.data.totalCount
@@ -185,7 +234,22 @@ const columns = computed(() => {
     { key: "name", label: "이름", type: "text", ellipsis: { width: 150 } },
     { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 180 } },
     { key: "email", label: "ID(Email)", type: "text", ellipsis: { width: 250 } },
-    { key: "center", label: "소속", type: "badge", editable: (row) => row.center !== "본사", options: centerOptions.value },
+    {
+      key: "center",
+      label: "소속",
+      type: "badge",
+      editable: (row) => row.center !== "본사",
+
+      // 행(row)의 직책에 따라 옵션 목록을 갈아끼움
+      options: (row) => {
+        if (["센터장", "전문가"].includes(row.type)) {
+          return centerUnitOptions.value; // 센터 목록만 리턴
+        } else if (["팀장", "프로"].includes(row.type)) {
+          return teamUnitOptions.value;   // 팀 목록만 리턴
+        }
+        return fullCenterList.value; // 혹은 전체 목록
+      }
+    },
     { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
     { key: "requestStatus", label: "요청상태", type: "badge", editable: canEdit, options: ["승인", "대기", "탈퇴"] },
     { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
@@ -194,23 +258,33 @@ const columns = computed(() => {
   if (isSuper.value) {
     // super에게만 노출 + 수정 가능
     base.push({
-      key: "visible",
-      label: "가시권한",
-      type: "badge",
-      // super가 볼 때만 노출, 그리고 "행의 권한이 관리자"인 경우에만 편집 허용 (자기 자신은 수정 불가)
-      editable: (row) => isSuper.value && row.type === "관리자" && row.email !== auth.email,
-      options: ["공개", "차단"]
-    },
-    { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
-    {
-      key: "allocate",
-      label: "분배권한",
-      type: "badge",
-      // super가 볼 때만 노출, 그리고 "행의 권한이 센터장 혹은 전문가"인 경우에만 편집 허용 (자기 자신은 수정 불가)
-      editable: (row) => isSuper.value && (row.type === "센터장" || row.type === "전문가") && row.email !== auth.email,
-      options: ["허용", "차단"]
-    },
-    { key: "",  label: "",   type: "text", ellipsis: { width: 20 } })
+        key: "visible",
+        label: "가시권한",
+        type: "badge",
+        // super가 볼 때만 노출, 그리고 "행의 권한이 관리자"인 경우에만 편집 허용 (자기 자신은 수정 불가)
+        editable: (row) => isSuper.value && row.type === "관리자" && row.email !== auth.email,
+        options: ["공개", "차단"]
+      },
+      { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
+      {
+        key: "allocate",
+        label: "분배권한",
+        type: "badge",
+        // super가 볼 때만 노출, 그리고 "행의 권한이 센터장 혹은 전문가"인 경우에만 편집 허용 (자기 자신은 수정 불가)
+        editable: (row) => isSuper.value && (row.type === "센터장" || row.type === "전문가") && row.email !== auth.email,
+        options: ["허용", "차단"]
+      },
+      { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
+      {
+        key: "expert",
+        label: "전문가",
+        type: "badge",
+        // 직책이 '전문가'인 행에서만 수정 가능 + super만
+        editable: (row) => isSuper.value && row.type === "전문가",
+        options: expertOptions.value.map(e => e.expertName)  // 배지에 보일 텍스트
+      },
+      { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
+    )
   }
   return base;
 });
@@ -238,11 +312,22 @@ function canEditVisible() {
 // 프론트는 백엔드가 내려준 isSuper만 사용
 const isSuper = computed(() => !!auth.grants.isSuper);
 
+// 팀장 중복 확인 함수
 async function hasManager(centerName, excludeUserId) {
   const { data } = await axios.get("/api/super/users/has-manager", {
     params: { centerName, excludeUserId }
   });
   // data = { exists: true | false }
+  return !!data?.exists;
+}
+
+// 센터장 중복 확인 함수
+async function hasCenterHead(centerName, excludeUserId) {
+  console.log(centerName, excludeUserId)
+  const { data } = await axios.get("/api/super/users/has-center-head", {
+    params: { centerName, excludeUserId }
+  });
+  console.log(data);
   return !!data?.exists;
 }
 
@@ -312,7 +397,8 @@ async function onBadgeUpdate(row, key, newValue) {
   else if (key === "center") fieldLabel = "소속"
   else if (key === "requestStatus") fieldLabel = "요청상태"
   else if (key === "visible") fieldLabel = "가시권한"
-  else if (key === "allocate") fieldLabel = "분배권한";
+  else if (key === "allocate") fieldLabel = "분배권한"
+  else if (key === "expert") fieldLabel = "전문가";
 
   // value → 한글
   if (newValue === "SUPERADMIN") displayValue = "관리자"
@@ -329,6 +415,33 @@ async function onBadgeUpdate(row, key, newValue) {
     newValue = newValue === "허용" ? "Y" : "N";
   }
 
+  // === 센터/팀 선택 제한 가드 ===
+  if (key === "center" && newValue !== "본사") {
+    const userRole = row.type; // "센터장", "전문가", "팀장", "프로"
+
+    // 1. 센터장/전문가 그룹: '팀' 선택 시 차단
+    if (userRole === "센터장" || userRole === "전문가") {
+      // 선택한 곳이 '센터'가 아니면 경고 (즉, 팀을 선택했으면)
+      if (!isCenterUnit(newValue)) {
+        alert("센터장 및 전문가는 '센터(지점)'만 선택할 수 있습니다.");
+        await fetchData(); // UI 원복
+        return;
+      }
+    }
+
+    // 2. 팀장/프로 그룹: '센터' 선택 시 차단
+    if (userRole === "팀장" || userRole === "프로") {
+      // 선택한 곳이 '팀'이 아니면 경고 (즉, 센터를 선택했으면)
+      if (!isTeamUnit(newValue)) {
+        alert("팀장 및 프로는 '팀'만 선택할 수 있습니다.");
+        await fetchData(); // UI 원복
+        return;
+      }
+    }
+  }
+
+  // --- [가드 로직] 권한 및 유효성 검사 ---
+
   // 가시권한 가드
   if (key === "visible" && row.type !== "관리자") {
     alert("가시권한은 '관리자' 권한에만 수정할 수 있습니다.");
@@ -343,6 +456,13 @@ async function onBadgeUpdate(row, key, newValue) {
     return;
   }
 
+  // 전문가 가드
+  if (key === "expert" && row.type !== "전문가") {
+    alert("직책이 '전문가'인 직원만 전문가를 설정할 수 있습니다.")
+    await fetchData()
+    return
+  }
+
   // === 승인된 직원은 super계정 만 '관리자'로 변경 가능 ===
   if (key === "type" && newValue === "관리자" && row.requestStatus === "승인" && !auth.grants.isSuper) {
     alert("수정 권한이 없습니다.");
@@ -350,7 +470,7 @@ async function onBadgeUpdate(row, key, newValue) {
     return;
   }
 
-  // === 팀장 1명 제한 가드 ===
+  // 팀장 중복 확인 가드
   try {
     // 1) 구분을 '팀장'으로 바꾸려는 경우
     if (key === "type" && newValue === "팀장") {
@@ -377,6 +497,38 @@ async function onBadgeUpdate(row, key, newValue) {
   } catch (e) {
     console.error("팀장 중복 확인 실패", e);
     alert("팀장 중복 확인 중 오류가 발생했습니다.");
+    return;
+  }
+
+  // 센터장 중복 확인 가드
+  try {
+    // 1) 직책을 '센터장'으로 변경 시
+    if (key === "type" && newValue === "센터장") {
+      const targetCenter = row.center;
+      // 본사나 미배정 상태가 아니라면 체크
+      if (targetCenter && targetCenter !== "본사" && targetCenter !== "미할당") {
+        const exists = await hasCenterHead(targetCenter, row.userId);
+        if (exists) {
+          alert(`'${targetCenter}'에는 이미 센터장이 있습니다.`);
+          await fetchData();
+          return;
+        }
+      }
+    }
+
+    // 2) 센터장이 소속(센터)을 옮길 시
+    if (key === "center" && row.type === "센터장" && newValue && newValue !== "본사") {
+      const exists = await hasCenterHead(newValue, row.userId);
+      if (exists) {
+        alert(`'${newValue}'에는 이미 센터장이 있습니다.`);
+        await fetchData();
+        return;
+      }
+    }
+  } catch (e) {
+    console.error("중복 확인 실패", e);
+    alert("중복 확인 중 오류가 발생했습니다.");
+    await fetchData();
     return;
   }
 

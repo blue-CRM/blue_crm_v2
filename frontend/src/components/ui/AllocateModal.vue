@@ -107,14 +107,30 @@
             @click="$emit('close')">
           취소
         </button>
-        <button
-            class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
-            :disabled="submitting ||
-                  (mode==='HQ' && (!centerId || !pickedUser)) ||
-                  (mode==='MANAGER' && !pickedUser)"
-            @click="confirm">
-          {{ submitting ? '처리 중...' : '분배하기' }}
-        </button>
+
+        <template v-if="mode === 'HQ' && pickedUser && pickedUser.role === 'MANAGER'">
+          <button
+              class="h-10 px-4 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-700 disabled:opacity-60"
+              :disabled="submitting"
+              @click="confirm(false)"> 팀 공용 분배
+          </button>
+          <button
+              class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-500 disabled:opacity-60"
+              :disabled="submitting"
+              @click="confirm(true)"> 팀장 개인 분배
+          </button>
+        </template>
+
+        <template v-else>
+          <button
+              class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
+              :disabled="submitting ||
+                    (mode==='HQ' && (!centerId || !pickedUser)) ||
+                    (mode==='MANAGER' && !pickedUser)"
+              @click="confirm(false)">
+            {{ submitting ? '처리 중...' : '분배하기' }}
+          </button>
+        </template>
       </div>
     </div>
   </div>
@@ -125,7 +141,14 @@ import { ref, watch, computed } from 'vue'
 import axios from '@/plugins/axios'
 
 const props = defineProps<{ mode: 'HQ'|'MANAGER', centerId?: number|null, selectedCount: number }>()
-const emit = defineEmits<{(e:'close'):void,(e:'confirm', payload:{ centerId?:number|null, userId?:number|null }):void}>()
+const emit = defineEmits<{
+  (e:'close'):void,
+  (e:'confirm', payload:{
+    centerId?:number|null,
+    userId?:number|null,
+    assignToManagerAsStaff?: boolean // 팀장풀 / 팀장개인 분배 구분
+  }):void
+}>()
 
 type CenterItem = { centerId:number; centerName:string; userCount:number }
 const centers = ref<CenterItem[]>([])
@@ -171,7 +194,7 @@ function debouncedSearch(){
 
 function selectUser(u:any){ pickedUser.value = u }
 
-async function confirm(){
+async function confirm(assignToManagerAsStaff: boolean = false){
   submitting.value = true
   try {
     if (props.mode === 'HQ' && (!centerId.value)) {
@@ -182,7 +205,12 @@ async function confirm(){
       return
     }
 
-    emit('confirm', { centerId: centerId.value ?? undefined, userId: pickedUser.value?.userId ?? undefined })
+    // 부모 컴포넌트로 플래그와 함께 이벤트 전달
+    emit('confirm', {
+      centerId: centerId.value ?? undefined,
+      userId: pickedUser.value?.userId ?? undefined,
+      assignToManagerAsStaff
+    })
   } finally { submitting.value = false }
 }
 

@@ -47,6 +47,15 @@ public class UserController {
     return ResponseEntity.ok(Map.of("exists", cnt > 0));
   }
   
+  // 프론트 사전 확인: 해당 센터에 다른 CENTERHEAD 있는지
+  @GetMapping("/has-center-head")
+  public ResponseEntity<?> hasCenterHead(@RequestParam String centerName,
+                                         @RequestParam(required = false) Long excludeUserId) {
+    // 0보다 크면 true(이미 있음), 아니면 false
+    int cnt = userService.countCenterHeadsInCenter(centerName, excludeUserId);
+    return ResponseEntity.ok(Map.of("exists", cnt > 0));
+  }
+  
   // 직원관리 페이지에서 배지 수정이 발생한 경우
   @PatchMapping("/update/{userId}")
   public void updateUserField(

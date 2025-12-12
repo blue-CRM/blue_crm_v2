@@ -1,9 +1,6 @@
 package com.blue.customer.allocate.mapper;
 
-import com.blue.customer.allocate.dto.AllocateListRowDto;
-import com.blue.customer.allocate.dto.CenterPickDto;
-import com.blue.customer.allocate.dto.UserContextDto;
-import com.blue.customer.allocate.dto.UserPickDto;
+import com.blue.customer.allocate.dto.*;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -49,6 +46,48 @@ public interface CustomerAllocateMapper {
                           @Param("managerUserId") Long managerUserId,
                           @Param("visible") String visible);
   
+  // 목록 (CENTERHEAD)
+  List<AllocateListRowDto> findListForCenterHead(@Param("offset") int offset,
+                                                 @Param("size") int size,
+                                                 @Param("keyword") String keyword,
+                                                 @Param("dateFrom") String dateFrom,
+                                                 @Param("dateTo") String dateTo,
+                                                 @Param("category") String category,
+                                                 @Param("division") String division,
+                                                 @Param("sort") String sort,
+                                                 @Param("userId") Long userId,
+                                                 @Param("visible") String visible,
+                                                 @Param("centerId") Long centerId);
+  int countListForCenterHead(@Param("keyword") String keyword,
+                             @Param("dateFrom") String dateFrom,
+                             @Param("dateTo") String dateTo,
+                             @Param("category") String category,
+                             @Param("division") String division,
+                             @Param("userId") Long userId,
+                             @Param("visible") String visible,
+                             @Param("centerId") Long centerId);
+  
+  // 목록 (EXPERT)
+  List<AllocateListRowDto> findListForExpert(@Param("offset") int offset,
+                                             @Param("size") int size,
+                                             @Param("keyword") String keyword,
+                                             @Param("dateFrom") String dateFrom,
+                                             @Param("dateTo") String dateTo,
+                                             @Param("category") String category,
+                                             @Param("division") String division,
+                                             @Param("sort") String sort,
+                                             @Param("userId") Long userId,
+                                             @Param("visible") String visible,
+                                             @Param("expertId") Long expertId);
+  int countListForExpert(@Param("keyword") String keyword,
+                         @Param("dateFrom") String dateFrom,
+                         @Param("dateTo") String dateTo,
+                         @Param("category") String category,
+                         @Param("division") String division,
+                         @Param("userId") Long userId,
+                         @Param("visible") String visible,
+                         @Param("expertId") Long expertId);
+  
   // 검증/조회
   Integer userBelongsToCenter(@Param("userId") Long userId, @Param("centerId") Long centerId);
   String  findUserRole(@Param("userId") Long userId);
@@ -61,6 +100,12 @@ public interface CustomerAllocateMapper {
   List<Long> lockCustomersForHq(@Param("ids") List<Long> ids);
   List<Long> lockCustomersForManager(@Param("ids") List<Long> ids,
                                      @Param("managerUserId") Long managerUserId);
+  List<Long> lockCustomersForCenterHead(@Param("ids") List<Long> ids,
+                                        @Param("userId") Long userId,
+                                        @Param("centerId") Long centerId);
+  List<Long> lockCustomersForExpert(@Param("ids") List<Long> ids,
+                                    @Param("userId") Long userId,
+                                    @Param("expertId") Long expertId);
   
   // 이력 (phone 기반)
   int insertPastForNewOwner(@Param("ids") List<Long> ids, @Param("userId") Long userId);
@@ -79,5 +124,14 @@ public interface CustomerAllocateMapper {
   
   // 센터 조회
   List<CenterPickDto> findCentersForAllocate();
+  
+  // 담당자 이력 일괄 초기화
+  void deleteHistoryByCustomerIds(@Param("ids") List<Long> ids);
+  
+  // 모달에서 - 담당자 이력 리스트 조회
+  List<CustomerHistoryRowDto> findHistoryByCustomerId(@Param("customerId") Long customerId);
+  
+  // 모달에서 - 담당자 이력 선택 삭제 (현재 담당자는 실제로도 안 지워지게 가드)
+  int deleteHistorySafely(@Param("ids") List<Long> ids);
   
 }

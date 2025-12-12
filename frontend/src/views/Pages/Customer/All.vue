@@ -6,19 +6,16 @@
 
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
-            v-if="role === 'SUPERADMIN'"
-            :selects="[
-                ['구분 전체', '최초', '유효', '중복'],
-                ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5',
-                  '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
-            :buttons="['상태별 보기', '중복DB로 이동']"
-            :active="adminActiveLabels"
+            v-if="isAdminView"
+            :selects="adminSelects"
+            :buttons="adminButtons"
+            :active="activeLabels"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
             @changeSize="setSize"
             @selectChange="onAdminSelectChange"
-            @buttonClick="onAdminButtonClick"
+            @buttonClick="onCommonButtonClick"
         >
           <PsnsTable
               :key="tableKey"
@@ -34,6 +31,7 @@
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
+              @salesUpdate="onSalesUpdate"
               @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
@@ -42,8 +40,9 @@
         <!-- MANAGER / STAFF -->
         <ComponentCard
             v-else
-            :selects="[['전체', '부재1', '부재2', '부재3', '부재4', '부재5', '재콜', '신규', '가망', '자연풀', '카피', '거절']]"
-            :buttons=managerButtons
+            :selects="managerSelects"
+            :buttons="managerButtons"
+            :active="activeLabels"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
@@ -65,6 +64,7 @@
               @rowSelect="onRowSelect"
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
+              @salesUpdate="onSalesUpdate"
               @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
@@ -138,6 +138,7 @@ const memoOpen = ref(false); // 메모 모달 상태
 const memoRow = ref(null); // 메모 모달에 넘길 행
 const isRefreshing = ref(false); // 새로고침 스피너/비활성
 
+// 수동 새로고침
 async function onRefresh() {
   if (isRefreshing.value) return;
   isRefreshing.value = true;
@@ -187,13 +188,19 @@ const {
     mine: "mine",
     staffUserId: "staffUserId",
     status: "status",
-    division: "division"
+    division: "division",
+    expertName: "expertName"
   },
   mapper: (res) => ({
     items: res.data.items,
     totalPages: res.data.totalPages,
     totalCount: res.data.totalCount
   })
+});
+
+// 본사, 센터장, 전문가는 '관리자형 뷰' (구분 칼럼 O, 매출 칼럼 O)
+const isAdminView = computed(() => {
+  return ['SUPERADMIN', 'CENTERHEAD', 'EXPERT'].includes(role);
 });
 
 // 로딩 오버레이 설정
@@ -232,6 +239,11 @@ function notDuplicate(row) {
   return row.origin !== 'DUPLICATE';
 }
 
+// 매출(최초/업셀) 칼럼 편집 가능 여부 (자연풀 or 카피 상태만)
+function isSalesEditable(row) {
+  return row.origin !== 'DUPLICATE' && ['자연풀', '카피'].includes(row.status);
+}
+
 /* =============================
    SUPERADMIN 전용 컬럼
 ============================= */
@@ -249,10 +261,12 @@ const adminColumns = [
   { key: "status", label: "상태", type: "badge",
       editable: notDuplicate,
       // 회수와 신규 상태는 수동으로 줄 수 없음
-      // 회수 : DB회수하기 메뉴에서
-      // 신규 : 한번도 분배가 되지 않은 항목만
-      options: ["부재1","부재2","부재3","부재4","부재5","재콜","가망","자연풀","카피","거절"] },
-  { key: "reservation", label: "예약", type: "date", editable: notDuplicate }
+      // 회수 : 팀장풀 혹은 개인에게 분배된 이후 회수된 데이터
+      // 신규 : 최초의 확정분배 시에만 신규
+      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
+  { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
+  { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
+  { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
 ];
 
 /* =============================
@@ -270,8 +284,10 @@ const commonColumns = [
   { key: "memo", label: "메모", type: "iconButton", icon: EyeIcon, disabled: (row)=> row.origin==='DUPLICATE' },
   { key: "status", label: "상태", type: "badge",
       editable: notDuplicate,
-      options: ["부재1","부재2","부재3","부재4","부재5","재콜","가망","자연풀","카피","거절"] },
-  { key: "reservation", label: "예약", type: "date", editable: notDuplicate }
+      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
+  { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
+  { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
+  { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
 ];
 
 /* =============================
@@ -302,6 +318,7 @@ function onBadgeUpdate(row, key, newValue) {
   // console.log("배지 수정:", row, key, newValue);
 }
 
+// 재콜 : 예약일 저장
 async function onDateUpdate(row, key, newValue) {
   // 중복DB는 클릭 불가
   if (row.origin === 'DUPLICATE') {
@@ -317,6 +334,41 @@ async function onDateUpdate(row, key, newValue) {
   } catch (err) {
     console.error("예약일 저장 실패", err)
     alert("예약일 저장 중 오류가 발생했습니다.")
+  }
+}
+
+// 최초/업셀 매출 금액 저장 핸들러
+async function onSalesUpdate(row, key, newValue) {
+  // 1. 편집 가능 상태인지 재확인
+  if (!isSalesEditable(row)) return;
+
+// 2. 유효성 검사: 값이 없거나 숫자가 아니면 저장하지 않고 return
+  if (newValue === '' || newValue === null || isNaN(newValue)) {
+    // alert("숫자만 입력해주세요.");
+    return;
+  }
+
+  // 3. 정수로 변환
+  const amount = parseInt(newValue);
+
+  // 4. API 호출 타입 결정
+  const type = key === 'initialPrice' ? 'INITIAL' : 'UPSELL';
+
+  try {
+    await axios.post(`/api/work/db/sales`, {
+      customerId: row.id,
+      type: type,
+      amount: amount
+    });
+
+    // 성공 시 로컬 데이터 업데이트
+    row[key] = amount;
+    console.log("매출 저장 성공:", type, amount);
+
+  } catch (err) {
+    console.error("매출 저장 실패", err);
+    alert("매출 금액 저장 중 오류가 발생했습니다.");
+    // 에러나면 원래 값으로 되돌리거나 새로고침 하는 로직 필요시 추가
   }
 }
 
@@ -337,39 +389,98 @@ function closeMemo() {
   memoRow.value = null;
 }
 
+/* =============================
+   드롭박스 필터 관련
+============================= */
+
+// 1. 정적 옵션 정의 (변하지 않는 값)
+const divisionOptions = ['구분 전체', '최초', '유효', '중복'];
+const statusOptions = [
+  '상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
+  '기타', '결번', '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'
+];
+
+// 2. 동적 옵션 정의 (서버에서 가져올 전문가 리스트)
+const expertOptions = ref(['전문가 전체']); // 기본값 설정
+
+// 3. onMounted에서 전문가 리스트 로드
+
+// 4. 권한별 최종 Select 배열 생성 (Computed)
+const adminSelects = computed(() => {
+  // 기본: [0:구분, 1:상태]
+  const base = [divisionOptions, statusOptions];
+
+  // 전문가(EXPERT)가 아닐 때만 '전문가 선택' 드롭박스 추가
+  if (role !== 'EXPERT') {
+    base.push(expertOptions.value); // 2:전문가
+  }
+
+  return base;
+});
+const managerSelects = computed(() => {
+  // [0:상태, 1:전문가] (매니저는 구분 없음)
+  return [statusOptions, expertOptions.value];
+});
+
+// 필터 동작
 function onAdminSelectChange({ idx, value }) {
   return runBusy(async () => {
-    // idx: 0=구분, 1=상태
+    // idx 순서: 0=구분, 1=상태, 2=전문가
     if (idx === 0) {
       // '구분 전체'면 해제
       setFilter("division", value === "구분 전체" ? null : value);
     } else if (idx === 1) {
       // '상태 전체'면 해제
       setFilter("status", value === "상태 전체" ? null : value);
+    } else if (idx === 2) {
+      // '전문가 전체'면 해제 (EXPERT/전문가 권한은 해당사항 없음)
+      setFilter("expertName", value === "전문가 전체" ? null : value);
     }
-    changePage(1);
   })
 }
-
 function onManagerStatusSelect({ idx, value }) {
   return runBusy(async () => {
-    // 매니저/스태프는 상태 셀렉트만 있음. '전체'면 해제
-    setFilter("status", value === "전체" ? null : value);
-    changePage(1);
+    // idx 순서: 0=상태, 1=전문가 (매니저는 구분 필터 없음)
+    if (idx === 0) {
+      // '상태 전체'면 해제
+      setFilter("status", value === "상태 전체" ? null : value);
+    } else if (idx === 1) {
+      // '전문가 전체'면 해제
+      setFilter("expertName", value === "전문가 전체" ? null : value);
+    }
   })
 }
 
-// 버튼 토클
-const adminActive = ref({ status: false, division: false })
+/* =============================
+   정렬 버튼 관련
+============================= */
 
-const adminActiveLabels = computed(() => {
-  const arr = []
-  if (adminActive.value.status) arr.push('상태별 보기')
-  // if (adminActive.value.division) arr.push('구분별 보기')
-  return arr
-})
+// 뷰 옵션 상태 관리
+const viewOptions = ref({
+  status: false, // 상태별 보기
+  oldest: false, // 과거순 보기
+  mine: false    // 내 DB만 보기 (Manager 전용)
+});
 
-async function onAdminButtonClick(btn) {
+// 활성화된 버튼 라벨 계산
+const activeLabels = computed(() => {
+  const arr = [];
+  if (viewOptions.value.status) arr.push('상태별 보기');
+  if (viewOptions.value.oldest) arr.push('과거순 보기');
+  if (viewOptions.value.mine)   arr.push('내 DB만 보기');
+  return arr;
+});
+
+// 버튼 목록 정의
+const adminButtons = ['상태별 보기', '과거순 보기', '중복DB로 이동'];
+const managerButtons = computed(() => {
+  const arr = ['상태별 보기', '과거순 보기'];
+  if (isManager.value) arr.push('내 DB만 보기'); // 매니저만 추가
+  return arr;
+});
+
+// 버튼 동작
+async function onCommonButtonClick(btn) {
   // busy 가드
   if (uiLoading.value) return;
   uiLoading.value = true;
@@ -405,81 +516,29 @@ async function onAdminButtonClick(btn) {
     }
 
     // 2) 상태/구분 토글
-    if (btn === "상태별 보기")   adminActive.value.status   = !adminActive.value.status;
-    // if (btn === "구분별 보기")   adminActive.value.division = !adminActive.value.division;
+    if (btn === "상태별 보기") viewOptions.value.status = !viewOptions.value.status;
+    if (btn === "과거순 보기") viewOptions.value.oldest = !viewOptions.value.oldest;
+    if (btn === "내 DB만 보기") viewOptions.value.mine = !viewOptions.value.mine;
 
     // 3) sort 조합
     const sortParts = [];
-    if (adminActive.value.status)   sortParts.push('status');
-    if (adminActive.value.division) sortParts.push('division');
+    if (viewOptions.value.status) sortParts.push("status");
+    if (viewOptions.value.oldest) sortParts.push('oldest');
     setFilter("sort", sortParts.length ? sortParts.join(",") : null);
+
+    // 3-1) Mine 파라미터 조합 (Manager만 해당)
+    if (isManager.value) {
+      setFilter("mine", viewOptions.value.mine ? "Y" : null);
+      setFilter("staffUserId", viewOptions.value.mine ? auth.userId : null);
+    }
 
     // 선택 초기화
     selectedRows.value = [];
     tableRef.value?.clearSelection?.();
-    tableKey.value++;
+    tableKey.value++; // 테이블 강제 리렌더
 
   } finally {
     uiLoading.value = false;
-  }
-}
-
-// 정렬 모드
-const sortMode = ref('date')
-
-const managerButtons = computed(() => {
-  const primary = sortMode.value === 'status' ? '최신순 보기' : '상태별 보기'
-  const arr = [primary]
-
-  // MANAGER면 "내 DB만 보기" 토글 버튼 추가, STAFF면 기존 그대로
-  if (isManager.value) arr.push(mineOnly.value ? '전체 보기' : '내 DB만 보기')
-  return arr
-})
-
-function onCommonButtonClick(btn) {
-  if (btn === "상태별 보기" || btn === "최신순 보기") {
-    sortMode.value = (sortMode.value === 'status') ? 'date' : 'status'
-
-    setFilter("sort", sortMode.value === 'status' ? "status" : null)
-    setFilter("mine", mineOnly.value ? "Y" : null)
-    setFilter("staffUserId", mineOnly.value ? auth.userId : null)
-
-    // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-    selectedRows.value = [];
-    tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-    tableKey.value++; // 강제 리렌더로 selection state 초기화
-    fetchData();
-    return
-  }
-
- // MANAGER 전용: 내 DB만 보기 / 전체 보기 토글
-  if (btn === "내 DB만 보기" && isManager.value) {
-    mineOnly.value = true;
-    setFilter("mine", "Y");
-    setFilter("staffUserId", auth.userId);
-    // 현재 정렬도 유지해서 함께 적용
-    setFilter("sort", sortMode.value === 'status' ? "status" : null)
-
-    // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-    selectedRows.value = [];
-    tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-    tableKey.value++; // 강제 리렌더로 selection state 초기화
-    fetchData();
-    return;
-  }
-
-  if (btn === "전체 보기" && isManager.value) {
-    mineOnly.value = false;
-    setFilter("mine", null);
-    setFilter("staffUserId", null);
-    // 정렬은 유지
-    setFilter("sort", sortMode.value === 'status' ? "status" : null)
-
-    // 선택 초기화(내부/외부 모두): 테이블 메서드 + 강제리렌더 + 배열 초기화
-    selectedRows.value = [];
-    tableRef.value?.clearSelection?.(); // PsnsTable이 메서드 제공 시
-    tableKey.value++; // 강제 리렌더로 selection state 초기화
-    fetchData();
   }
 }
 
@@ -517,12 +576,30 @@ async function refetchAndClamp() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 매니저 초기 세팅
   if (isManager.value) {
     mineOnly.value = true;
-    setFilter('mine', 'Y');
-    setFilter('staffUserId', auth.userId);
+    setFilter('mine', null);
+    setFilter('staffUserId', null);
     if (page.value !== 1) changePage(1);
+  }
+
+  // 전문가 권한이 아닐 때만 전문가 리스트 API 호출
+  if (role !== 'EXPERT') {
+    try {
+      // 전문가 리스트 조회
+      const {data} = await axios.get('/api/work/db/experts');
+      // console.log(data)
+
+      // 이름만 추출하여 배열 생성
+      const names = data.map(expert => expert.expertName);
+
+      // '전문가 전체' 뒤에 붙이기
+      expertOptions.value = ['전문가 전체', ...names];
+    } catch (err) {
+      console.error("전문가 리스트 로딩 실패", err);
+    }
   }
 });
 

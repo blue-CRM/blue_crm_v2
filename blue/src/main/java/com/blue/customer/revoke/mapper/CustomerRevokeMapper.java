@@ -19,6 +19,7 @@ public interface CustomerRevokeMapper {
                                        @Param("dateTo") String dateTo,
                                        @Param("category") String category,
                                        @Param("division") String division,
+                                       @Param("status")   String status,
                                        @Param("sort") String sort,
                                        @Param("visible") String visible);
   int countListForHq(@Param("keyword") String keyword,
@@ -26,6 +27,7 @@ public interface CustomerRevokeMapper {
                      @Param("dateTo") String dateTo,
                      @Param("category") String category,
                      @Param("division") String division,
+                     @Param("status")   String status,
                      @Param("visible") String visible);
   
   List<RevokeListRowDto> findListForManager(@Param("offset") int offset,
@@ -34,6 +36,7 @@ public interface CustomerRevokeMapper {
                                             @Param("dateFrom") String dateFrom,
                                             @Param("dateTo") String dateTo,
                                             @Param("category") String category,
+                                            @Param("status")   String status,
                                             @Param("sort") String sort,
                                             @Param("managerCenterId") Long managerCenterId,
                                             @Param("visible") String visible,
@@ -42,6 +45,7 @@ public interface CustomerRevokeMapper {
                           @Param("dateFrom") String dateFrom,
                           @Param("dateTo") String dateTo,
                           @Param("category") String category,
+                          @Param("status")   String status,
                           @Param("managerCenterId") Long managerCenterId,
                           @Param("visible") String visible,
                           @Param("excludeUserId") Long excludeUserId);
@@ -52,4 +56,7 @@ public interface CustomerRevokeMapper {
                                              @Param("excludeUserId") Long excludeUserId);
   
   int updateToRevoked(@Param("ids") List<Long> ids);
+  
+  // 회수 후 매출 로그 작성
+  void insertRevokeSalesLogs(@Param("ids") List<Long> ids, @Param("userId") Long userId);
 }

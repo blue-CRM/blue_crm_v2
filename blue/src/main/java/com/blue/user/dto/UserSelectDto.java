@@ -13,4 +13,5 @@ public class UserSelectDto {
   private String centerName;
   private String managerPhoneAccess;
   private String canAllocate;
+  private String expertName;
 }
