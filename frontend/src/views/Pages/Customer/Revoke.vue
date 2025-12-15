@@ -6,7 +6,7 @@
 
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
-            v-if="role === 'SUPERADMIN'"
+            v-if="role === 'SUPERADMIN' || role === 'CENTERHEAD' || role === 'EXPERT'"
             :selects="[
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
                   '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
@@ -289,10 +289,17 @@ function onMgrButton(btn: string) {
 }
 
 /** 회수 실행 */
+// 역할별 회수 엔드포인트만 추가
+function getRevokeUrlByRole() {
+  if (role === 'SUPERADMIN') return '/api/work/revoke/hq'
+  if (role === 'CENTERHEAD') return '/api/work/revoke/centerhead'
+  if (role === 'EXPERT')     return '/api/work/revoke/expert'
+  return '/api/work/revoke/hq'
+}
 async function onConfirmRevoke(ids: number[]) {
   return runBusy(async () => {
     try {
-      await axios.post('/api/work/revoke/hq', { customerIds: ids })
+      await axios.post(getRevokeUrlByRole(), { customerIds: ids })
 
       // 선택 초기화
       selectedRows.value = []
