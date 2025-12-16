@@ -40,18 +40,18 @@ public class CustomerDuplService {
         total = mapper.countAllForStaff(keyword, dateFrom, dateTo, category, me.getUserId());
       }
       case "CENTERHEAD" -> {
-        items = mapper.findAllForCenterHead(offset, size, keyword, dateFrom, dateTo, category, me.getCenterId());
-        total = mapper.countAllForCenterHead(keyword, dateFrom, dateTo, category, me.getCenterId());
+        items = mapper.findAllForCenterHead(offset, size, keyword, dateFrom, dateTo, category, me.getCenterId(), me.getVisible());
+        total = mapper.countAllForCenterHead(keyword, dateFrom, dateTo, category, me.getCenterId(), me.getVisible());
       }
       case "EXPERT" -> {
-        items = mapper.findAllForExpert(offset, size, keyword, dateFrom, dateTo, category, me.getExpertId());
-        total = mapper.countAllForExpert(keyword, dateFrom, dateTo, category, me.getExpertId());
+        items = mapper.findAllForExpert(offset, size, keyword, dateFrom, dateTo, category, me.getExpertId(), me.getVisible());
+        total = mapper.countAllForExpert(keyword, dateFrom, dateTo, category, me.getExpertId(), me.getVisible());
       }
       default -> throw new IllegalStateException("Unknown role: " + me.getRole());
     }
     
-    // SUPERADMIN 가시권한 N: 전화번호 마스킹
-    if ("SUPERADMIN".equals(me.getRole()) && "N".equalsIgnoreCase(me.getVisible())) {
+    // 가시권한 N: 전화번호 마스킹
+    if ("N".equalsIgnoreCase(me.getVisible())) {
       items.forEach(r -> r.setPhone(maskPhone(r.getPhone())));
     }
     

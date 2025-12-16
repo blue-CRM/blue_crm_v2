@@ -63,7 +63,7 @@
         d.duplicate_id          AS id,
         'DUPLICATE'             AS origin,
         d.duplicate_created_at  AS createdAt,
-        u.user_name             AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u.user_name ELSE '' END AS staff,
         '중복'                   AS division,
         d.duplicate_category    AS category,
         d.duplicate_name        AS name,
@@ -90,7 +90,7 @@
         d.duplicate_id          AS id,
         'DUPLICATE'             AS origin,
         d.duplicate_created_at  AS createdAt,
-        u.user_name             AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u.user_name ELSE '' END AS staff,
         '중복'                   AS division,
         d.duplicate_category    AS category,
         d.duplicate_name        AS name,
@@ -119,7 +119,7 @@
         d.duplicate_id          AS id,
         'DUPLICATE'             AS origin,
         d.duplicate_created_at  AS createdAt,
-        u.user_name             AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u.user_name ELSE '' END AS staff,
         '중복'                   AS division,
         d.duplicate_category    AS category,
         d.duplicate_name        AS name,
@@ -135,7 +135,7 @@
 
         WHERE d.duplicate_display = 0
             AND u.center_id = #{centerId}
-
+            AND c.customer_status != '없음'
         ) t
         WHERE 1=1
         <include refid="DUPL_FILTERS"/>
@@ -149,7 +149,7 @@
         d.duplicate_id          AS id,
         'DUPLICATE'             AS origin,
         d.duplicate_created_at  AS createdAt,
-        u.user_name             AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u.user_name ELSE '' END AS staff,
         '중복'                   AS division,
         d.duplicate_category    AS category,
         d.duplicate_name        AS name,
@@ -165,7 +165,7 @@
 
         WHERE d.duplicate_display = 0
             AND u.center_id = #{centerId}
-
+            AND c.customer_status != '없음'
         ) t
         WHERE 1=1
         <include refid="DUPL_FILTERS"/>
@@ -240,7 +240,7 @@
         d.duplicate_id         AS id,
         'DUPLICATE'            AS origin,
         d.duplicate_created_at AS createdAt,
-        u2.user_name           AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u2.user_name ELSE '' END AS staff,
         '중복'                 AS division,
         d.duplicate_category   AS category,
         d.duplicate_name       AS name,
@@ -287,12 +287,12 @@
         SELECT
         d.duplicate_id         AS id,
         d.duplicate_created_at AS createdAt,
-        u2.user_name           AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u2.user_name ELSE '' END AS staff,
         '중복'                 AS division,
         d.duplicate_category   AS category,
         d.duplicate_name       AS name,
         c.customer_phone       AS phone,
-        c.customer_source      AS source,
+        d.duplicate_source     AS source,
         d.duplicate_memo       AS memo,
         '없음'                 AS status,
         NULL                   AS promiseAt,
@@ -309,7 +309,7 @@
         WHERE u.center_id = #{centerId}
         AND u.user_role IN ('CENTERHEAD','EXPERT')
         AND u.expert_id IS NOT NULL
-        AND TRIM(e.expert_name) = TRIM(c.customer_source)
+        AND TRIM(e.expert_name) = TRIM(d.duplicate_source)
         )
 
         <if test="dateFrom != null and dateFrom != ''">
@@ -334,7 +334,7 @@
         d.duplicate_id         AS id,
         'DUPLICATE'            AS origin,
         d.duplicate_created_at AS createdAt,
-        u2.user_name           AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u2.user_name ELSE '' END AS staff,
         '중복'                 AS division,
         d.duplicate_category   AS category,
         d.duplicate_name       AS name,
@@ -373,12 +373,12 @@
         SELECT
         d.duplicate_id         AS id,
         d.duplicate_created_at AS createdAt,
-        u2.user_name           AS staff,
+        CASE WHEN c.customer_status != '없음' THEN u2.user_name ELSE '' END AS staff,
         '중복'                 AS division,
         d.duplicate_category   AS category,
         d.duplicate_name       AS name,
         c.customer_phone       AS phone,
-        c.customer_source      AS source,
+        d.duplicate_source     AS source,
         d.duplicate_memo       AS memo,
         '없음'                 AS status,
         NULL                   AS promiseAt,
@@ -388,7 +388,7 @@
         LEFT JOIN users u2 ON u2.user_id = c.user_id
         JOIN experts me ON me.expert_id = #{expertId}
         WHERE d.duplicate_display = 0
-        AND TRIM(me.expert_name) = TRIM(c.customer_source)
+        AND TRIM(me.expert_name) = TRIM(d.duplicate_source)
 
         <if test="dateFrom != null and dateFrom != ''">
             AND d.duplicate_created_at &gt;= #{dateFrom}
