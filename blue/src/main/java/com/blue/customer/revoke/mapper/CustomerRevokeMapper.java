@@ -101,6 +101,8 @@ public interface CustomerRevokeMapper {
                                             @Param("expertId") Long expertId);
   
   int updateToRevoked(@Param("ids") List<Long> ids);
+  int updateToManagerPool(@Param("ids") List<Long> ids,
+                          @Param("managerId") Long managerId);
   
   // 회수 후 매출 로그 작성
   void insertRevokeSalesLogs(@Param("ids") List<Long> ids, @Param("userId") Long userId);

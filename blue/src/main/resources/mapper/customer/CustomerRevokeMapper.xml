@@ -74,11 +74,17 @@
         SELECT
         c.customer_id         AS id,
         c.customer_name       AS name,
+
         CASE WHEN #{visible} = 'Y'
         THEN c.customer_phone
         ELSE CONCAT(SUBSTRING_INDEX(c.customer_phone,'-',1), '-****-', SUBSTRING_INDEX(c.customer_phone,'-',-1))
         END                   AS phone,
-        u.user_name           AS staff,
+
+        CASE
+        WHEN c.customer_status != '없음' THEN u.user_name
+        ELSE ''
+        END AS staff,
+
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
@@ -121,7 +127,12 @@
         c.customer_id         AS id,
         c.customer_name       AS name,
         c.customer_phone      AS phone,
-        u.user_name           AS staff,
+
+        CASE
+        WHEN c.customer_status != '없음' THEN u.user_name
+        ELSE ''
+        END AS staff,
+
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
@@ -135,10 +146,6 @@
         WHERE c.customer_status != '회수'
             AND c.user_id IS NOT NULL
             AND u.center_id = #{managerCenterId}
-
-        <if test="excludeUserId != null">
-            AND c.user_id != #{excludeUserId}        <!-- 본인 디비는 출력 제외 -->
-        </if>
 
         <include refid="LIST_FILTERS_COMMON"/>
         <include refid="ORDER_DEFAULT"/>
@@ -154,10 +161,6 @@
             AND c.user_id IS NOT NULL
             AND u.center_id = #{managerCenterId}
 
-        <if test="excludeUserId != null">
-            AND c.user_id != #{excludeUserId}        <!-- 본인 디비는 출력 제외 -->
-        </if>
-
         <include refid="LIST_FILTERS_COMMON"/>
     </select>
 
@@ -166,8 +169,17 @@
         SELECT
         c.customer_id         AS id,
         c.customer_name       AS name,
-        c.customer_phone      AS phone,
-        u.user_name           AS staff,
+
+        CASE WHEN #{visible} = 'Y'
+        THEN c.customer_phone
+        ELSE CONCAT(SUBSTRING_INDEX(c.customer_phone,'-',1), '-****-', SUBSTRING_INDEX(c.customer_phone,'-',-1))
+        END                   AS phone,
+
+        CASE
+        WHEN c.customer_status != '없음' THEN u.user_name
+        ELSE ''
+        END AS staff,
+
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
@@ -222,8 +234,17 @@
         SELECT
         c.customer_id         AS id,
         c.customer_name       AS name,
-        c.customer_phone      AS phone,
-        u.user_name           AS staff,
+
+        CASE WHEN #{visible} = 'Y'
+        THEN c.customer_phone
+        ELSE CONCAT(SUBSTRING_INDEX(c.customer_phone,'-',1), '-****-', SUBSTRING_INDEX(c.customer_phone,'-',-1))
+        END                   AS phone,
+
+        CASE
+        WHEN c.customer_status != '없음' THEN u.user_name
+        ELSE ''
+        END AS staff,
+
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
@@ -283,9 +304,6 @@
             AND u.center_id = #{managerCenterId}
         )
 
-        <if test="excludeUserId != null">
-            AND c.user_id != #{excludeUserId}        <!-- 본인 디비는 출력 제외 -->
-        </if>
       FOR UPDATE
     </select>
 
@@ -333,6 +351,18 @@
         user_id = NULL,                      -- 회수시 현재 담당자 초기화
         customer_promise_time = NULL,        -- 회수시 예약 날짜 초기화
         initial_price = 0,  upsell_price = 0 -- 회수시 최초/업셀 매출값 초기화
+        WHERE customer_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </update>
+
+    <!-- 매니저 회수(팀장풀로 복귀): 담당자=팀장, 상태=없음, 예약=NULL, 매출=0 -->
+    <update id="updateToManagerPool">
+        UPDATE customers
+        SET
+        customer_status       = '없음',
+        user_id               = #{managerId}, -- 회수시 팀장풀로
+        customer_promise_time = NULL,             -- 회수시 예약 날짜 초기화
+        initial_price = 0, upsell_price = 0       -- 회수시 최초/업셀 초기화
         WHERE customer_id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </update>

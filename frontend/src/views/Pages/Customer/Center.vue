@@ -155,8 +155,8 @@ onUnmounted(() => {
 
 const columns = [
   { key: "createdAt", label: "DB생성일", type: "text" },
-  { key: "branchName", label: "지점", type: "text", ellipsis: { width: 120 } },
-  { key: "centerName", label: "팀",   type: "text", ellipsis: { width: 120 } },
+  { key: "branchName", label: "지점", type: "text" },
+  { key: "centerName", label: "팀",   type: "text" },
   { key: "staff", label: "프로", type: "text" },
   { key: "division", label: "구분", type: "badge", options: ["최초", "중복", "유효"] },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },

@@ -176,15 +176,11 @@ const hqColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
+  { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
     label: "팀명",
-    type: "badge",
-    width: 100,
-    render: (val: any) => {
-      const text = (typeof val === "string" && val.trim().length > 0) ? val : "없음"
-      return `<span>${text}</span>`
-    },
+    type: "text",
   },
   { key: 'staff',     label: '프로',    type: 'text' },
 ]
@@ -198,15 +194,11 @@ const mgrColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
+  { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
     label: "팀명",
-    type: "badge",
-    width: 100,
-    render: (val: any) => {
-      const text = (typeof val === "string" && val.trim().length > 0) ? val : "없음"
-      return `<span>${text}</span>`
-    },
+    type: "text",
   },
   { key: 'staff',     label: '프로',    type: 'text' },
 ]

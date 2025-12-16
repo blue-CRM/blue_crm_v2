@@ -74,11 +74,11 @@ public class CustomerRevokeService {
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 회수 처리: 상태=회수, 프로=NULL, 예약시간=NULL, 최초/업셀 매출 = 0
-    mapper.updateToRevoked(lockIds);
-    
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+    
+    // 회수 처리: 상태=회수, 프로=NULL, 예약시간=NULL, 최초/업셀 매출 = 0
+    mapper.updateToRevoked(lockIds);
     
     // 회수 로그 기록
     writeRevokeLogs(lockIds, owners, me.getUserId(), null);
@@ -96,21 +96,21 @@ public class CustomerRevokeService {
       return new RevokeResult(0, 0);
     }
     
-    // 같은 팀 소속 프로의 건만 락
+    // 본인 포함 + 같은 팀 범위만 락
     List<Long> lockIds = mapper.lockCustomersForRevokeByManager(req.getCustomerIds(), me.getCenterId(), me.getUserId());
     if (lockIds.isEmpty()) return new RevokeResult(0, req.getCustomerIds().size());
     
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 회수 처리
-    mapper.updateToRevoked(lockIds);
-    
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
     
+    // 회수 처리
+    mapper.updateToManagerPool(lockIds, me.getUserId());
+    
     // 회수 로그 기록
-    writeRevokeLogs(lockIds, owners, me.getUserId(), null);
+    writeRevokeLogs(lockIds, owners, me.getUserId(), "MANAGER_POOL");
     
     return new RevokeResult(lockIds.size(), req.getCustomerIds().size() - lockIds.size());
   }
@@ -132,11 +132,11 @@ public class CustomerRevokeService {
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 회수 처리
-    mapper.updateToRevoked(lockIds);
-    
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+    
+    // 회수 처리
+    mapper.updateToRevoked(lockIds);
     
     // 회수 로그 기록
     writeRevokeLogs(lockIds, owners, me.getUserId(), null);
@@ -161,11 +161,11 @@ public class CustomerRevokeService {
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 회수 처리
-    mapper.updateToRevoked(lockIds);
-    
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+    
+    // 회수 처리
+    mapper.updateToRevoked(lockIds);
     
     // 회수 로그 기록
     writeRevokeLogs(lockIds, owners, me.getUserId(), null);
@@ -209,7 +209,10 @@ public class CustomerRevokeService {
       dto.setCustomerId(customerId);
       dto.setActionType("REVOKE");
       dto.setFromUserId(snap.getUserId());
-      dto.setToUserId(null);
+      
+      Long toUserId = "MANAGER_POOL".equals(memo) ? actedByUserId : null;
+      dto.setToUserId(toUserId);
+      
       dto.setActedByUserId(actedByUserId);
       dto.setIsFinalAssign(finalFlag);
       dto.setMemo(memo);
