@@ -191,11 +191,18 @@ const {
     division: "division",
     expertName: "expertName"
   },
-  mapper: (res) => ({
-    items: res.data.items,
-    totalPages: res.data.totalPages,
-    totalCount: res.data.totalCount
-  })
+  mapper: (res) => {
+    const raw = res?.data?.items ?? [];
+
+    return {
+      items: raw.map(r => ({
+        ...r,
+        staffView: r.status === '없음' ? '' : (r.staff ?? '')
+      })),
+      totalPages: res?.data?.totalPages ?? 1,
+      totalCount: res?.data?.totalCount ?? raw.length
+    };
+  }
 });
 
 // 본사, 센터장, 전문가는 '관리자형 뷰' (구분 칼럼 O, 매출 칼럼 O)
@@ -249,7 +256,7 @@ function isSalesEditable(row) {
 ============================= */
 const adminColumns = [
   { key: "createdAt", label: "DB생성일", type: "text" },
-  { key: "staff", label: "프로", type: "text" },
+  { key: "staffView", label: "프로", type: "text" },
   { key: "division", label: "구분", type: "badge", options: ["최초", "중복", "유효"] },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
   // { key: "category", label: "카테고리", type: "badge", options: ["주식", "코인"] },
@@ -275,7 +282,7 @@ const adminColumns = [
 const commonColumns = [
   { key: "createdAt", label: "DB생성일", type: "text" },
   { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
-  { key: "staff", label: "프로", type: "text" },
+  { key: "staffView", label: "프로", type: "text" },
   // { key: "category", label: "카테고리", type: "badge", options: ["주식", "코인"] },
   { key: "name", label: "이름", type: "text"},
   { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 150 } },
