@@ -178,7 +178,7 @@
                          cursor-pointer transition-colors hover:text-blue-600 dark:hover:text-blue-400"
                   @click.stop="startEdit(rowIndex, col.key, row[col.key])"
               >
-                {{ (row[col.key] && Number(row[col.key]) > 0) ? Number(row[col.key]).toLocaleString() + ' $' : '없음' }}
+                {{ (row[col.key] && Number(row[col.key]) > 0) ? '$' + Number(row[col.key]).toLocaleString() : '없음' }}
               </span>
 
               <div

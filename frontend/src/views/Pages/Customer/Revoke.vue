@@ -356,7 +356,7 @@ async function onRefresh() {
   isRefreshing.value = true
   try {
     await axios.post('/api/sheets/refresh?sid=1')
-    await refetchAndClamp()   // 🔸중복 fetch 방지 + 페이지 클램핑 일원화
+    await refetchAndClamp()   // 중복 fetch 방지 + 페이지 클램핑 일원화
   } catch (e) {
     console.error(e)
     alert('새로고침 중 오류가 발생했습니다.')
