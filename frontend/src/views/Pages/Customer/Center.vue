@@ -87,6 +87,50 @@ const isAllowed = computed(() =>
 );
 
 /* =============================
+   서버 응답 row 전처리
+============================= */
+const MONEY_ZERO_STATUSES = new Set(["자연풀", "카피"]);
+const USD = new Intl.NumberFormat("en-US");
+const isNil = (v) => v === null || v === undefined;
+
+const toNumber = (v) => {
+  if (typeof v === "number") return v;
+  const s = String(v ?? "").replace(/[^\d.-]/g, ""); // "$1,200" 같은 것도 대응
+  return s ? Number(s) : NaN;
+};
+
+const formatUSD = (v) => {
+  if (isNil(v)) return v;
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return v; // 혹시 이상값이면 원본 유지
+  return `$ ${USD.format(n)}`;
+};
+
+function preprocessRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  return list.map((row) => {
+    const r = { ...row };
+
+    // 1) 재콜 + reservation null => 없음
+    if (r.status === "재콜" && isNil(r.reservation)) {
+      r.reservation = "없음";
+    }
+
+    // 2) 자연풀/카피 + (최초/업셀) null => 0
+    if (MONEY_ZERO_STATUSES.has(r.status)) {
+      if (isNil(r.initialPrice)) r.initialPrice = 0;
+      if (isNil(r.upsellPrice)) r.upsellPrice = 0;
+    }
+
+    // 3) 최초/업셀 달러 표기 + 천단위 콤마
+    if (!isNil(r.initialPrice)) r.initialPrice = formatUSD(r.initialPrice);
+    if (!isNil(r.upsellPrice))  r.upsellPrice  = formatUSD(r.upsellPrice);
+
+    return r;
+  });
+}
+
+/* =============================
    목록 조회 (조회 전용)
 ============================= */
 const {
@@ -115,7 +159,7 @@ const {
     centerId: "centerId",
   },
   mapper: (res) => ({
-    items: res.data.items,
+    items: preprocessRows(res.data.items),
     totalPages: res.data.totalPages,
     totalCount: res.data.totalCount
   })
