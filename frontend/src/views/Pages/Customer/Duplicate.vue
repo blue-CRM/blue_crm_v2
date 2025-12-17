@@ -12,7 +12,6 @@
           <PsnsTable
               :columns="columns"
               :data="items"
-              :showCheckbox="true"
               :rowSelectable="() => false"
               :page="page"
               :totalPages="totalPages"

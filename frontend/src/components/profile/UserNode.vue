@@ -4,11 +4,16 @@
     <div
         v-if="isTitle(node)"
         :class="[
-            'flex items-center gap-2 rounded-2xl px-4 py-2',
-            node.userRole === 'HQ'
-              ? 'bg-gray-300/70 text-gray-900 dark:bg-gray-700/40 dark:text-gray-200 dark:ring-gray-600'
-              : 'bg-gray-200/70 text-gray-900 dark:bg-gray-800/80 dark:text-gray-300 dark:ring-gray-700'
-          ]"
+        'flex items-center gap-2 rounded-2xl px-4 py-2 ring-1 border-l-4 transition-colors',
+        node.userRole === 'HQ'
+          ? 'bg-slate-50/90 text-slate-900 ring-slate-200/70 border-slate-500/50 ' +
+            'dark:bg-slate-900/45 dark:text-slate-50 dark:ring-white/10 dark:border-indigo-300/20'
+          : node.userRole === 'GROUP'
+            ? 'bg-blue-50/80 text-slate-900 ring-blue-100/70 border-blue-400/35 ' +
+              'dark:bg-blue-950/18 dark:text-slate-50 dark:ring-white/8 dark:border-blue-300/18'
+            : 'bg-gray-50/90 text-slate-900 ring-gray-200/70 border-gray-300/50 ' +
+              'dark:bg-slate-900/28 dark:text-slate-50 dark:ring-white/6 dark:border-slate-400/14'
+        ]"
     >
       <button
           @click="toggle()"
@@ -116,7 +121,13 @@ const props = defineProps({
 const emit = defineEmits(['toggle','edit'])
 
 const isTitle = (n) => ['HQ','GROUP','CENTER'].includes(n.userRole)
-const keyOf   = (n) => (n.userId ? `U:${n.userId}` : `${n.userRole}:${n.userName}`)
+const keyOf = (n) => {
+  if (n.userId) return `U:${n.userId}`
+  if (n.userRole === "HQ") return "HQ:마크CRM"
+  if (n.userRole === "GROUP") return `B:${n.branchId ?? n.userName}`   // 지점
+  if (n.userRole === "CENTER") return `C:${n.centerId ?? n.userName}`  // 팀
+  return `${n.userRole}:${n.userName}`
+}
 
 const isUnassignedStaff = computed(() =>
     props.currentUser?.userRole === "STAFF" && !props.currentUser?.centerId
@@ -136,26 +147,52 @@ function toggle() {
   emit('toggle', { key: k, open: !expanded.value })
 }
 
-function roleLabel(r){ return r==='SUPERADMIN'?'관리자':r==='MANAGER'?'팀장':r==='STAFF'?'프로':r }
+function roleLabel(r){
+  return r==='SUPERADMIN'?'본사'
+      : r==='CENTERHEAD'?'센터장'
+      : r==='EXPERT'?'전문가'
+      : r==='MANAGER'?'팀장'
+      : r==='STAFF'?'프로'
+      : r
+}
 
 /** 프론트 UX 1차 차단 (서버가 최종 검증) */
 function canEdit(viewer, target) {
   if (!viewer || !target) return false
   if (isTitle(target)) return false
-  if (viewer.isSuper) return true                   // super는 모두 가능(본인 포함)
-  if (viewer.userId === target.userId) return false // 본인은 금지
 
-  const rank = { SUPERADMIN:3, MANAGER:2, STAFF:1 }
+  // super는 전부 가능(본인 포함)
+  if (viewer.isSuper) return true
+
+  // super 아니면 본인 수정 금지
+  if (viewer.userId === target.userId) return false
+
+  const rank = {
+    SUPERADMIN: 5,  // 본사
+    CENTERHEAD: 4,  // 센터장
+    EXPERT:     3,  // 전문가
+    MANAGER:    2,  // 팀장
+    STAFF:      1,  // 프로
+  }
+
   const vr = rank[viewer.userRole] || 0
   const tr = rank[target.userRole] || 0
 
-  // HQ/SUPERADMIN: 전체 열람, 같은 권한은 수정 불가
-  if (viewer.centerId === 1 || viewer.userRole === 'SUPERADMIN') return vr > tr
+  // ===== 보기 범위(백엔드 canSee와 동일하게) =====
+  const viewerIsHq = viewer.centerId === 1
 
-  // MANAGER: 같은 팀 + 자신보다 낮은 권한(STAFF)만
-  if (viewer.userRole === 'MANAGER') return viewer.centerId === target.centerId && vr > tr
+  // 본사(HQ)는 전체(단, self는 위에서 이미 컷)
+  if (!viewerIsHq) {
+    // 센터장/전문가: 본사팀(centerId=1)만 제외하고 전부
+    if (viewer.userRole === 'CENTERHEAD' || viewer.userRole === 'EXPERT') {
+      if (target.centerId === 1) return false
+    } else {
+      // 매니저/스탭: 자기 팀만
+      if (viewer.centerId !== target.centerId) return false
+    }
+  }
 
-  // STAFF: 불가
-  return false
+  // ===== 수정 권한: 하위만(동급/상위 불가) =====
+  return vr > tr
 }
 </script>

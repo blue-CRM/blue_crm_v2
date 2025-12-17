@@ -40,38 +40,47 @@ public class InfoService {
       return Map.of("nodes", List.of(), "currentUser", null);
     }
     
-    // 전체 사용자(전화/입사일 포함) 가져오기
-    List<UserRow> users = infoMapper.findAllUsers();
+    // centers(=팀) 목록(브랜치 포함) 1번만 조회
+    List<CenterDto> centers = infoMapper.findCenters();
     
-    // centerId가 null인 사용자 완전 제외
-    users = users.stream()
+    // 유저 전체(승인 Y만 내려옴) + centerId null 제외
+    List<UserRow> users = infoMapper.findAllUsers().stream()
         .filter(u -> u.getCenterId() != null)
         .toList();
     
-    // 정렬: 권한 우선(내림차순) → 입사순(오름차순)
-    Comparator<UserRow> comp = Comparator
+    // 유저 정렬: 권한 우선(내림차순) → 입사순(오름차순)
+    Comparator<UserRow> userComp = Comparator
         .comparingInt((UserRow u) -> rank(u.getUserRole())).reversed()
         .thenComparing(UserRow::getUserCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
-    users = users.stream().sorted(comp).toList();
+    users = users.stream().sorted(userComp).toList();
     
     // 보기 범위 필터
-    List<UserRow> visible = filterVisible(me, users);
-    
-    // 본사/센터로 그룹핑
-    List<UserRow> hqUsers = visible.stream()
-        .filter(u -> Objects.equals(u.getCenterId(), 1L))
-        .sorted(
-            Comparator
-                .comparing((UserRow u) -> u.isSuper() ? 0 : 1) //  superAccount 먼저
-                .thenComparingInt(u -> -rank(u.getUserRole())) // 권한: 관리자>센터장>전문가>팀장>프로
-                .thenComparing(UserRow::getUserCreatedAt,
-                    Comparator.nullsLast(Comparator.naturalOrder())) // 입사순
-        )
+    List<UserRow> visibleUsers = users.stream()
+        .filter(u -> canSee(me, u))
         .toList();
     
-    Map<Long, List<UserRow>> byCenter = visible.stream()
-        .filter(u -> !Objects.equals(u.getCenterId(), 1L))
+    // centerId -> 멤버
+    Map<Long, List<UserRow>> usersByCenter = visibleUsers.stream()
         .collect(Collectors.groupingBy(UserRow::getCenterId));
+    
+    // 각 센터 멤버도 정렬 유지
+    usersByCenter.replaceAll((k, list) -> list.stream().sorted(userComp).toList());
+    
+    // 보이는 센터(=팀) 목록 결정 (새 규칙)
+    List<CenterDto> visibleCenters = filterCenters(me, centers);
+    
+    // 센터 정렬: 본사브랜치(1) 먼저 -> 지점명 -> 본사팀(centerId=1) 먼저 -> 팀명
+    Comparator<CenterDto> centerComp = Comparator
+        .comparing((CenterDto c) -> !Objects.equals(c.getBranchId(), 1L)) // false(본사) 먼저
+        .thenComparing(CenterDto::getBranchName, Comparator.nullsLast(Comparator.naturalOrder()))
+        .thenComparing((CenterDto c) -> !Objects.equals(c.getCenterId(), 1L)) // false(본사팀) 먼저
+        .thenComparing(CenterDto::getCenterName, Comparator.nullsLast(Comparator.naturalOrder()));
+    
+    visibleCenters = visibleCenters.stream().sorted(centerComp).toList();
+    
+    // branchId -> centers
+    Map<Long, List<CenterDto>> centersByBranch = visibleCenters.stream()
+        .collect(Collectors.groupingBy(CenterDto::getBranchId, LinkedHashMap::new, Collectors.toList()));
     
     // 루트(HQ)
     Map<String, Object> root = new LinkedHashMap<>();
@@ -79,45 +88,161 @@ public class InfoService {
     root.put("userName", COMPANY_NAME);
     root.put("userRole", "HQ");
     
-    List<Map<String, Object>> children = new ArrayList<>();
+    List<Map<String, Object>> branchNodes = new ArrayList<>();
     
-    // 본사 직원 그룹 (HQ 열람 가능할 때만)
-    if (canSeeAllCenters(me)) {
-      children.add(group("본사", "GROUP", toUserNodeList(hqUsers)));
-    }
-    
-    // 센터 노드들
-    for (CenterDto c : infoMapper.findCenters()) {
-      if (Objects.equals(c.getCenterId(), 1L)) continue;
+    for (Map.Entry<Long, List<CenterDto>> e : centersByBranch.entrySet()) {
+      List<CenterDto> branchCenters = e.getValue();
+      if (branchCenters.isEmpty()) continue;
       
-      // MANAGER/STAFF는 자신의 센터만
-      if (!canSeeAllCenters(me) && !Objects.equals(me.getCenterId(), c.getCenterId())) {
-        continue;
+      String branchName = branchCenters.get(0).getBranchName();
+      
+      List<Map<String, Object>> centerNodes = new ArrayList<>();
+      for (CenterDto c : branchCenters) {
+        List<UserRow> members = usersByCenter.getOrDefault(c.getCenterId(), List.of());
+        
+        Map<String, Object> centerNode = new LinkedHashMap<>();
+        centerNode.put("userId", null);
+        centerNode.put("userName", c.getCenterName());
+        centerNode.put("userRole", "CENTER");
+        centerNode.put("children", toUserNodeList(members));
+        
+        centerNodes.add(centerNode);
       }
       
-      List<UserRow> rows = byCenter.getOrDefault(c.getCenterId(), List.of());
+      // 브랜치 노드(프론트 호환 위해 userRole=GROUP 유지)
+      Map<String, Object> branchNode = new LinkedHashMap<>();
+      branchNode.put("userId", null);
+      branchNode.put("userName", branchName);
+      branchNode.put("userRole", "GROUP");
+      branchNode.put("children", centerNodes);
       
-      // STAFF는 본인만
-      if (isStaff(me)) {
-        rows = rows.stream()
-            .filter(u -> Objects.equals(u.getUserId(), me.getUserId()))
-            .toList();
-      }
-      
-      // (원한다면 빈 센터도 보이게 유지 가능. 지금은 내 범위 안에서만 보임)
-      children.add(group(c.getCenterName(), "CENTER", toUserNodeList(rows)));
+      branchNodes.add(branchNode);
     }
     
-    root.put("children", children);
+    root.put("children", branchNodes);
     
     Map<String, Object> currentUser = new LinkedHashMap<>();
     currentUser.put("userId", me.getUserId());
     currentUser.put("userEmail", me.getUserEmail());
     currentUser.put("userRole", me.getUserRole());
     currentUser.put("centerId", me.getCenterId());
-    currentUser.put("isSuper", isSuper(me)); // 프론트 비활성화 표시용
+    currentUser.put("isSuper", isSuper(me));
     
     return Map.of("nodes", List.of(root), "currentUser", currentUser);
+  }
+  
+  // ===================== 보기 범위(새 규칙) =====================
+  private boolean canSeeAllCenters(UserRow u) {
+    return isSuper(u) || isHqTeam(u); // 슈퍼 또는 본사팀(centerId=1)
+  }
+  
+  // 본사팀/슈퍼만 전체 열람, 그 외는 역할별로 허용된 범위(센터장·전문가: 내 센터 + 타지점 팀 / 매니저·스탭: 내 팀)만 열람
+  private boolean canSee(UserRow viewer, UserRow target) {
+    if (viewer == null || target == null) return false;
+    if (canSeeAllCenters(viewer)) return true;
+    
+    // 본사팀은 본사팀/슈퍼만
+    if (isHqTeam(target)) return false;
+    
+    // 센터장/전문가: 내 센터 + 다른 지점 팀들(= branchId != 1)
+    if (isCenterHead(viewer) || isExpert(viewer)) {
+      boolean sameCenter = Objects.equals(viewer.getCenterId(), target.getCenterId());
+      boolean otherTeamBranches = isTeamBranch(target); // branchId != 1
+      return sameCenter || otherTeamBranches;
+    }
+    
+    // 매니저/스탭: 자기 팀만
+    if (isManager(viewer) || isStaff(viewer)) {
+      return Objects.equals(viewer.getCenterId(), target.getCenterId());
+    }
+    
+    return false;
+  }
+  
+  // canSee 규칙을 그대로 센터(팀) 목록에도 적용해서, 트리에 "보일 수 있는 팀"만 포함시킴
+  private List<CenterDto> filterCenters(UserRow me, List<CenterDto> centers) {
+    if (me == null) return List.of();
+    if (canSeeAllCenters(me)) return centers;
+    
+    // 센터장/전문가: 내 센터 + 다른 지점 팀들(branchId != 1), 단 본사팀(centerId=1)은 제외
+    if (isCenterHead(me) || isExpert(me)) {
+      return centers.stream()
+          .filter(c -> !Objects.equals(c.getCenterId(), 1L)) // 본사팀 제외
+          .filter(c -> Objects.equals(c.getCenterId(), me.getCenterId()) || isTeamBranch(c))
+          .toList();
+    }
+    
+    // 매니저/스탭: 내 팀만
+    return centers.stream()
+        .filter(c -> Objects.equals(c.getCenterId(), me.getCenterId()))
+        .toList();
+  }
+  
+//  // 센터장/전문가: 본사팀 제외 전 지점 조회 가능
+//  private boolean canSee(UserRow viewer, UserRow target) {
+//    if (viewer == null || target == null) return false;
+//    if (canSeeAllCenters(viewer)) return true;
+//
+//    // 센터장/전문가: 본사팀(centerId=1)만 제외
+//    if (isCenterHead(viewer) || isExpert(viewer)) {
+//      return !isHqTeam(target);
+//    }
+//
+//    // 매니저/스탭: 자기 팀만(팀원 전체)
+//    if (isManager(viewer) || isStaff(viewer)) {
+//      return Objects.equals(viewer.getCenterId(), target.getCenterId());
+//    }
+//
+//    return false;
+//  }
+//
+//  // 트리에 포함할 센터(팀) 목록 결정
+//  private List<CenterDto> filterCenters(UserRow me, List<CenterDto> centers) {
+//    if (me == null) return List.of();
+//
+//    if (canSeeAllCenters(me)) {
+//      return centers;
+//    }
+//
+//    if (isCenterHead(me) || isExpert(me)) {
+//      // 본사팀(centerId=1)만 제외
+//      return centers.stream()
+//          .filter(c -> !Objects.equals(c.getCenterId(), 1L))
+//          .toList();
+//    }
+//
+//    // 매니저/스탭: 내 팀만
+//    return centers.stream()
+//        .filter(c -> Objects.equals(c.getCenterId(), me.getCenterId()))
+//        .toList();
+//  }
+  
+  // ===================== 수정 권한 =====================
+  // super: 모두 가능(본인 포함)
+  // super 아님: 본인 불가 + 동급 불가 + 하위만
+  private boolean canEdit(UserRow viewer, UserRow target) {
+    if (viewer == null || target == null) return false;
+    
+    if (isSuper(viewer)) return true;
+    if (Objects.equals(viewer.getUserId(), target.getUserId())) return false;
+    if (!canSee(viewer, target)) return false;
+    
+    return rank(viewer.getUserRole()) > rank(target.getUserRole());
+  }
+  
+  private List<Map<String, Object>> toUserNodeList(List<UserRow> list) {
+    return list.stream().map(u -> {
+      Map<String, Object> m = new LinkedHashMap<>();
+      m.put("userId", u.getUserId());
+      m.put("userName", u.getUserName());
+      m.put("userEmail", u.getUserEmail());
+      m.put("userRole", u.getUserRole());
+      m.put("userPhone", u.getUserPhone());
+      m.put("userCreatedAt", u.getUserCreatedAt());
+      m.put("centerId", u.getCenterId());
+      m.put("children", List.of());
+      return m;
+    }).toList();
   }
   
   /** 이름/전화 수정 전용 (조직도에서) */
@@ -157,85 +282,27 @@ public class InfoService {
   }
   
   /* ======================= 내부 유틸 ======================= */
-  // 추가: 편의 메서드
+  // 편의 메서드
   private boolean isAdmin(UserRow u)   { return u != null && "SUPERADMIN".equals(u.getUserRole()); }
   private boolean isManager(UserRow u) { return u != null && "MANAGER".equals(u.getUserRole()); }
   private boolean isStaff(UserRow u)   { return u != null && "STAFF".equals(u.getUserRole()); }
+  private boolean isCenterHead(UserRow u) { return u != null && "CENTERHEAD".equals(u.getUserRole()); }
+  private boolean isExpert(UserRow u)   { return u != null && "EXPERT".equals(u.getUserRole()); }
   private boolean isSuper(UserRow u)   { return u != null && u.isSuper(); }
-  private int rank(String r){ return switch (r){ case "SUPERADMIN"->3; case "MANAGER"->2; case "STAFF"->1; default->0; }; }
-  
-  /** 전역 열람 판단: HQ(센터ID=1) 또는 super 계정만 true */
-  private boolean canSeeAllCenters(UserRow u) {
-    if (u == null) return false;
-    if (isSuper(u)) return true; // 슈퍼어드민(특별한계정) 전권
-    return Objects.equals(u.getCenterId(), 1L);  // 본사 소속만 전역 열람
-  }
-  
-  /** 보기 범위:
-   *  - super/HQ: 전체
-   *  - SUPERADMIN(비HQ) & MANAGER: 본인 센터
-   *  - STAFF: 본인만
-   */
-  private List<UserRow> filterVisible(UserRow me, List<UserRow> all) {
-    if (me == null) return List.of();
-    if (canSeeAllCenters(me)) return all; // super 또는 HQ
-    
-    if (isAdmin(me) || isManager(me)) {
-      // 관리자(SUPERADMIN)인데 HQ가 아니면 ‘자기 센터만’
-      return all.stream().filter(u -> Objects.equals(u.getCenterId(), me.getCenterId())).toList();
-    }
-    // 직원은 본인만
-    return all.stream().filter(u -> Objects.equals(u.getUserId(), me.getUserId())).toList();
-  }
-  
-  /** 수정 권한:
-   *  - super: 모두 가능(본인 포함)
-   *  - HQ: 전 센터 가능, 단 ‘동일 권한’은 불가
-   *  - SUPERADMIN(비HQ) / MANAGER: 같은 센터 + 본인보다 낮은 권한만(STAFF)
-   *  - STAFF: 불가
-   */
-  private boolean canEdit(UserRow viewer, UserRow target) {
-    if (viewer == null || target == null) return false;
-    
-    if (isSuper(viewer)) return true; // super 전권
-    if (Objects.equals(viewer.getUserId(), target.getUserId())) return false; // 본인 금지
-    
-    if (canSeeAllCenters(viewer)) {
-      // HQ
-      return rank(viewer.getUserRole()) > rank(target.getUserRole());
-    }
-    
-    // SUPERADMIN(비HQ) 또는 MANAGER: 같은 센터 + 낮은 권한만
-    if (isAdmin(viewer) || isManager(viewer)) {
-      return Objects.equals(viewer.getCenterId(), target.getCenterId())
-          && rank(viewer.getUserRole()) > rank(target.getUserRole());
-    }
-    
-    return false; // STAFF
-  }
-  
-  private Map<String, Object> group(String name, String role, List<Map<String, Object>> children) {
-    Map<String, Object> m = new LinkedHashMap<>();
-    m.put("userId", null);
-    m.put("userName", name);
-    m.put("userRole", role);
-    m.put("children", children);
-    return m;
-  }
-  
-  private List<Map<String, Object>> toUserNodeList(List<UserRow> list) {
-    return list.stream().map(u -> {
-      Map<String, Object> m = new LinkedHashMap<>();
-      m.put("userId", u.getUserId());
-      m.put("userName", u.getUserName());
-      m.put("userEmail", u.getUserEmail());
-      m.put("userRole", u.getUserRole());
-      m.put("userPhone", u.getUserPhone()); // 전화 포함
-      m.put("userCreatedAt", u.getUserCreatedAt()); // 정렬용 (프론트가 쓰면 좋고, 안 쓰면 무시)
-      m.put("centerId", u.getCenterId()); // 프론트 권한판정용
-      m.put("children", List.of());
-      return m;
-    }).toList();
+  private boolean isHqTeam(UserRow u) { return u != null && Objects.equals(u.getCenterId(), 1L); }
+  private boolean isHqBranch(UserRow u){ return u != null && Objects.equals(u.getBranchId(), 1L); }
+  private boolean isTeamBranch(UserRow u){ return u != null && u.getBranchId() != null && !Objects.equals(u.getBranchId(), 1L); }
+  private boolean isHqBranch(CenterDto c){ return c != null && Objects.equals(c.getBranchId(), 1L); }
+  private boolean isTeamBranch(CenterDto c){ return c != null && c.getBranchId() != null && !Objects.equals(c.getBranchId(), 1L); }
+  private int rank(String r) {
+    return switch (r) {
+      case "SUPERADMIN" -> 5;
+      case "CENTERHEAD" -> 4;
+      case "EXPERT"     -> 3;
+      case "MANAGER"    -> 2;
+      case "STAFF"      -> 1;
+      default           -> 0;
+    };
   }
   
   /** 010-xxxx-xxxx 포맷 보정 (빈값 허용 X) */
