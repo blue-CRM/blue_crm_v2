@@ -81,11 +81,11 @@
     <sql id="ADMIN_ORDER">
         <bind name="hasStatus"   value="sort != null and sort.contains('status')" />
         <bind name="hasDivision" value="sort != null and sort.contains('division')" />
-        <bind name="isRecall"    value="status != null and status.equals('재콜')" />
+        <bind name="isRecall"    value="status != null and (status.equals('재콜') or status.equals('내방'))" />
         <bind name="isOldest"    value="sort != null and sort.contains('oldest')" />
 
         <choose>
-            <!-- status=재콜이면 재콜 전용 정렬 강제 -->
+            <!-- status=재콜 혹은 내방이면 재콜 전용 정렬 강제 -->
             <when test="isRecall">
                 ORDER BY
                 (t.promiseAt IS NULL) ASC,   -- 예약 있는 것 먼저
@@ -98,12 +98,12 @@
                 FIELD(t.division, '최초','유효','중복'),
                 FIELD(t.status,
                 '부재1','부재2','부재3','부재4','부재5','기타','결번',
-                '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
+                '재콜','내방','신규','가망','자연풀','카피','거절','없음','회수'),
                 /* 재콜 묶음 내부: 예약 없는 것 뒤로, 예약 빠른 순 */
-                CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
-                CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
+                CASE WHEN t.status IN ('재콜','내방') THEN (t.promiseAt IS NULL) END ASC,
+                CASE WHEN t.status IN ('재콜','내방') THEN t.promiseAt END ASC,
                 /* 재콜 이외: 최신 생성일 우선 */
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                CASE WHEN t.status NOT IN ('재콜','내방') THEN t.createdAt END
                 <choose>
                     <when test="isOldest"> ASC</when>
                     <otherwise> DESC</otherwise>
@@ -115,10 +115,10 @@
                 ORDER BY
                 FIELD(t.status,
                 '부재1','부재2','부재3','부재4','부재5','기타','결번',
-                '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
-                CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
-                CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                '재콜','내방','신규','가망','자연풀','카피','거절','없음','회수'),
+                CASE WHEN t.status IN ('재콜','내방') THEN (t.promiseAt IS NULL) END ASC,
+                CASE WHEN t.status IN ('재콜','내방') THEN t.promiseAt END ASC,
+                CASE WHEN t.status NOT IN ('재콜','내방') THEN t.createdAt END
                 <choose>
                     <when test="isOldest"> ASC</when>
                     <otherwise> DESC</otherwise>
@@ -356,12 +356,12 @@
     </sql>
 
     <sql id="CUSTOMER_ONLY_ORDER">
-        <bind name="isRecall" value="pStatus != null and pStatus.equals('재콜')" />
+        <bind name="isRecall" value="pStatus != null and (pStatus.equals('재콜') or pStatus.equals('내방'))" />
         <bind name="hasStatus" value="sort != null and sort.contains('status')" />
         <bind name="isOldest"  value="sort != null and sort.contains('oldest')" />
 
         <choose>
-            <!-- 재콜 필터면 전용 정렬 -->
+            <!-- 재콜 혹은 내방 필터면 전용 정렬 -->
             <when test="isRecall">
                 ORDER BY
                 (c.customer_promise_time IS NULL) ASC,
@@ -372,10 +372,10 @@
                 ORDER BY
                     FIELD(c.customer_status,
                     '부재1','부재2','부재3','부재4','부재5','기타','결번',
-                    '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
-                    CASE WHEN c.customer_status='재콜' THEN (c.customer_promise_time IS NULL) END ASC,
-                    CASE WHEN c.customer_status='재콜' THEN c.customer_promise_time END ASC,
-                    CASE WHEN c.customer_status&lt;&gt;'재콜' THEN c.customer_created_at END
+                    '재콜','내방','신규','가망','자연풀','카피','거절','없음','회수'),
+                    CASE WHEN c.customer_status IN ('재콜','내방') THEN (c.customer_promise_time IS NULL) END ASC,
+                    CASE WHEN c.customer_status IN ('재콜','내방') THEN c.customer_promise_time END ASC,
+                    CASE WHEN c.customer_status NOT IN ('재콜','내방') THEN c.customer_created_at END
                 <choose>
                     <when test="isOldest"> ASC</when>
                     <otherwise> DESC</otherwise>

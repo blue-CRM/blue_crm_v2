@@ -51,6 +51,12 @@ export default [
         component: () => import('@/views/Pages/Info.vue'),
         meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF','CENTERHEAD','EXPERT'] }
     },
+    // 내방 캘린더
+    {
+        path: '/visit-calendar',
+        component: () => import('@/views/Pages/VisitCalendar.vue'),
+        meta: { requiresAuth: true, role: ['SUPERADMIN','MANAGER','STAFF','CENTERHEAD','EXPERT'] }
+    },
     // 회원관리
     {
         path: '/user',

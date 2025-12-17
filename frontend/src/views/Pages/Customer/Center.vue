@@ -111,15 +111,15 @@ function preprocessRows(rows) {
   return list.map((row) => {
     const r = { ...row };
 
-    // 1) 재콜 + reservation null => 없음
-    if (r.status === "재콜" && isNil(r.reservation)) {
+    // 1) 재콜 + 내방 + reservation null => 없음
+    if ((r.status === "재콜" || r.status === "내방") && isNil(r.reservation)) {
       r.reservation = "없음";
     }
 
-    // 2) 자연풀/카피 + (최초/업셀) null => 0
+    // 2) 자연풀/카피 + (최초/업셀) null => 없음
     if (MONEY_ZERO_STATUSES.has(r.status)) {
-      if (isNil(r.initialPrice)) r.initialPrice = 0;
-      if (isNil(r.upsellPrice)) r.upsellPrice = 0;
+      r.initialPrice = isNil(r.initialPrice) ? "없음" : formatUSD(r.initialPrice);
+      r.upsellPrice  = isNil(r.upsellPrice)  ? "없음" : formatUSD(r.upsellPrice);
     }
 
     // 3) 최초/업셀 달러 표기 + 천단위 콤마
@@ -210,7 +210,7 @@ const columns = [
   { key: "content", label: "내용", type: "text", ellipsis: { width: 150 } },
   { key: "memo", label: "메모", type: "text", ellipsis: { width: 150 } },
   { key: "status", label: "상태", type: "badge",
-    options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
+    options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","가망","자연풀","카피","거절"] },
   { key: "reservation", label: "예약", type: "text", ellipsis: { width: 120 } },
   { key: "initialPrice", label: "최초(달러)", type: "text", ellipsis: { width: 110 } },
   { key: "upsellPrice",  label: "업셀(달러)", type: "text", ellipsis: { width: 110 } },
@@ -255,7 +255,7 @@ async function loadCentersByBranch(bid) {
 const divisionOptions = ["구분 전체", "최초", "유효", "중복"];
 const statusOptions = [
   "상태 전체", "모든 부재", "부재1", "부재2", "부재3", "부재4", "부재5",
-  "기타", "결번", "재콜", "신규", "가망", "자연풀", "카피", "거절", "없음", "회수"
+  "기타", "결번", "재콜", "내방", "신규", "가망", "자연풀", "카피", "거절", "없음", "회수"
 ];
 const expertOptions = ref(["전문가 전체"]);
 
