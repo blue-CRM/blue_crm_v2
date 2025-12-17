@@ -139,6 +139,11 @@ public interface CustomerAllMapper {
   Integer existsCustomerById(@Param("customerId") Long customerId);
   Integer customerOwnedByCenter(@Param("customerId") Long customerId, @Param("centerId") Long centerId);
   Integer customerOwnedByUser(@Param("customerId") Long customerId, @Param("userId") Long userId);
+  Integer customerAccessibleForCenterHead(@Param("customerId") Long customerId,
+                                          @Param("centerId") Long centerId);
+  
+  Integer customerAccessibleForExpert(@Param("customerId") Long customerId,
+                                      @Param("expertId") Long expertId);
   
   // 수정
   int updateCustomerReservation(@Param("customerId") Long customerId, @Param("when") LocalDateTime when);

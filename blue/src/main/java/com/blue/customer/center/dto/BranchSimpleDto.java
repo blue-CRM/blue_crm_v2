@@ -1,16 +1,13 @@
 package com.blue.customer.center.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CenterSimpleDto {
-  private Long centerId;
-  private String centerName;
+public class BranchSimpleDto {
+  private Long branchId;
+  private String branchName;
 }

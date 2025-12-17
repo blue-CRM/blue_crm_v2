@@ -126,6 +126,17 @@ public class CustomerAllService {
         Integer ownsSelf = mapper.customerOwnedByUser(customerId, me.getUserId());
         if (ownsSelf == null || ownsSelf == 0) throw new IllegalArgumentException("권한이 없습니다.");
       }
+      case "CENTERHEAD" -> {
+        Integer ok = mapper.customerAccessibleForCenterHead(customerId, me.getCenterId());
+        if (ok == null || ok == 0) throw new IllegalArgumentException("권한이 없습니다.");
+      }
+      
+      case "EXPERT" -> {
+        Long myExpertId = mapper.findExpertIdByUserId(me.getUserId());
+        if (myExpertId == null) throw new IllegalArgumentException("전문가 정보가 없습니다.");
+        Integer ok = mapper.customerAccessibleForExpert(customerId, myExpertId);
+        if (ok == null || ok == 0) throw new IllegalArgumentException("권한이 없습니다.");
+      }
       default -> throw new IllegalStateException("Unknown role: " + me.getRole());
     }
     
@@ -203,6 +214,17 @@ public class CustomerAllService {
       case "STAFF" -> {
         Integer ownsSelf = mapper.customerOwnedByUser(customerId, me.getUserId());
         if (ownsSelf == null || ownsSelf == 0) throw new IllegalArgumentException("권한이 없습니다.");
+      }
+      case "CENTERHEAD" -> {
+        Integer ok = mapper.customerAccessibleForCenterHead(customerId, me.getCenterId());
+        if (ok == null || ok == 0) throw new IllegalArgumentException("권한이 없습니다.");
+      }
+      
+      case "EXPERT" -> {
+        Long myExpertId = mapper.findExpertIdByUserId(me.getUserId());
+        if (myExpertId == null) throw new IllegalArgumentException("전문가 정보가 없습니다.");
+        Integer ok = mapper.customerAccessibleForExpert(customerId, myExpertId);
+        if (ok == null || ok == 0) throw new IllegalArgumentException("권한이 없습니다.");
       }
       default -> throw new IllegalStateException("권한이 없습니다.");
     }

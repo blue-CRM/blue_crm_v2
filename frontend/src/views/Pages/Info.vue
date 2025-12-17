@@ -104,7 +104,19 @@ const currentUser = ref(null)
 /** 펼침 제어: Set<string> (예: "HQ:마크CRM", "GROUP:본사", "CENTER:센터A") */
 const expandKeys  = ref(new Set(["HQ:마크CRM"])) // 기본: 본사만 열기
 
-const nodeKey = (n) => (n.userId ? `U:${n.userId}` : `${n.userRole}:${n.userName}`)
+const nodeKey = (n) => {
+  if (n.userId) return `U:${n.userId}`
+
+  if (n.userRole === "HQ") return "HQ:마크CRM"
+
+  // 지점 노드 (GROUP)
+  if (n.userRole === "GROUP") return `B:${n.branchId ?? n.userName}`
+
+  // 팀 노드 (CENTER)
+  if (n.userRole === "CENTER") return `C:${n.centerId ?? n.userName}`
+
+  return `${n.userRole}:${n.userName}`
+}
 
 function onToggle({ key, open }) {
   const next = new Set(expandKeys.value)
@@ -113,35 +125,37 @@ function onToggle({ key, open }) {
 }
 
 /** 데이터 로드 */
+const didInitExpand = ref(false)
 async function loadTree({ restoreExpandedKeys = null, focusUserId = null } = {}) {
   const { data } = await axios.get("/api/info/tree", { withCredentials: true })
-  treeData.value    = data.nodes
+  treeData.value = data.nodes
   currentUser.value = data.currentUser
-  // applySearch(globalFilters.keyword || "")
 
-  // 로그인 사용자가 센터 소속이면: 내 센터 브랜치만 펼침
-  if (currentUser.value?.centerId) {
-    // 현재 사용자까지의 상위(HQ/GROUP/CENTER)만 열림
-    forceOpenPathToUserId(currentUser.value.userId, { exclusive: true })
-  }
-
-  // 펼침 복원 (있으면)
+  // 1) 저장/검색 등으로 복원 요청이 있으면 그걸 우선
   if (restoreExpandedKeys) {
     expandKeys.value = new Set(restoreExpandedKeys)
   }
 
-  // 특정 사용자 경로 강제 오픈 + 스크롤 (있으면)
+  // 2) 최초 로그인 1회만: 내 경로(HQ -> 지점 -> 팀) 자동 오픈
+  if (!didInitExpand.value && !restoreExpandedKeys && !(globalFilters.keyword || "").trim()) {
+    if (currentUser.value?.userId) {
+      forceOpenPathToUserId(currentUser.value.userId, { exclusive: true })
+    } else {
+      expandKeys.value = new Set(["HQ:마크CRM"])
+    }
+    didInitExpand.value = true
+  }
+
+  // 3) 특정 유저 포커스(저장 후 재조회)
   if (focusUserId) {
     forceOpenPathToUserId(focusUserId, { exclusive: false })
     await nextTick()
-    const el = document.getElementById('user-' + focusUserId)
+    const el = document.getElementById("user-" + focusUserId)
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
-  // 검색어 있으면만 검색 펼침 적용 (없으면 현상 유지)
-  if ((globalFilters.keyword || '').trim()) {
-    applySearch(globalFilters.keyword || "")
-  }
+  // 4) 검색어 있으면 검색 펼침
+  if ((globalFilters.keyword || "").trim()) applySearch(globalFilters.keyword || "")
 }
 
 onMounted(loadTree)

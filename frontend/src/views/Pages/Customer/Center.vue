@@ -1,25 +1,28 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb pageTitle="센터별 고객DB 조회" />
+    <PageBreadcrumb :pageTitle="currentPageTitle" />
     <div class="grid grid-cols-12 gap-4 min-w-0">
       <div class="col-span-12 space-y-6 min-w-0">
 
+        <!-- 센터DB는 SUPERADMIN / CENTERHEAD / EXPERT만 (조회 전용) -->
         <ComponentCard
-            v-if="role === 'SUPERADMIN'"
-            :selects="[centerOptions]"
-            :buttons="buttons"
+            v-if="isAllowed"
+            :selects="adminSelects"
+            :buttons="adminButtons"
+            :active="activeLabels"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
             @changeSize="setSize"
-            @selectChange="onSelectChange"
-            @buttonClick="onButtonClick"
+            @selectChange="onAdminSelectChange"
+            @buttonClick="onCommonButtonClick"
         >
           <PsnsTable
+              :key="tableKey"
+              ref="tableRef"
               :columns="columns"
               :data="items"
-              :showCheckbox="true"
-              :rowSelectable="() => false"
+              :showCheckbox="false"
               :page="page"
               :totalPages="totalPages"
               :page-size="size"
@@ -32,7 +35,7 @@
     </div>
   </AdminLayout>
 
-  <!-- 전역 로딩 오버레이 (메모 모달과 동일하게 body로 텔레포트) -->
+  <!-- 전역 로딩 오버레이 -->
   <Teleport to="body">
     <transition name="fade">
       <div
@@ -40,10 +43,8 @@
           class="fixed inset-0 z-[2147483646]"
           aria-live="polite" aria-busy="true" role="status"
       >
-        <!-- 배경 -->
         <div class="absolute inset-0 bg-black/5 dark:bg-black/60"></div>
 
-        <!-- 스피너 -->
         <div class="absolute inset-0 z-[2147483647] flex items-center justify-center">
           <div class="flex flex-col items-center gap-3">
             <svg class="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
@@ -58,161 +59,312 @@
       </div>
     </transition>
   </Teleport>
-
 </template>
 
-<script setup lang="ts">
-import {ref, onMounted, computed, watch, onUnmounted} from "vue";
-import AdminLayout from "@/components/layout/AdminLayout.vue";
+<script setup>
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth.js";
 import PageBreadcrumb from "@/components/common/PageBreadcrumb.vue";
+import AdminLayout from "@/components/layout/AdminLayout.vue";
 import ComponentCard from "@/components/common/ComponentCard.vue";
 import PsnsTable from "@/components/tables/basic-tables/PsnsTable.vue";
-import api from "@/plugins/axios";
-import { useAuthStore } from "@/stores/auth.js";
-
-// 공용 필터/훅 (전체DB와 동일)
-import { globalFilters, setGlobalFilters } from "@/composables/globalFilters.js";
 import { useTableQuery } from "@/composables/useTableQuery.js";
+import { globalFilters } from "@/composables/globalFilters.js";
+import api from "@/plugins/axios.js";
 
+const router = useRouter();
 const auth = useAuthStore();
 const role = computed(() => auth.grants.role);
 
-// --- 센터 드롭다운 데이터 (본사 제외) ---
-type C = { centerId: number; centerName: string };
-const centers   = ref<C[]>([]);
-const centerMap = ref<Record<string, number>>({}); // name -> id
-const centerId  = ref<number|null>(null);          // 페이지 전용 필터
+const currentPageTitle = ref("센터DB 조회");
+const tableKey = ref(0);
+const tableRef = ref(null);
+const isRefreshing = ref(false);
 
-const todayOnly = ref(false)
-const centerOptions = computed(() => ['전체', ...centers.value.map(c => c.centerName)]);
+const isAllowed = computed(() =>
+    ["SUPERADMIN", "CENTERHEAD", "EXPERT"].includes(role.value)
+);
 
-// 테이블 데이터: 공용 훅 사용
+/* =============================
+   서버 응답 row 전처리
+============================= */
+const MONEY_ZERO_STATUSES = new Set(["자연풀", "카피"]);
+const USD = new Intl.NumberFormat("en-US");
+const isNil = (v) => v === null || v === undefined;
 
+const toNumber = (v) => {
+  if (typeof v === "number") return v;
+  const s = String(v ?? "").replace(/[^\d.-]/g, ""); // "$1,200" 같은 것도 대응
+  return s ? Number(s) : NaN;
+};
+
+const formatUSD = (v) => {
+  if (isNil(v)) return v;
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return v; // 혹시 이상값이면 원본 유지
+  return `$ ${USD.format(n)}`;
+};
+
+function preprocessRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  return list.map((row) => {
+    const r = { ...row };
+
+    // 1) 재콜 + reservation null => 없음
+    if (r.status === "재콜" && isNil(r.reservation)) {
+      r.reservation = "없음";
+    }
+
+    // 2) 자연풀/카피 + (최초/업셀) null => 0
+    if (MONEY_ZERO_STATUSES.has(r.status)) {
+      if (isNil(r.initialPrice)) r.initialPrice = 0;
+      if (isNil(r.upsellPrice)) r.upsellPrice = 0;
+    }
+
+    // 3) 최초/업셀 달러 표기 + 천단위 콤마
+    if (!isNil(r.initialPrice)) r.initialPrice = formatUSD(r.initialPrice);
+    if (!isNil(r.upsellPrice))  r.upsellPrice  = formatUSD(r.upsellPrice);
+
+    return r;
+  });
+}
+
+/* =============================
+   목록 조회 (조회 전용)
+============================= */
 const {
-  items, page, size, totalPages, loading: tableLoading,
-  fetchData, changePage, setSize, setFilter
+  items,
+  page,
+  size,
+  totalPages,
+  loading: tableLoading,
+  fetchData,
+  changePage,
+  setSize,
+  setFilter
 } = useTableQuery({
   url: "/api/work/center/db",
-  externalFilters: globalFilters,     // 날짜/카테고리/검색은 전역필터
+  externalFilters: globalFilters,
   useExternalKeys: {
     from: "dateFrom",
     to: "dateTo",
     category: "category",
     keyword: "keyword",
+    sort: "sort",
+    status: "status",
+    division: "division",
+    expertName: "expertName",
+    branchId: "branchId",
+    centerId: "centerId",
   },
   mapper: (res) => ({
-    items: res.data.items,
+    items: preprocessRows(res.data.items),
     totalPages: res.data.totalPages,
-    totalCount: res.data.totalCount,
-  }),
+    totalCount: res.data.totalCount
+  })
 });
 
-// 로딩 오버레이 설정
-const isRefreshing = ref(false)
-const uiLoading = ref(false)
-const busy = computed(() => tableLoading.value || isRefreshing.value || uiLoading.value)
-const showTableSpinner = ref(false)
-let delayTimer = null
+/* =============================
+   로딩 오버레이
+============================= */
+const uiLoading = ref(false);
+const busy = computed(() => tableLoading.value || isRefreshing.value || uiLoading.value);
+const showTableSpinner = ref(false);
+let delayTimer = null;
 
 async function runBusy(task) {
-  if (uiLoading.value) return
-  uiLoading.value = true
-  try { await task() } finally { uiLoading.value = false }
+  if (uiLoading.value) return;
+  uiLoading.value = true;
+  try { await task(); } finally { uiLoading.value = false; }
 }
 
 watch(busy, (v) => {
   if (v) {
-    // 짧은 로딩은 스피너 숨김
-    delayTimer = setTimeout(() => { showTableSpinner.value = true }, 200)
+    delayTimer = setTimeout(() => { showTableSpinner.value = true; }, 200);
   } else {
-    if (delayTimer) { clearTimeout(delayTimer); delayTimer = null }
-    showTableSpinner.value = false
+    if (delayTimer) { clearTimeout(delayTimer); delayTimer = null; }
+    showTableSpinner.value = false;
   }
-})
-
-onUnmounted(() => {
-  if (delayTimer) { clearTimeout(delayTimer); delayTimer = null }
-})
-
-// 컬럼 고정
-const columns = [
-  { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
-  { key: "createdAt",  label: "생성일",   type: "text", ellipsis: { width: 150 } },
-  { key: "name",       label: "이름",     type: "text", ellipsis: { width: 100 } },
-  { key: "phone",      label: "전화번호", type: "text", ellipsis: { width: 150 } },
-  {
-    key: "centerName",
-    label: "센터",
-    type: "badge",
-    width: 100,
-    render: (val: string) => `<span>${val ?? '없음'}</span>`,
-  },
-  { key: "",  label: "",   type: "text", ellipsis: { width: 20 } },
-];
-
-onMounted(async () => {
-  await loadCenters();
-  // await fetchData();
 });
 
-async function loadCenters() {
-  const { data } = await api.get("/api/work/center/centers"); // HQ 제외 반환
+onUnmounted(() => {
+  if (delayTimer) { clearTimeout(delayTimer); delayTimer = null; }
+});
+
+/* =============================
+   컬럼 (조회 전용)
+   - badge/date/money 편집 이벤트 제거
+============================= */
+
+const columns = [
+  { key: "createdAt", label: "DB생성일", type: "text" },
+  { key: "branchName", label: "지점", type: "text" },
+  { key: "centerName", label: "팀",   type: "text" },
+  { key: "staff", label: "프로", type: "text" },
+  { key: "division", label: "구분", type: "badge", options: ["최초", "중복", "유효"] },
+  { key: "",  label: "",   type: "text", ellipsis: { width: 5 } },
+  { key: "name", label: "이름", type: "text" },
+  { key: "phone", label: "전화번호", type: "text", ellipsis: { width: 150 } },
+  { key: "source", label: "DB출처", type: "text", ellipsis: { width: 100 } },
+  { key: "content", label: "내용", type: "text", ellipsis: { width: 150 } },
+  { key: "memo", label: "메모", type: "text", ellipsis: { width: 150 } },
+  { key: "status", label: "상태", type: "badge",
+    options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
+  { key: "reservation", label: "예약", type: "text", ellipsis: { width: 120 } },
+  { key: "initialPrice", label: "최초(달러)", type: "text", ellipsis: { width: 110 } },
+  { key: "upsellPrice",  label: "업셀(달러)", type: "text", ellipsis: { width: 110 } },
+];
+
+/* =============================
+   지점/팀 종속 드롭박스 (필터)
+============================= */
+const branches = ref([]);      // { branchId, branchName }
+const branchMap = ref({});     // name -> id
+const branchId = ref(null);
+
+const centers = ref([]);       // { centerId, centerName }
+const centerMap = ref({});     // name -> id
+const centerId = ref(null);
+
+const branchOptions = computed(() => ["지점 전체", ...branches.value.map(b => b.branchName)]);
+const teamOptions = computed(() => {
+  if (!branchId.value) return ["팀 전체"];
+  return ["팀 전체", ...centers.value.map(c => c.centerName)];
+});
+
+async function loadBranches() {
+  const { data } = await api.get("/api/work/center/branches");
+  branches.value = data || [];
+  branchMap.value = Object.fromEntries(branches.value.map(b => [b.branchName, b.branchId]));
+}
+
+async function loadCentersByBranch(bid) {
+  centers.value = [];
+  centerMap.value = {};
+  if (!bid) return;
+
+  const { data } = await api.get("/api/work/center/teams", { params: { branchId: bid } });
   centers.value = data || [];
   centerMap.value = Object.fromEntries(centers.value.map(c => [c.centerName, c.centerId]));
 }
 
-// ComponentCard select emit 핸들러
-function onSelectChange({ idx, value }: { idx:number; value:string }) {
+/* =============================
+   드롭박스: 지점/팀/구분/상태/전문가(본사/센터장만)
+============================= */
+const divisionOptions = ["구분 전체", "최초", "유효", "중복"];
+const statusOptions = [
+  "상태 전체", "모든 부재", "부재1", "부재2", "부재3", "부재4", "부재5",
+  "기타", "결번", "재콜", "신규", "가망", "자연풀", "카피", "거절", "없음", "회수"
+];
+const expertOptions = ref(["전문가 전체"]);
+
+const adminSelects = computed(() => {
+  // idx: 0=지점, 1=팀, 2=구분, 3=상태, 4=전문가(옵션)
+  const base = [branchOptions.value, teamOptions.value, divisionOptions, statusOptions];
+  if (role.value !== "EXPERT") base.push(expertOptions.value);
+  return base;
+});
+
+function onAdminSelectChange({ idx, value }) {
   return runBusy(async () => {
-    if (idx !== 0) return; // 드롭다운 1개만 사용
-    if (value === '전체') {
+    // 0=지점
+    if (idx === 0) {
+      branchId.value = (value === "지점 전체") ? null : (branchMap.value[value] ?? null);
+
+      // 지점 바뀌면 팀 초기화 + 팀 로드
       centerId.value = null;
-    } else {
-      centerId.value = centerMap.value[value] ?? null;
+      setFilter("centerId", null);
+
+      setFilter("branchId", branchId.value);
+      await loadCentersByBranch(branchId.value);
+      return;
     }
-    setFilter("centerId", centerId.value); // 페이지 전용 필터 적용
-    // fetchData();
-  })
+
+    // 1=팀
+    if (idx === 1) {
+      if (!branchId.value) {
+        centerId.value = null;
+        setFilter("centerId", null);
+        return;
+      }
+      centerId.value = (value === "팀 전체") ? null : (centerMap.value[value] ?? null);
+      setFilter("centerId", centerId.value);
+      return;
+    }
+
+    // 2=구분
+    if (idx === 2) {
+      const v = (value === "구분 전체") ? null : value;
+      setFilter("division", v);
+      globalFilters.division = v;
+      return;
+    }
+
+    // 3=상태
+    if (idx === 3) {
+      const v = (value === "상태 전체") ? null : value;
+      setFilter("status", v);
+      globalFilters.status = v;
+      return;
+    }
+
+    // 4=전문가
+    if (idx === 4) {
+      const v = (value === "전문가 전체") ? null : value;
+      setFilter("expertName", v);
+      globalFilters.expertName = v;
+    }
+  });
 }
 
-// 버튼 라벨 토글용
-const buttons = computed(() => [
-  todayOnly.value ? "전체 보기" : "오늘만 보기",
-  "엑셀 다운로드",
-])
+/* =============================
+   정렬/버튼 (조회 전용)
+============================= */
+const viewOptions = ref({
+  status: false,
+  oldest: false
+});
 
-// ComponentCard button emit 핸들러
-async function onButtonClick(btn: string) {
-  return runBusy(async () => {
-    if (btn === "오늘만 보기") {
-      const s = todayStr()
-      setGlobalFilters({ dateFrom: s, dateTo: s }) // 오늘만
-      todayOnly.value = true
-      // await fetchData()
-      return
-    }
-    if (btn === "전체 보기") {
-      setGlobalFilters({ dateFrom: null, dateTo: null }) // 날짜 필터 초기화
-      todayOnly.value = false
-      // await fetchData()
-      return
-    }
-    if (btn === '엑셀 다운로드') {
+const activeLabels = computed(() => {
+  const arr = [];
+  if (viewOptions.value.status) arr.push("상태별 보기");
+  if (viewOptions.value.oldest) arr.push("과거순 보기");
+  return arr;
+});
+
+const adminButtons = computed(() => ["상태별 보기", "과거순 보기", "엑셀 다운로드"]);
+
+async function onCommonButtonClick(btn) {
+  if (uiLoading.value) return;
+  uiLoading.value = true;
+
+  try {
+    if (btn === "엑셀 다운로드") {
       await downloadExcel();
       return;
     }
-  })
+
+    if (btn === "상태별 보기") viewOptions.value.status = !viewOptions.value.status;
+    if (btn === "과거순 보기") viewOptions.value.oldest = !viewOptions.value.oldest;
+
+    const sortParts = [];
+    if (viewOptions.value.status) sortParts.push("status");
+    if (viewOptions.value.oldest) sortParts.push("oldest");
+    const sort = sortParts.length ? sortParts.join(",") : null;
+
+    setFilter("sort", sort);
+    globalFilters.sort = sort;
+
+    tableKey.value++; // 선택 초기화/리렌더 목적
+  } finally {
+    uiLoading.value = false;
+  }
 }
 
-// 선택된 센터 이름 계산 (없으면 빈 문자열)
-const currentCenterName = computed(() => {
-  const id = centerId.value
-  if (id == null) return "마크CRM" // '전체'일 때 빈 문자열로
-  const found = centers.value.find(c => c.centerId === id)
-  return found?.centerName ?? ""
-})
-
-// yyyy-mm-dd
+/* =============================
+   엑셀 다운로드 (센터DB 기존 로직 유지)
+============================= */
 function todayStr() {
   const d = new Date();
   const y = d.getFullYear();
@@ -220,48 +372,95 @@ function todayStr() {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
-
-// 파일명에서 불가 문자 치환 (윈도우 대비)
-function sanitize(name: string) {
+function sanitize(name) {
   return name.replace(/[\\/:*?"<>|]/g, "_");
 }
 
-// 엑셀 다운로드 (전역 + 페이지 필터 그대로 전달)
-async function downloadExcel() {
-  const params: any = {
-    dateFrom:  globalFilters.dateFrom || undefined,
-    dateTo:    globalFilters.dateTo   || undefined,
-    // category:  Array.isArray(globalFilters.category)
-    //     ? globalFilters.category.join(",")
-    //     : (globalFilters.category || undefined),
-    keyword:   (globalFilters.keyword || "").trim() || undefined,
-    centerId:  centerId.value ?? undefined,
-  };
-  const res  = await api.get("/api/work/center/db/export", { params, responseType: "blob" });
-  const blob = new Blob([res.data], { type: res.headers["content-type"] });
-  const a    = document.createElement("a");
-  a.href     = URL.createObjectURL(blob);
+const currentBranchName = computed(() => {
+  const id = branchId.value;
+  if (!id) return "";
+  const found = branches.value.find(b => b.branchId === id);
+  return found?.branchName ?? "";
+});
 
-  const namePart = currentCenterName.value
-  a.download = sanitize(
-      namePart ? `${namePart} (${todayStr()}).xlsx` : `${todayStr()}.xlsx`
-  )
+const currentCenterName = computed(() => {
+  const id = centerId.value;
+  if (!id) return "";
+  const found = centers.value.find(c => c.centerId === id);
+  return found?.centerName ?? "";
+});
+
+async function downloadExcel() {
+  const params = {
+    dateFrom: globalFilters.dateFrom || undefined,
+    dateTo: globalFilters.dateTo || undefined,
+    keyword: (globalFilters.keyword || "").trim() || undefined,
+
+    category: globalFilters.category || undefined,
+    division: globalFilters.division || undefined,
+    status: globalFilters.status || undefined,
+    sort: globalFilters.sort || undefined,
+    expertName: globalFilters.expertName || undefined,
+
+    branchId: branchId.value ?? undefined,
+    centerId: centerId.value ?? undefined,
+  };
+
+  const res = await api.get("/api/work/center/db/export", { params, responseType: "blob" });
+  const blob = new Blob([res.data], { type: res.headers["content-type"] });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+
+  const namePart = [currentBranchName.value, currentCenterName.value].filter(Boolean).join("-");
+  a.download = sanitize(namePart ? `${namePart} (${todayStr()}).xlsx` : `${todayStr()}.xlsx`);
 
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
+/* =============================
+   수동 새로고침
+============================= */
 async function onRefresh() {
-  if (isRefreshing.value) return
-  isRefreshing.value = true
+  if (isRefreshing.value) return;
+  isRefreshing.value = true;
   try {
-    await api.post('/api/sheets/refresh?sid=1')
-    await fetchData()
-  } catch (e) {
-    console.error(e)
-    alert('새로고침 중 오류가 발생했습니다.')
+    await api.post("/api/sheets/refresh?sid=1");
+    await fetchData();
+  } catch (err) {
+    console.error(err);
+    alert("새로고침 중 오류가 발생했습니다.");
   } finally {
-    isRefreshing.value = false
+    isRefreshing.value = false;
   }
 }
+
+/* =============================
+   마운트
+============================= */
+onMounted(async () => {
+  await loadBranches();
+
+  if (role.value !== "EXPERT") {
+    try {
+      const { data } = await api.get("/api/work/db/experts");
+      const names = (data || []).map(e => e.expertName);
+      expertOptions.value = ["전문가 전체", ...names];
+    } catch (err) {
+      console.error("전문가 리스트 로딩 실패", err);
+    }
+  }
+});
+
+onUnmounted(() => {
+  // 혹시 남아있을 값 방어
+  globalFilters.mine = null;
+  globalFilters.staffUserId = null;
+
+  globalFilters.division = null;
+  globalFilters.status = null;
+  globalFilters.expertName = null;
+  globalFilters.sort = null;
+});
 </script>

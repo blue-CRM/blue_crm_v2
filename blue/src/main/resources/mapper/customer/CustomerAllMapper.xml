@@ -718,6 +718,33 @@
           AND user_id = #{userId}
     </select>
 
+    <select id="customerAccessibleForCenterHead" resultType="int">
+        SELECT EXISTS (
+            SELECT 1
+            FROM customers c
+            WHERE c.customer_id = #{customerId}
+              AND EXISTS (
+                SELECT 1
+                FROM users ux
+                         JOIN experts e ON e.expert_id = ux.expert_id
+                WHERE ux.center_id = #{centerId}
+                  AND ux.user_role IN ('CENTERHEAD','EXPERT')
+                  AND ux.expert_id IS NOT NULL
+                  AND TRIM(e.expert_name) = TRIM(c.customer_source)
+            )
+        )
+    </select>
+
+    <select id="customerAccessibleForExpert" resultType="int">
+        SELECT EXISTS (
+            SELECT 1
+            FROM customers c
+                     JOIN experts me ON me.expert_id = #{expertId}
+            WHERE c.customer_id = #{customerId}
+              AND TRIM(me.expert_name) = TRIM(c.customer_source)
+        )
+    </select>
+
     <!-- 수정 -->
     <update id="updateCustomerReservation">
         UPDATE customers

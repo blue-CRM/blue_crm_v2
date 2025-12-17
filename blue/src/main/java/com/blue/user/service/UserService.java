@@ -162,8 +162,8 @@ public class UserService {
     
     // 5. 전문가 배지 변경 (experts 테이블 연동) — 다른 필드와 분리 처리
     if ("expert".equals(field)) {
-      if (!"EXPERT".equals(targetRole)) {
-        throw new SecurityException("직책이 '전문가'인 직원만 전문가를 지정할 수 있습니다.");
+      if (!"CENTERHEAD".equals(targetRole) && !"EXPERT".equals(targetRole)) {
+        throw new SecurityException("권한이 '전문가' 또는 '전문가'인 직원만 전문가를 지정할 수 있습니다.");
       }
     }
     

@@ -6,4 +6,7 @@ import lombok.Data;
 public class CenterDto {
   Long centerId;
   String centerName;
+  
+  Long branchId;
+  String branchName;
 }

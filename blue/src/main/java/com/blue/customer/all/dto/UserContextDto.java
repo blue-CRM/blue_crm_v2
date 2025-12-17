@@ -40,4 +40,7 @@ public class UserContextDto {
   
   /** users.manager_phone_access — 전화번호 가시권한 */
   private String visible;
+  
+  /** 로그인한 사용자의 전문가 그룹 ID */
+  private Long expertId;
 }
