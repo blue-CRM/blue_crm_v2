@@ -9,6 +9,8 @@ public class UserContextDto {
   private Long userId;
   private String role;
   private Long centerId;
+  private Long expertId;
   private String email;
   private String visible;
+  private Boolean canAllocate;
 }

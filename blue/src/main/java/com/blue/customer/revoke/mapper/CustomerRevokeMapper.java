@@ -50,12 +50,59 @@ public interface CustomerRevokeMapper {
                           @Param("visible") String visible,
                           @Param("excludeUserId") Long excludeUserId);
   
+  List<RevokeListRowDto> findListForCenterHead(@Param("offset") int offset,
+                                               @Param("size") int size,
+                                               @Param("keyword") String keyword,
+                                               @Param("dateFrom") String dateFrom,
+                                               @Param("dateTo") String dateTo,
+                                               @Param("category") String category,
+                                               @Param("status") String status,
+                                               @Param("sort") String sort,
+                                               @Param("centerId") Long centerId,
+                                               @Param("visible") String visible,
+                                               @Param("excludeUserId") Long excludeUserId);
+  
+  int countListForCenterHead(@Param("keyword") String keyword,
+                             @Param("dateFrom") String dateFrom,
+                             @Param("dateTo") String dateTo,
+                             @Param("category") String category,
+                             @Param("status") String status,
+                             @Param("centerId") Long centerId,
+                             @Param("visible") String visible,
+                             @Param("excludeUserId") Long excludeUserId);
+  
+  List<RevokeListRowDto> findListForExpert(@Param("offset") int offset,
+                                           @Param("size") int size,
+                                           @Param("keyword") String keyword,
+                                           @Param("dateFrom") String dateFrom,
+                                           @Param("dateTo") String dateTo,
+                                           @Param("category") String category,
+                                           @Param("status") String status,
+                                           @Param("sort") String sort,
+                                           @Param("expertId") Long expertId,
+                                           @Param("visible") String visible);
+  
+  int countListForExpert(@Param("keyword") String keyword,
+                         @Param("dateFrom") String dateFrom,
+                         @Param("dateTo") String dateTo,
+                         @Param("category") String category,
+                         @Param("status") String status,
+                         @Param("expertId") Long expertId,
+                         @Param("visible") String visible);
+  
   List<Long> lockCustomersForRevokeByHq(@Param("ids") List<Long> ids);
   List<Long> lockCustomersForRevokeByManager(@Param("ids") List<Long> ids,
                                              @Param("managerCenterId") Long managerCenterId,
                                              @Param("excludeUserId") Long excludeUserId);
+  List<Long> lockCustomersForRevokeByCenterHead(@Param("ids") List<Long> ids,
+                                                @Param("centerId") Long centerId,
+                                                @Param("excludeUserId") Long excludeUserId);
+  List<Long> lockCustomersForRevokeByExpert(@Param("ids") List<Long> ids,
+                                            @Param("expertId") Long expertId);
   
   int updateToRevoked(@Param("ids") List<Long> ids);
+  int updateToManagerPool(@Param("ids") List<Long> ids,
+                          @Param("managerId") Long managerId);
   
   // 회수 후 매출 로그 작성
   void insertRevokeSalesLogs(@Param("ids") List<Long> ids, @Param("userId") Long userId);

@@ -279,8 +279,8 @@ const columns = computed(() => {
         key: "expert",
         label: "전문가",
         type: "badge",
-        // 직책이 '전문가'인 행에서만 수정 가능 + super만
-        editable: (row) => isSuper.value && row.type === "전문가",
+        // 직책이 '전문가, 센터장'인 행에서만 수정 가능 + super만
+        editable: (row) => isSuper.value && (row.type === "센터장" || row.type === "전문가"),
         options: expertOptions.value.map(e => e.expertName)  // 배지에 보일 텍스트
       },
       { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
@@ -457,8 +457,8 @@ async function onBadgeUpdate(row, key, newValue) {
   }
 
   // 전문가 가드
-  if (key === "expert" && row.type !== "전문가") {
-    alert("직책이 '전문가'인 직원만 전문가를 설정할 수 있습니다.")
+  if (key === "expert" && !(row.type === "센터장" || row.type === "전문가")) {
+    alert("권한이 '센터장' 또는 '전문가'인 직원만 전문가를 설정할 수 있습니다.")
     await fetchData()
     return
   }

@@ -54,4 +54,40 @@ public interface CustomerDuplMapper {
                        @Param("dateTo") String dateTo,
                        @Param("category") String category,
                        @Param("userId") Long userId);
+  
+  // CENTERHEAD (자기 센터)
+  List<AllDbRowDto> findAllForCenterHead(
+      @Param("offset") int offset,
+      @Param("size") int size,
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("centerId") Long centerId,
+      @Param("visible") String visible);
+  int countAllForCenterHead(
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("centerId") Long centerId,
+      @Param("visible") String visible);
+  
+  // EXPERT (본인 담당)
+  List<AllDbRowDto> findAllForExpert(
+      @Param("offset") int offset,
+      @Param("size") int size,
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("expertId") Long expertId,
+      @Param("visible") String visible);
+  int countAllForExpert(
+      @Param("keyword") String keyword,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("category") String category,
+      @Param("expertId") Long expertId,
+      @Param("visible") String visible);
 }

@@ -13,8 +13,12 @@ public class UserRow {
   private String userName;
   private String userPhone;
   private String managerPhoneAccess;
-  private Long centerId;          // nullable
-  private String centerName;      // nullable
+  
+  private Long centerId;
+  private String centerName;
+  private Long branchId;
+  private String branchName;
+  
   private LocalDateTime userCreatedAt;
   private boolean isSuper;
 }

@@ -6,7 +6,7 @@
 
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
-            v-if="role === 'SUPERADMIN'"
+            v-if="role === 'SUPERADMIN' || role === 'CENTERHEAD' || role === 'EXPERT'"
             :selects="[
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
                   '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
@@ -176,15 +176,11 @@ const hqColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
+  { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
     label: "팀명",
-    type: "badge",
-    width: 100,
-    render: (val: any) => {
-      const text = (typeof val === "string" && val.trim().length > 0) ? val : "없음"
-      return `<span>${text}</span>`
-    },
+    type: "text",
   },
   { key: 'staff',     label: '프로',    type: 'text' },
 ]
@@ -198,15 +194,11 @@ const mgrColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
+  { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
     label: "팀명",
-    type: "badge",
-    width: 100,
-    render: (val: any) => {
-      const text = (typeof val === "string" && val.trim().length > 0) ? val : "없음"
-      return `<span>${text}</span>`
-    },
+    type: "text",
   },
   { key: 'staff',     label: '프로',    type: 'text' },
 ]
@@ -289,10 +281,17 @@ function onMgrButton(btn: string) {
 }
 
 /** 회수 실행 */
+// 역할별 회수 엔드포인트만 추가
+function getRevokeUrlByRole() {
+  if (role === 'SUPERADMIN') return '/api/work/revoke/hq'
+  if (role === 'CENTERHEAD') return '/api/work/revoke/centerhead'
+  if (role === 'EXPERT')     return '/api/work/revoke/expert'
+  return '/api/work/revoke/hq'
+}
 async function onConfirmRevoke(ids: number[]) {
   return runBusy(async () => {
     try {
-      await axios.post('/api/work/revoke/hq', { customerIds: ids })
+      await axios.post(getRevokeUrlByRole(), { customerIds: ids })
 
       // 선택 초기화
       selectedRows.value = []
@@ -349,7 +348,7 @@ async function onRefresh() {
   isRefreshing.value = true
   try {
     await axios.post('/api/sheets/refresh?sid=1')
-    await refetchAndClamp()   // 🔸중복 fetch 방지 + 페이지 클램핑 일원화
+    await refetchAndClamp()   // 중복 fetch 방지 + 페이지 클램핑 일원화
   } catch (e) {
     console.error(e)
     alert('새로고침 중 오류가 발생했습니다.')

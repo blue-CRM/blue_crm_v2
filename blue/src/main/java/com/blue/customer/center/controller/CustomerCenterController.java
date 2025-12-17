@@ -1,7 +1,9 @@
 package com.blue.customer.center.controller;
 
 import com.blue.customer.all.dto.PagedResponse;
+import com.blue.customer.center.dto.BranchSimpleDto;
 import com.blue.customer.center.dto.CenterDbRowDto;
+import com.blue.customer.center.dto.CenterSimpleDto;
 import com.blue.customer.center.service.CustomerCenterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,13 +20,22 @@ public class CustomerCenterController {
   
   private final CustomerCenterService service;
   
-  /** 팀 리스트 드롭다운용 */
-  @GetMapping("/work/center/centers")
-  public ResponseEntity<?> getCenters() {
-    return ResponseEntity.ok(service.getCenters());
+  /** 지점(브랜치) 드롭다운용 */
+  @GetMapping("/work/center/branches")
+  public ResponseEntity<List<BranchSimpleDto>> getBranches(Authentication auth) {
+    return ResponseEntity.ok(service.getBranches(auth.getName()));
   }
   
-  /** 센터DB 목록 */
+  /** 팀(센터) 드롭다운용: 지점 선택 후 팀 목록 */
+  @GetMapping("/work/center/teams")
+  public ResponseEntity<List<CenterSimpleDto>> getTeams(
+      Authentication auth,
+      @RequestParam Long branchId
+  ) {
+    return ResponseEntity.ok(service.getTeams(auth.getName(), branchId));
+  }
+  
+  /** 센터DB 목록 (조회 전용) */
   @GetMapping("/work/center/db")
   public PagedResponse<CenterDbRowDto> getCenterDb(
       Authentication auth,
@@ -33,20 +45,24 @@ public class CustomerCenterController {
       @RequestParam(required = false) String dateFrom,
       @RequestParam(required = false) String dateTo,
       @RequestParam(required = false) String category,
-      @RequestParam(required = false) String division,   // '최초','유효','중복'
-      @RequestParam(required = false) Long centerId,     // null=전체
-      @RequestParam(required = false, defaultValue = "N") String today // "Y"면 오늘만
+      @RequestParam(required = false) String division,
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) String expertName,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) Long branchId,
+      @RequestParam(required = false) Long centerId
   ) {
-    // today 버튼 처리(서울/아시아 기준)
-    if ("Y".equalsIgnoreCase(today)) {
-      LocalDate d = LocalDate.now(); // 서버 TZ가 +09:00이면 그대로 사용
-      dateFrom = d.toString();
-      dateTo   = d.toString();
-    }
-    return service.getCenterDb(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, centerId);
+    return service.getCenterDb(
+        auth.getName(),
+        page, size,
+        keyword, dateFrom, dateTo,
+        category, division, sort,
+        expertName, status,
+        branchId, centerId
+    );
   }
   
-  /** 엑셀 다운로드 (현재 필터와 동일한 조건) */
+  /** 엑셀 다운로드 */
   @GetMapping("/work/center/db/export")
   public ResponseEntity<byte[]> exportCenterDb(
       Authentication auth,
@@ -55,14 +71,18 @@ public class CustomerCenterController {
       @RequestParam(required = false) String dateTo,
       @RequestParam(required = false) String category,
       @RequestParam(required = false) String division,
-      @RequestParam(required = false) Long centerId,
-      @RequestParam(required = false, defaultValue = "N") String today
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) String expertName,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) Long branchId,
+      @RequestParam(required = false) Long centerId
   ) {
-    if ("Y".equalsIgnoreCase(today)) {
-      LocalDate d = LocalDate.now();
-      dateFrom = d.toString();
-      dateTo   = d.toString();
-    }
-    return service.exportExcel(auth.getName(), keyword, dateFrom, dateTo, category, division, centerId);
+    return service.exportExcel(
+        auth.getName(),
+        keyword, dateFrom, dateTo,
+        category, division, sort,
+        expertName, status,
+        branchId, centerId
+    );
   }
 }
