@@ -196,7 +196,7 @@ public class MyInfoController {
                                         Authentication auth) {
     String email = auth.getName();
     // body.getBranchId() 는 null 가능. 기본 본사(1)로 고정하고 싶으면 OrgAdminService에서 처리.
-    orgAdminService.createCenter(email, body.getCenterName(), body.getBranchId());
+    orgAdminService.createCenter(email, body.getCenterName(), body.getBranchId(), body.getCenterColor());
     return ResponseEntity.ok().build();
   }
   
@@ -206,7 +206,7 @@ public class MyInfoController {
                                            @RequestBody CenterDto body,
                                            Authentication auth) {
     String email = auth.getName();
-    orgAdminService.updateCenter(email, centerId, body.getCenterName(), body.getBranchId());
+    orgAdminService.updateCenter(email, centerId, body.getCenterName(), body.getBranchId(), body.getCenterColor());
     return ResponseEntity.ok().build();
   }
   

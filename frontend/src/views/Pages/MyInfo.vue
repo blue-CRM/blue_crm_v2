@@ -1036,6 +1036,7 @@
                              disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
                              dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
                   />
+
                   <select
                       v-model="newCenterBranchId"
                       class="h-11 w-full md:w-48 rounded-lg border px-3 bg-white text-gray-800
@@ -1053,6 +1054,102 @@
                       {{ b.branchName }}
                     </option>
                   </select>
+
+                  <!-- 컬러피커 + 스와치 10개 -->
+                  <div class="flex items-center gap-2">
+                    <div class="relative flex items-center gap-2">
+                      <!-- 트리거: 현재 색 -->
+                      <button
+                          type="button"
+                          class="h-11 w-14 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-white dark:bg-gray-800"
+                          :style="{ backgroundColor: newCenterColor }"
+                          @click="toggleColorPopover"
+                          ref="colorBtnRef"
+                      />
+
+                      <Teleport to="body">
+                        <div v-if="colorOpen" class="fixed inset-0 z-[2147483000]" @mousedown="onBackdropDown">
+                          <!-- 실제 팝오버 -->
+                          <div
+                              ref="colorPopoverRef"
+                              class="absolute w-80 rounded-xl border border-gray-200 dark:border-gray-700
+                                      bg-white dark:bg-gray-900 p-3 shadow-lg"
+                              :style="colorPopoverStyle"
+                              @mousedown.stop
+                          >
+                            <!-- 헤더 -->
+                            <div class="flex items-center justify-end mb-2">
+                            </div>
+
+                            <!-- 컬러 선택 + 미리보기 -->
+                            <div class="flex gap-3 items-start">
+                              <!-- 왼쪽: 컬러 피커 -->
+                              <input
+                                  type="color"
+                                  v-model="colorDraft"
+                                  class="h-10 w-27 rounded-md border p-1
+                                         border-gray-200 dark:border-gray-700
+                                         bg-white dark:bg-gray-800"
+                              />
+
+                              <!-- 오른쪽: 미리보기 배지 -->
+                              <div class="flex-1 flex items-center justify-center gap-2">
+                                <span
+                                    class="inline-flex items-center h-10 rounded-full border px-4 text-sm font-medium"
+                                    :style="centerBadgeStyle(colorDraft)"
+                                >
+                                  미리보기
+                                </span>
+
+                                <div
+                                    class="inline-flex items-center justify-center h-10 px-3 rounded-lg border
+                                           text-xs tabular-nums text-gray-600 dark:text-gray-300
+                                           border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                                >
+                                  {{ colorDraft }}
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- 프리셋 -->
+                            <div class="mt-3 grid grid-cols-5 gap-2">
+                              <button
+                                  v-for="c in CENTER_COLOR_PRESETS"
+                                  :key="c"
+                                  type="button"
+                                  class="h-8 w-8 rounded-md ring-1 ring-black/10 dark:ring-white/10"
+                                  :class="colorDraft === c ? 'outline outline-2 outline-brand-500' : ''"
+                                  :style="{ backgroundColor: c }"
+                                  @click="colorDraft = c"
+                              />
+                            </div>
+
+                            <!-- 하단 버튼 -->
+                            <div class="mt-4 flex justify-end gap-2">
+                              <button
+                                  type="button"
+                                  class="h-9 px-4 rounded-lg text-sm
+                                       bg-gray-200 text-gray-800 hover:bg-gray-300
+                                       dark:bg-gray-700 dark:text-gray-100"
+                                  @click="cancelColor"
+                              >
+                                취소
+                              </button>
+                              <button
+                                  type="button"
+                                  class="h-9 px-4 rounded-lg text-sm text-white
+                                          bg-brand-500 hover:bg-brand-600"
+                                  @click="confirmColor"
+                              >
+                                확인
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </Teleport>
+                    </div>
+                  </div>
+
                   <button
                       type="button"
                       class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
@@ -1062,6 +1159,7 @@
                     추가
                   </button>
                 </div>
+
                 <p v-if="centerFormError" class="text-xs text-error-500">
                   {{ centerFormError }}
                 </p>
@@ -1096,6 +1194,7 @@
                                text-xs text-gray-500 dark:text-gray-400"
                     >
                       <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
+                      <th class="w-28 px-3 py-2 text-left whitespace-nowrap">색상</th>
                       <th class="px-3 py-2 text-left whitespace-nowrap">팀명</th>
                       <th class="w-40 px-3 py-2 text-left whitespace-nowrap">지점</th>
                       <th class="w-24 px-3 py-2 text-center whitespace-nowrap">관리</th>
@@ -1114,6 +1213,32 @@
                     >
                       <td class="px-3 py-3 text-center text-xs text-gray-400 whitespace-nowrap">
                         {{ idx + 1 }}
+                      </td>
+
+                      <td class="px-3 py-3">
+                        <template v-if="editingCenterId === c.centerId">
+                          <div class="flex items-center gap-2">
+                            <input type="color" v-model="editingCenter.centerColor" class="h-9 w-12 rounded-md border ... p-1" />
+                            <div class="flex flex-wrap gap-1">
+                              <button
+                                  v-for="col in CENTER_COLOR_PRESETS"
+                                  :key="col"
+                                  type="button"
+                                  class="h-6 w-6 rounded-md ring-1 ring-black/10 dark:ring-white/10"
+                                  :style="{ backgroundColor: col }"
+                                  @click="editingCenter.centerColor = col"
+                              />
+                            </div>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <span
+                              class="inline-flex items-center rounded-full border px-3 py-1 text-xs"
+                              :style="centerBadgeStyle(c.centerColor)"
+                          >
+                            {{ c.centerColor || '미지정' }}
+                          </span>
+                        </template>
                       </td>
 
                       <!-- 팀명 -->
@@ -1981,6 +2106,7 @@ const editingCenterId = ref(null)
 const editingCenter = ref({
   centerName: '',
   branchId: null,
+  centerColor: null,
 })
 
 // 지점 id → 이름 맵
@@ -2101,6 +2227,175 @@ function onBranchesCancel() {
 
 /* ----- 센터(Center / 팀) ----- */
 
+// 색상 팔레트
+const CENTER_COLOR_PRESETS = [
+  '#B23A48', '#1E40AF', '#2F855A', '#B7791F', '#00796B',
+  '#5B4B9A', '#944E2A', '#C026D3', '#9A3412', '#4B5563',
+]
+
+const newCenterColor = ref(CENTER_COLOR_PRESETS[0])
+const isDark = ref(false)
+let themeObs = null
+
+const colorDraft = ref(newCenterColor.value)   // 팝업 내부 임시값
+const colorOrigin = ref(newCenterColor.value)  // 팝업 열기 전 원본
+
+const colorOpen = ref(false)
+const colorBtnRef = ref(null)
+const colorPopoverRef = ref(null)
+
+const colorPopoverStyle = ref({
+  left: '0px',
+  top: '0px',
+})
+
+function placeColorPopover() {
+  const btn = colorBtnRef.value
+  if (!btn) return
+  const r = btn.getBoundingClientRect()
+
+  const popW = 288 // w-72 = 18rem = 288px
+  const popH = 220 // 대충(스와치+컬러픽커). 정확히 하려면 nextTick 후 offsetHeight로
+
+  const gap = 8
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  // 기본: 버튼 오른쪽에 띄우기
+  let left = r.right + gap
+  let top = r.top
+
+  // 오른쪽 공간 없으면 왼쪽으로
+  if (left + popW > vw - 8) {
+    left = Math.max(8, r.left - gap - popW)
+  }
+
+  // 아래로 벗어나면 위로 보정
+  if (top + popH > vh - 8) {
+    top = Math.max(8, vh - popH - 8)
+  }
+
+  colorPopoverStyle.value = {
+    left: `${Math.round(left)}px`,
+    top: `${Math.round(top)}px`,
+  }
+}
+
+async function toggleColorPopover() {
+  if (!colorOpen.value) {
+    // 열 때
+    colorOrigin.value = newCenterColor.value
+    colorDraft.value = newCenterColor.value
+    colorOpen.value = true
+    await nextTick()
+    placeColorPopover()
+  } else {
+    // 닫을 때 (X랑 동일)
+    cancelColor()
+  }
+}
+
+function confirmColor() {
+  newCenterColor.value = colorDraft.value
+  colorOpen.value = false
+}
+
+function cancelColor() {
+  colorDraft.value = colorOrigin.value
+  colorOpen.value = false
+}
+
+function onBackdropDown() {
+  cancelColor()
+}
+
+// 스크롤/리사이즈 시 재배치 or 닫기
+function onWindowChange() {
+  if (!colorOpen.value) return
+  placeColorPopover()
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onWindowChange, { passive: true })
+  window.addEventListener('scroll', onWindowChange, { passive: true, capture: true })
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', onWindowChange)
+  window.removeEventListener('scroll', onWindowChange, true)
+})
+
+onMounted(() => {
+  isDark.value = document.documentElement.classList.contains('dark')
+  themeObs = new MutationObserver(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+  })
+  themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+})
+onUnmounted(() => themeObs?.disconnect())
+
+function normalizeHex6(v) {
+  const s = String(v || '').trim()
+  return /^#[0-9a-fA-F]{6}$/.test(s) ? s : null
+}
+function hexToRgb(hex) {
+  const h = normalizeHex6(hex)
+  if (!h) return null
+  const n = parseInt(h.slice(1), 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+function rgba(hex, a) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return null
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`
+}
+function srgbToLin(c) {
+  const v = c / 255
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+}
+function luminance(rgb) {
+  const r = srgbToLin(rgb.r)
+  const g = srgbToLin(rgb.g)
+  const b = srgbToLin(rgb.b)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+function contrast(a, b) {
+  const L1 = luminance(a)
+  const L2 = luminance(b)
+  const hi = Math.max(L1, L2)
+  const lo = Math.min(L1, L2)
+  return (hi + 0.05) / (lo + 0.05)
+}
+function blend(fg, alpha, bg) {
+  return {
+    r: Math.round(fg.r * alpha + bg.r * (1 - alpha)),
+    g: Math.round(fg.g * alpha + bg.g * (1 - alpha)),
+    b: Math.round(fg.b * alpha + bg.b * (1 - alpha)),
+  }
+}
+
+// 요구사항: light 0.12 / dark 0.22
+function centerBadgeStyle(centerColor) {
+  const base = normalizeHex6(centerColor) || '#4B5563'
+  const a = isDark.value ? 0.22 : 0.12
+  const borderA = isDark.value ? 0.35 : 0.25
+
+  // 배경이 흰/다크(#111827) 위에 깔린다고 가정해서 합성 색으로 대비 계산
+  const fg = hexToRgb(base)
+  const bg = isDark.value ? { r: 17, g: 24, b: 39 } : { r: 255, g: 255, b: 255 }
+  const mixed = blend(fg, a, bg)
+
+  const white = { r: 255, g: 255, b: 255 }
+  const darkText = { r: 17, g: 24, b: 39 }
+
+  const text = contrast(mixed, white) >= contrast(mixed, darkText) ? '#FFFFFF' : '#111827'
+
+  return {
+    backgroundColor: rgba(base, a),
+    borderColor: rgba(base, borderA),
+    color: text,
+  }
+}
+
 async function fetchCenters(keyword = '') {
   try {
     centersLoading.value = true
@@ -2123,6 +2418,7 @@ async function addCenter() {
   const payload = {
     centerName: name,
     branchId: newCenterBranchId.value || null, // '' → null
+    centerColor: normalizeHex6(newCenterColor.value) || null,
   }
 
   try {
@@ -2137,6 +2433,8 @@ async function addCenter() {
     else if (s === 403) alert('접근 권한이 없습니다.')
     else alert('팀 추가에 실패했습니다.')
   }
+
+  newCenterColor.value = CENTER_COLOR_PRESETS[centers.value.length % CENTER_COLOR_PRESETS.length]
 }
 
 function startCenterEdit(c) {
@@ -2145,6 +2443,7 @@ function startCenterEdit(c) {
   editingCenter.value = {
     centerName: c.centerName || '',
     branchId: c.branchId ?? null,
+    centerColor: normalizeHex6(c.centerColor) || null,
   }
 }
 
@@ -2163,6 +2462,7 @@ async function saveCenterRow(c) {
   const payload = {
     centerName: name,
     branchId: editingCenter.value.branchId || null,
+    centerColor: normalizeHex6(editingCenter.value.centerColor) || null,
   }
 
   try {
