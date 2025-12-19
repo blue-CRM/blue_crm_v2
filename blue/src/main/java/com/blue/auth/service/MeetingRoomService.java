@@ -51,6 +51,12 @@ public class MeetingRoomService {
     return meetingRoomMapper.findRooms(keyword);
   }
   
+  @Transactional(readOnly = true)
+  public List<MeetingRoomDto> listActiveForVisit(String email) {
+    requireSuper(email);
+    return meetingRoomMapper.findActiveRooms();
+  }
+  
   @Transactional
   public void create(String email, MeetingRoomCreateReq req) {
     requireSuper(email);

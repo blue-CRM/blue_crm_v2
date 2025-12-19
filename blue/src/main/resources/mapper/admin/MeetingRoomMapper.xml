@@ -20,6 +20,18 @@
         ORDER BY room_name ASC
     </select>
 
+    <select id="findActiveRooms" resultType="com.blue.auth.dto.MeetingRoomDto">
+        SELECT
+            room_id   AS roomId,
+            room_name AS roomName,
+            is_active AS isActive
+        FROM meeting_rooms
+        WHERE is_active = 1
+        ORDER BY
+            CASE WHEN room_name = '기타' THEN 1 ELSE 0 END ASC,
+            room_name ASC
+    </select>
+
     <insert id="insertRoom">
         INSERT INTO meeting_rooms (room_name, is_active)
         VALUES (#{roomName}, 1)

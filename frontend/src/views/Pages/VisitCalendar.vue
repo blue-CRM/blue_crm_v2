@@ -69,7 +69,7 @@
                   <template v-for="(d, dayIdx) in days" :key="d.key">
                     <div
                         class="h-10 flex items-center justify-center text-sm font-semibold"
-                        :style="{ gridColumn: `span ${ROOMS_PER_DAY}` }"
+                        :style="{ gridColumn: `span ${roomsPerDay}` }"
                         :class="[
                         dayHeaderClass(d.key),
                         dayIdx === days.length - 1 ? '' : 'border-r-2 border-gray-300 dark:border-gray-700'
@@ -426,7 +426,6 @@ const btnSoftPrimary =
     'dark:bg-blue-600 dark:hover:bg-blue-500'
 
 /** ===== 설정 ===== */
-const ROOMS_PER_DAY = 5
 const ROW_HEIGHT = 40
 const TIME_COL_WIDTH = 100
 const COL_WIDTH = 130
@@ -437,6 +436,15 @@ const SLOT_MINUTES = 30
 const START_MINUTES = START_HOUR * 60
 const END_MINUTES_EXCLUSIVE = (22 * 60) + 30
 const slotCount = (END_MINUTES_EXCLUSIVE - START_MINUTES) / SLOT_MINUTES
+
+type RoomOption = { room: number; label: string }
+const rooms = ref<RoomOption[]>([])
+const fallbackRooms: RoomOption[] = Array.from({ length: 5 }, (_, i) => ({ room: i + 1, label: `${i + 1}룸` }))
+
+const roomListForGrid = computed<RoomOption[]>(() => {
+  return rooms.value.length ? rooms.value : fallbackRooms
+})
+const roomsPerDay = computed(() => roomListForGrid.value.length)
 
 /** ===== 날짜 유틸 ===== */
 function pad2(n: number) { return String(n).padStart(2, '0') }
@@ -472,17 +480,18 @@ const days = computed(() => {
 type Column = { key: string; dayKey: string; dayLabel: string; room: number; roomLabel: string; isDayEnd: boolean }
 const columns = computed<Column[]>(() => {
   const out: Column[] = []
+  const perDay = roomsPerDay.value
   for (const d of days.value) {
-    for (let r = 1; r <= ROOMS_PER_DAY; r++) {
+    roomListForGrid.value.forEach((r, idx) => {
       out.push({
-        key: `${d.key}#${r}`,
+        key: `${d.key}#${r.room}`,
         dayKey: d.key,
         dayLabel: d.label,
-        room: r,
-        roomLabel: `${r}룸`,
-        isDayEnd: r === ROOMS_PER_DAY
+        room: r.room, // DB roomId
+        roomLabel: r.label, // DB roomName
+        isDayEnd: idx === perDay - 1
       })
-    }
+    })
   }
   return out
 })
@@ -553,19 +562,22 @@ function handleHorizontalWheel(e: WheelEvent) {
 function scrollToDay(dayKey: string) {
   const host = scrollHost.value
   if (!host) return
+
   const idx = days.value.findIndex(d => d.key === dayKey)
   if (idx < 0) { host.scrollLeft = 0; return }
-  const target = idx * ROOMS_PER_DAY * COL_WIDTH
+
+  const target = idx * roomsPerDay.value * COL_WIDTH
   host.scrollLeft = target
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadRooms()
   updateScrollHeight()
   window.addEventListener('resize', updateScrollHeight)
   window.addEventListener('orientationchange', updateScrollHeight)
 
   const host = scrollHost.value
-  if (host) host.addEventListener('wheel', handleHorizontalWheel, { passive: false })
+  if (host) host.addEventListener('wheel', handleHorizontalWheel, {passive: false})
 
   requestAnimationFrame(() => scrollToDay(todayKey.value))
 })
@@ -684,7 +696,12 @@ const lockedCustomerId = computed(() => {
 })
 const isCustomerLocked = computed(() => lockedCustomerId.value != null)
 
-const rooms = ref<RoomOption[]>([])
+type CustomerPick = {
+  customerId: number
+  customerName: string
+  customerPhone: string
+  customerCreatedAt: string
+}
 const customerQuery = ref('')
 const customerResults = ref<CustomerPick[]>([])
 const pickedCustomer = ref<CustomerPick | null>(null)
@@ -716,17 +733,27 @@ type ScheduleEvent = {
   endSlot: number // exclusive
 }
 
+function roomIndexOf(roomId: number) {
+  return roomListForGrid.value.findIndex(r => r.room === roomId)
+}
 function dayRoomFromColIndex(colIdx: number) {
-  const dayIdx = Math.floor(colIdx / ROOMS_PER_DAY)
-  const room = (colIdx % ROOMS_PER_DAY) + 1
+  const perDay = roomsPerDay.value
+  const dayIdx = Math.floor(colIdx / perDay)
+  const roomIdx = colIdx % perDay
+
   const dayKey = days.value[dayIdx]?.key
   const dayLabel = days.value[dayIdx]?.label
-  return { dayKey, dayLabel, room }
+  const roomOpt = roomListForGrid.value[roomIdx] ?? roomListForGrid.value[0]
+  return { dayKey, dayLabel, room: roomOpt.room }
 }
-function colIndexOf(dayKey: string, room: number) {
+function colIndexOf(dayKey: string, roomId: number) {
   const dayIdx = days.value.findIndex(d => d.key === dayKey)
   if (dayIdx < 0) return -1
-  return dayIdx * ROOMS_PER_DAY + (room - 1)
+
+  const roomIdx = roomIndexOf(roomId)
+  if (roomIdx < 0) return -1
+
+  return dayIdx * roomsPerDay.value + roomIdx
 }
 
 const events = ref<ScheduleEvent[]>([
@@ -1044,17 +1071,18 @@ async function loadRooms() {
   try {
     const { data } = await axios.get('/api/work/visit/rooms')
     const arr = Array.isArray(data) ? data : []
-    rooms.value = arr.map((r: any, idx: number) => {
-      const roomNo = Number(r.room ?? r.roomNo ?? r.no ?? r.id ?? (idx + 1))
-      return {
-        room: roomNo,
-        label: r.roomName ?? r.name ?? `${roomNo}룸`
-      }
-    })
+
+    rooms.value = arr
+        .filter((r: any) => r && (r.isActive === true || r.isActive === 1 || r.isActive === 'Y' || r.isActive == null))
+        .map((r: any) => ({
+          room: Number(r.roomId ?? r.id),
+          label: String(r.roomName ?? r.name)
+        }))
+        .filter(r => Number.isFinite(r.room) && r.room > 0 && r.label.length > 0)
+
     if (!rooms.value.length) throw new Error('empty rooms')
   } catch (e) {
-    // 실패하면 기본 1~5룸 fallback
-    rooms.value = Array.from({ length: ROOMS_PER_DAY }, (_, i) => ({ room: i + 1, label: `${i + 1}룸` }))
+    rooms.value = []
   }
 }
 

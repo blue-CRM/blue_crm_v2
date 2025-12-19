@@ -9,6 +9,7 @@ import java.util.List;
 @Mapper
 public interface MeetingRoomMapper {
   List<MeetingRoomDto> findRooms(@Param("keyword") String keyword);
+  List<MeetingRoomDto> findActiveRooms();
   
   int insertRoom(@Param("roomName") String roomName);
   
