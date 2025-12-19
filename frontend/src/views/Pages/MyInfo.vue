@@ -1112,7 +1112,7 @@
                             </div>
 
                             <!-- 프리셋 -->
-                            <div class="mt-3 grid grid-cols-5 gap-2">
+                            <div class="ml-2 mt-4 grid grid-cols-5 gap-1">
                               <button
                                   v-for="c in CENTER_COLOR_PRESETS"
                                   :key="c"
@@ -2376,8 +2376,8 @@ function blend(fg, alpha, bg) {
 // 요구사항: light 0.12 / dark 0.22
 function centerBadgeStyle(centerColor) {
   const base = normalizeHex6(centerColor) || '#4B5563'
-  const a = isDark.value ? 0.22 : 0.12
-  const borderA = isDark.value ? 0.35 : 0.25
+  const a = isDark.value ? 0.32 : 0.18
+  const borderA = isDark.value ? 0.5 : 0.4
 
   // 배경이 흰/다크(#111827) 위에 깔린다고 가정해서 합성 색으로 대비 계산
   const fg = hexToRgb(base)
