@@ -1,14 +1,17 @@
 <template>
-  <div class="fixed inset-0 flex items-center justify-center overflow-y-auto modal z-99999">
-    <div
-      class="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[32px]"
-      aria-hidden="true"
-      @click="$emit('close')"
-    ></div>
-    <slot name="body"></slot>
-  </div>
-</template>
+  <Teleport to="body">
+    <div class="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+      <!-- backdrop -->
+      <div
+          class="absolute inset-0 bg-black/40 dark:border-gray-800"
+          aria-hidden="true"
+          @click="$emit('close')"
+      ></div>
 
-<script setup>
-// No additional setup needed
-</script>
+      <!-- content -->
+      <div class="relative z-[100001] w-full max-w-[700px]">
+        <slot name="body"></slot>
+      </div>
+    </div>
+  </Teleport>
+</template>
