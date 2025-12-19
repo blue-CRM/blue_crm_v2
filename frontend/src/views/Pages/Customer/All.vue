@@ -32,6 +32,7 @@
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
               @salesUpdate="onSalesUpdate"
+              @visitSchedule="onVisitSchedule"
               @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
@@ -65,6 +66,7 @@
               @badgeUpdate="onBadgeUpdate"
               @DateUpdate="onDateUpdate"
               @salesUpdate="onSalesUpdate"
+              @visitSchedule="onVisitSchedule"
               @buttonClick="onTableButtonClick"
               @changePage="changePage"
           />
@@ -270,7 +272,7 @@ const adminColumns = [
       // 회수와 신규 상태는 수동으로 줄 수 없음
       // 회수 : 팀장풀 혹은 개인에게 분배된 이후 회수된 데이터
       // 신규 : 최초의 확정분배 시에만 신규
-      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
+      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","가망","자연풀","카피","거절"] },
   { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
   { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
   { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
@@ -291,7 +293,7 @@ const commonColumns = [
   { key: "memo", label: "메모", type: "iconButton", icon: EyeIcon, disabled: (row)=> row.origin==='DUPLICATE' },
   { key: "status", label: "상태", type: "badge",
       editable: notDuplicate,
-      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","가망","자연풀","카피","거절"] },
+      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","가망","자연풀","카피","거절"] },
   { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
   { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
   { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
@@ -342,6 +344,22 @@ async function onDateUpdate(row, key, newValue) {
     console.error("예약일 저장 실패", err)
     alert("예약일 저장 중 오류가 발생했습니다.")
   }
+}
+
+// 내방 : 예약일을 새탭에서 달력 통해서 저장
+function onVisitSchedule(row) {
+  if (row.origin === 'DUPLICATE') {
+    alert('중복 DB는 내방일정을 등록할 수 없습니다.');
+    return;
+  }
+
+  const query = new URLSearchParams({
+    customerId: row.id,
+    name: row.name ?? '',
+    phone: row.phone ?? '',
+  }).toString();
+
+  window.open(`/visit-calendar?${query}`, '_blank');
 }
 
 // 최초/업셀 매출 금액 저장 핸들러
@@ -404,7 +422,7 @@ function closeMemo() {
 const divisionOptions = ['구분 전체', '최초', '유효', '중복'];
 const statusOptions = [
   '상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
-  '기타', '결번', '재콜', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'
+  '기타', '결번', '재콜', '내방', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'
 ];
 
 // 2. 동적 옵션 정의 (서버에서 가져올 전문가 리스트)

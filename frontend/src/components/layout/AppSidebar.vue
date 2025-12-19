@@ -224,7 +224,8 @@ import {
   TrashIconLg,
   SettingsIcon,
   UserCircleIcon,
-  PieChartIcon
+  PieChartIcon,
+  CalenderIcon
 } from "../../icons";
 import { useSidebar } from "@/composables/useSidebar";
 import { useCan } from "@/composables/useAcl"
@@ -280,6 +281,12 @@ const menuGroups = [
         name: "소속정보",
         path: "/info",
         perm: 'menu.info'
+      },
+      {
+        icon: CalenderIcon,
+        name: "내방일정",
+        path: "/visit-calendar",
+        perm: "menu.calendar"
       },
       {
         icon: SettingsIcon,

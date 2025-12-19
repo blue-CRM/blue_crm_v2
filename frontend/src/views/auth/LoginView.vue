@@ -34,12 +34,13 @@
                         v-model="email"
                         type="email"
                         placeholder="info@gmail.com"
-                        :disabled="verified"
+                        :disabled="REQUIRE_EMAIL_VERIFY && verified"
                         autocomplete="username"
                         class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400
                              focus:outline-hidden focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90
                              dark:placeholder:text-white/30 dark:focus:border-brand-800"/>
                     <button
+                        v-if="REQUIRE_EMAIL_VERIFY"
                         type="button"
                         class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition bg-brand-500 hover:bg-brand-600 disabled:opacity-50"
                         :disabled="verified"
@@ -50,7 +51,7 @@
                 </div>
 
                 <!-- 인증코드 -->
-                <div v-if="codeSent && !verified">
+                <div v-if="REQUIRE_EMAIL_VERIFY && codeSent && !verified">
                   <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                     인증코드<span class="text-error-500">*</span>
                   </label>
@@ -120,7 +121,7 @@
                       @click="doLogin"
                       class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg shadow-theme-xs
                              disabled:opacity-50 bg-brand-500 hover:bg-brand-600 disabled:hover:bg-brand-500"
-                      :disabled="!verified">
+                      :disabled="!canSignIn">
                     Sign In
                   </button>
                 </div>
@@ -181,6 +182,10 @@ import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import ThemeToggler from "@/components/common/ThemeToggler.vue";
 import { useIdleRefresh } from '@/composables/useIdleRefresh.js'
+
+// 임시로 인증 우회할 때 false
+const REQUIRE_EMAIL_VERIFY = false
+const canSignIn = computed(() => !REQUIRE_EMAIL_VERIFY || verified.value)
 
 // 줌 비율 적용 시작
 const mt = ref('mt-[0vh]')
@@ -312,7 +317,7 @@ const doLogin = async () => {
     alert('이메일 형식이 올바르지 않습니다.')
     return
   }
-  if (!verified.value) {
+  if (REQUIRE_EMAIL_VERIFY && !verified.value) {
     alert('이메일 인증을 먼저 완료해주세요')
     return
   }
