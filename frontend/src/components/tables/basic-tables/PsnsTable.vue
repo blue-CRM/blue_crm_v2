@@ -143,7 +143,7 @@
 
             <!-- 날짜/시간 -->
             <div v-else-if="col.type === 'date'" class="relative h-9 min-w-[5.5rem] w-auto">
-              <!-- 표시 모드 -->
+              <!-- 재콜 표시 모드 -->
               <span
                   v-if="props.data[rowIndex]?.status === '재콜'"
                   v-show="!(editState.row === rowIndex && editState.col === col.key)"
@@ -157,8 +157,9 @@
                 {{ row[col.key] || '없음' }}
               </span>
 
-              <!-- 수정 모드(Flatpickr 대상 input) -->
+              <!-- 재콜 수정 모드(Flatpickr 대상 input) -->
               <input
+                  v-if="props.data[rowIndex]?.status === '재콜'"
                   v-show="editState.row === rowIndex && editState.col === col.key"
                   :ref="el => bindDateInput(rowIndex, el)"
                   type="text"
@@ -167,6 +168,26 @@
                        dark:bg-gray-800 dark:text-white
                        focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               />
+
+              <div
+                  v-else-if="props.data[rowIndex]?.status === '내방'"
+                  class="absolute inset-0 px-2 py-1 text-xs leading-tight
+                       text-indigo-600 dark:text-indigo-400ㅍcursor-pointer
+                       rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                  @click.stop="goVisitSchedule(row)"
+              >
+                <template v-if="row[col.key]">
+                  <div class="whitespace-nowrap">
+                    {{ row[col.key].date }}
+                  </div>
+                  <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                    {{ row[col.key].room }}
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="text-gray-400">없음</span>
+                </template>
+              </div>
             </div>
 
             <!-- 최초/업셀 매출 -->
@@ -280,7 +301,7 @@ const props = defineProps({
   pageSize: { type: Number, default: null },
   loading: { type: Boolean, default: false }
 })
-const emit = defineEmits(["rowSelect", "badgeUpdate", "buttonClick", "changePage", "DateUpdate", "salesUpdate"])
+const emit = defineEmits(["rowSelect", "badgeUpdate", "buttonClick", "changePage", "DateUpdate", "salesUpdate", "visitSchedule"])
 
 // 옵션이 함수인 경우 row를 인자로 실행, 배열인 경우 그대로 반환
 function getOptions(col, row) {
@@ -609,6 +630,11 @@ onBeforeUnmount(() => {
   Object.values(fpInstances.value || {}).forEach(ins => { try { ins.destroy() } catch {} })
 })
 
+// 내방일정 : 새탭 이동
+function goVisitSchedule(row) {
+  emit("visitSchedule", row)
+}
+
 /* 바깥 클릭 시 편집 종료 (달력/입력/select/배지/머니인풋은 예외) */
 function onDocMouseDown(e) {
   if (editState.value.row === null) return
@@ -662,7 +688,11 @@ const badgeClass = (value) => {
       return "bg-[#E0D7F8] text-[#5B4B9A] dark:bg-[#312C5C] dark:text-[#B6A9E3]"
     case "가망":
     case "미지정":
-      return "bg-[#EADBC8] text-[#8F6842] dark:bg-[#3E2C1E] dark:text-[#D4A373]/80"
+      return "bg-[#F4E1CC] text-[#944E2A] dark:bg-[#3A2417]/70 dark:text-[#F3C6A6]/80"
+    case "내방":
+      return "bg-[#FCE7F3] text-[#C026D3] dark:bg-[#3B1126] dark:text-[#F9A8D4]/80"
+    case '':
+      return "bg-[#FFE7D1] text-[#9A3412] dark:bg-[#3A2417] dark:text-[#FDBA74]"
     default:
       return "bg-[#E5E7EB] text-[#4B5563] dark:bg-[#374151] dark:text-[#D1D5DB]"
   }

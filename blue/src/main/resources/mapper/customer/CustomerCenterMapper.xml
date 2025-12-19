@@ -180,7 +180,7 @@
     <sql id="CENTER_DB_ORDER">
         <bind name="hasStatus"   value="sort != null and sort.contains('status')" />
         <bind name="hasDivision" value="sort != null and sort.contains('division')" />
-        <bind name="isRecall"    value="status != null and status.equals('재콜')" />
+        <bind name="isRecall"    value="status != null and (status.equals('재콜') || status.equals('내방'))" />
         <bind name="isOldest"    value="sort != null and sort.contains('oldest')" />
 
         <choose>
@@ -195,10 +195,10 @@
                 FIELD(t.division, '최초','유효','중복'),
                 FIELD(t.status,
                 '부재1','부재2','부재3','부재4','부재5','기타','결번',
-                '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
-                CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
-                CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                '재콜','내방','신규','가망','자연풀','카피','거절','없음','회수'),
+                CASE WHEN t.status IN ('재콜','내방') THEN (t.promiseAt IS NULL) END ASC,
+                CASE WHEN t.status IN ('재콜','내방') THEN t.promiseAt END ASC,
+                CASE WHEN t.status NOT IN ('재콜','내방') THEN t.createdAt END
                 <choose>
                     <when test="isOldest"> ASC</when>
                     <otherwise> DESC</otherwise>
@@ -209,10 +209,10 @@
                 ORDER BY
                 FIELD(t.status,
                 '부재1','부재2','부재3','부재4','부재5','기타','결번',
-                '재콜','신규','가망','자연풀','카피','거절','없음','회수'),
-                CASE WHEN t.status='재콜' THEN (t.promiseAt IS NULL) END ASC,
-                CASE WHEN t.status='재콜' THEN t.promiseAt END ASC,
-                CASE WHEN t.status&lt;&gt;'재콜' THEN t.createdAt END
+                '재콜','내방','신규','가망','자연풀','카피','거절','없음','회수'),
+                CASE WHEN t.status IN ('재콜','내방') THEN (t.promiseAt IS NULL) END ASC,
+                CASE WHEN t.status IN ('재콜','내방') THEN t.promiseAt END ASC,
+                CASE WHEN t.status NOT IN ('재콜','내방') THEN t.createdAt END
                 <choose>
                     <when test="isOldest"> ASC</when>
                     <otherwise> DESC</otherwise>

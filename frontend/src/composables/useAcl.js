@@ -12,7 +12,8 @@ const policy = {
         'menu.db.allocate',  // DB분할하기
         'menu.db.revoke',    // DB회수하기
         'menu.db.duplicate', // 중복 DB
-        'menu.info',         // 정보보기
+        'menu.info',         // 소속정보
+        'menu.calendar',     // 내방일정
         'menu.user',         // 직원관리
     ],
     // 팀장
@@ -23,7 +24,8 @@ const policy = {
         'menu.db.allocate',  // DB분할하기
         'menu.db.revoke',    // DB회수하기
         'menu.db.duplicate', // 중복 DB
-        'menu.info',         // 정보보기
+        'menu.info',         // 소속정보
+        'menu.calendar',     // 내방일정
     ],
     // 프로
     STAFF: [
@@ -31,7 +33,8 @@ const policy = {
         'menu.dashboard',    // 대시보드
         'menu.db.all',       // 전체 DB
         'menu.db.duplicate', // 중복 DB
-        'menu.info',         // 정보보기
+        'menu.info',         // 소속정보
+        'menu.calendar',     // 내방일정
     ],
     // 센터장
     CENTERHEAD: [
@@ -39,7 +42,8 @@ const policy = {
         'menu.db.center',    // 센터별 DB
         'menu.db.all',       // 전체 DB
         'menu.db.duplicate', // 중복 DB
-        'menu.info',         // 정보보기
+        'menu.info',         // 소속정보
+        'menu.calendar',     // 내방일정
     ],
     // 전문가
     EXPERT: [
@@ -47,7 +51,8 @@ const policy = {
         'menu.db.center',    // 센터별 DB
         'menu.db.all',       // 전체 DB
         'menu.db.duplicate', // 중복 DB
-        'menu.info',         // 정보보기
+        'menu.info',         // 소속정보
+        'menu.calendar',     // 내방일정
     ],
 }
 
