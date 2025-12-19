@@ -1,11 +1,9 @@
 package com.blue.auth.controller;
 
 import com.blue.auth.dto.*;
-import com.blue.auth.service.ExpertAdminService;
-import com.blue.auth.service.IpWhitelistService;
-import com.blue.auth.service.MyInfoService;
-import com.blue.auth.service.OrgAdminService;
+import com.blue.auth.service.*;
 import com.blue.global.exception.AuthException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +21,7 @@ public class MyInfoController {
   private final IpWhitelistService ipWhitelistService;
   private final OrgAdminService orgAdminService;
   private final ExpertAdminService expertAdminService;
+  private final MeetingRoomService meetingRoomService;
   
   // 내 정보 조회
   @GetMapping
@@ -259,6 +258,46 @@ public class MyInfoController {
     String email = auth.getName();
     expertAdminService.deleteExpert(email, expertId);
     return ResponseEntity.ok().build();
+  }
+  
+  // ============================
+  //   전문가(Expert) 관리
+  // ============================
+  
+  // 회의실 목록을 키워드로 조회
+  @GetMapping("/meeting-rooms")
+  public List<MeetingRoomDto> list(Authentication auth,
+                                   @RequestParam(required = false) String keyword) {
+    return meetingRoomService.list(auth.getName(), keyword);
+  }
+  
+  // 회의실 신규 생성
+  @PostMapping("/meeting-rooms")
+  public ResponseEntity<?> create(Authentication auth, @RequestBody @Valid MeetingRoomCreateReq req) {
+    meetingRoomService.create(auth.getName(), req);
+    return ResponseEntity.ok().build();
+  }
+  
+  // 회의실 정보 수정
+  @PutMapping("/meeting-rooms/{roomId}")
+  public ResponseEntity<?> update(Authentication auth,
+                                  @PathVariable long roomId,
+                                  @RequestBody @Valid MeetingRoomUpdateReq req) {
+    meetingRoomService.update(auth.getName(), roomId, req);
+    return ResponseEntity.ok().build();
+  }
+  
+  // 회의실 소프트 삭제
+  @DeleteMapping("/meeting-rooms/{roomId}/soft-delete")
+  public ResponseEntity<?> delete(Authentication auth, @PathVariable long roomId) {
+    meetingRoomService.softDelete(auth.getName(), roomId);
+    return ResponseEntity.ok().build();
+  }
+  
+  // 회의실 하드 삭제
+  @DeleteMapping("/meeting-rooms/{roomId}/hard-delete")
+  public void hardDelete(Authentication auth, @PathVariable long roomId) {
+    meetingRoomService.hardDelete(auth.getName(), roomId);
   }
   
 }
