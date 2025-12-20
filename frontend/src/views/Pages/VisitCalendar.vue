@@ -38,9 +38,9 @@
 
             <div class="flex items-center gap-2">
               <button
+                  v-if="canWrite"
                   :class="btnSoftPrimary"
                   @click="openManualAdd"
-                  :disabled="!canWrite"
               >
                 일정 추가 +
               </button>
