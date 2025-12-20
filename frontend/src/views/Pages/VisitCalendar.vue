@@ -36,12 +36,29 @@
               {{ weekTitle }}
             </div>
 
-            <button
-                :class="btnSoftPrimary"
-                @click="openManualAdd"
-            >
-              일정 추가 +
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                  :class="btnSoftPrimary"
+                  @click="openManualAdd"
+                  :disabled="!canWrite"
+              >
+                일정 추가 +
+              </button>
+
+              <button
+                  :disabled="loadingSchedules"
+                  @click="onRefreshSchedules"
+                  title="새로고침"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full
+                   border border-gray-200 bg-white text-gray-600 hover:bg-gray-100
+                   disabled:opacity-60 disabled:cursor-not-allowed
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200
+                   dark:border-gray-700 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-gray-800 dark:focus-visible:ring-blue-900"
+              >
+                <RefreshIcon :class="['h-4 w-4', loadingSchedules ? 'animate-spin' : '']" />
+              </button>
+
+            </div>
           </div>
 
           <!-- 스크롤 호스트 -->
@@ -134,6 +151,21 @@
                       @pointerdown.stop.prevent="onEventPointerDown($event, ev)"
                       @click.stop="onEventClick(ev)"
                   >
+                    <!-- 위 리사이즈 핸들 -->
+                    <div
+                        v-if="canResize(ev)"
+                        class="absolute left-0 right-0 top-0 h-2 cursor-ns-resize"
+                        @pointerdown.stop.prevent="onResizeDown($event, ev, 'start')"
+                        @click.stop.prevent
+                    />
+                    <!-- 아래 리사이즈 핸들 -->
+                    <div
+                        v-if="canResize(ev)"
+                        class="absolute left-0 right-0 bottom-0 h-2 cursor-ns-resize"
+                        @pointerdown.stop.prevent="onResizeDown($event, ev, 'end')"
+                        @click.stop.prevent
+                    />
+                    <!-- 본문 -->
                     <div
                         class="h-full w-full rounded-md shadow-sm border text-xs flex flex-col justify-between overflow-hidden"
                         :class="eventClass(ev)"
@@ -141,14 +173,15 @@
                       <div class="flex items-start justify-between gap-2 px-2 py-1">
                         <div class="min-w-0">
                           <div class="font-semibold truncate">
-                            {{ ev.title }}
+                            {{ ev.scheduledByName }}
                           </div>
                           <div class="text-[11px] opacity-80">
-                            {{ timeLabel(ev.startSlot) }} - {{ timeLabel(ev.endSlot) }}
+                            {{ ev.customerName }}
                           </div>
                         </div>
 
                         <button
+                            v-if="canEditEvent(ev)"
                             class="shrink-0 w-5 h-5 rounded hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center"
                             @click.stop="deleteEvent(ev.id)"
                             title="삭제"
@@ -158,7 +191,7 @@
                       </div>
 
                       <div class="px-2 pb-1 text-[11px] opacity-80">
-                        {{ ev.dayLabel }} · {{ ev.room }}룸
+                        {{ ev.dayLabel }} · {{ timeLabel(ev.startSlot) }} - {{ timeLabel(ev.endSlot) }} · {{ ev.room }}룸
                       </div>
                     </div>
                   </div>
@@ -230,28 +263,20 @@
                   <label class="block text-sm text-gray-600 dark:text-gray-300">회의실</label>
                   <select
                       v-model.number="pendingRoom"
+                      :disabled="!modalCanEdit"
                       class="w-full h-11 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2
                  text-sm focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
                  dark:bg-gray-800 dark:text-gray-200"
                   >
                     <option :value="null" disabled>회의실을 선택하세요</option>
-                    <option v-for="r in rooms" :key="r.room" :value="r.room">
+                    <option v-for="r in roomListForGrid" :key="r.room" :value="r.room">
                       {{ r.label }}
                     </option>
                   </select>
                 </div>
 
-                <!-- 일정명 -->
-                <div class="space-y-1">
-                  <label class="block text-sm text-gray-600 dark:text-gray-300">일정명</label>
-                  <input
-                      v-model.trim="eventTitle"
-                      type="text"
-                      placeholder="예: 유현우 / 내부 미팅"
-                      class="h-11 w-full rounded-lg border px-3
-                 bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                  />
+                <div class="rounded-xl border border-gray-200 p-3 text-sm text-gray-700 dark:border-gray-800 dark:text-gray-200">
+                  일정 등록자: <b>{{ editingScheduledByName }}</b>
                 </div>
 
                 <!-- 고객 -->
@@ -260,7 +285,7 @@
                     <label class="block text-sm text-gray-600 dark:text-gray-300">고객</label>
 
                     <button
-                        v-if="!isCustomerLocked && pickedCustomer"
+                        v-if="modalCanEdit && !isCustomerLocked && pickedCustomer"
                         class="text-xs px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-50
                    dark:border-gray-700 dark:hover:bg-gray-800/70"
                         @click="clearPickedCustomer"
@@ -293,6 +318,7 @@
                     <div class="flex gap-2">
                       <input
                           v-model.trim="customerQuery"
+                          :disabled="!modalCanEdit"
                           @input="debouncedCustomerSearch"
                           type="text"
                           placeholder="이름 또는 전화번호로 검색"
@@ -302,7 +328,7 @@
                       />
                       <button
                           @click="searchCustomers"
-                          :disabled="submitting"
+                          :disabled="submitting || !modalCanEdit"
                           class="inline-flex h-11 items-center justify-center rounded-lg border border-gray-200 px-4 text-sm
                      hover:bg-gray-50 disabled:opacity-60
                      dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700/60"
@@ -360,6 +386,19 @@
                     고객 정보를 불러오는 중...
                   </div>
                 </div>
+
+                <!-- 기타 회의실일 때만 메모 등록 -->
+                <div v-if="isEtcSelected" class="space-y-1">
+                  <label class="block text-sm text-gray-600 dark:text-gray-300" :disabled="!modalCanEdit">메모 (기타 필수)</label>
+                  <textarea
+                      v-model.trim="memo"
+                      rows="3"
+                      class="w-full rounded-lg border px-3 py-2
+                         bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                         dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      placeholder="기타 회의실 예약 사유를 입력하세요"
+                  />
+                </div>
               </div>
 
               <!-- 푸터 -->
@@ -374,7 +413,7 @@
 
                 <button
                     class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
-                    :disabled="submitting || !canSave"
+                    :disabled="submitting || !canSave || !modalCanEdit"
                     @click="saveEvent"
                 >
                   {{ submitting ? '처리 중...' : (editingEventId ? '수정 저장' : '추가') }}
@@ -383,7 +422,7 @@
                 <button
                     v-if="editingEventId"
                     class="h-10 px-4 rounded-lg border border-red-500 bg-red-500 text-white text-sm hover:bg-red-600 disabled:opacity-60"
-                    :disabled="submitting"
+                    :disabled="submitting || !modalCanEdit"
                     @click="deleteEvent(editingEventId)"
                 >
                   삭제
@@ -404,10 +443,42 @@ import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import axios from '@/plugins/axios'
 import { useAuthStore } from "@/stores/auth.js";
 import { useRoute } from 'vue-router'
+import {RefreshIcon} from "@/icons";
+
+const myUserId = ref<number | null>(null)
+
+async function loadMyId() {
+  try {
+    const { data } = await axios.get('/api/me', { withCredentials: true })
+    myUserId.value = data.userId ?? null
+    myUserName.value = data.userName ?? ''
+  } catch {
+    myUserId.value = null
+    myUserName.value = ''
+  }
+}
+
+function findEventById(id: string | null) {
+  if (!id) return null
+  return events.value.find(e => e.id === id) ?? null
+}
+const modalCanEdit = computed(() => {
+  // 신규 등록: 역할만 체크
+  if (!editingEventId.value) return canWrite.value
+
+  // 수정 모달: “내 이벤트”만 true
+  const ev = findEventById(editingEventId.value)
+  return !!ev && canEditEvent(ev)
+})
 
 const auth = useAuthStore();
-const role = auth.grants.role;
 const route = useRoute()
+const role = computed(() => auth.grants.role)
+const canWrite = computed(() => role.value === 'MANAGER' || role.value === 'STAFF')
+const myUserName = ref<string>('')
+function canEditEvent(ev: ScheduleEvent) {
+  return canWrite.value && myUserId.value != null && ev.scheduledByUserId === myUserId.value
+}
 
 // 버튼 색상
 const btnSoft =
@@ -436,6 +507,8 @@ const SLOT_MINUTES = 30
 const START_MINUTES = START_HOUR * 60
 const END_MINUTES_EXCLUSIVE = (22 * 60) + 30
 const slotCount = (END_MINUTES_EXCLUSIVE - START_MINUTES) / SLOT_MINUTES
+
+const memo = ref('')
 
 type RoomOption = { room: number; label: string }
 const rooms = ref<RoomOption[]>([])
@@ -571,7 +644,9 @@ function scrollToDay(dayKey: string) {
 }
 
 onMounted(async () => {
+  await loadMyId()
   await loadRooms()
+  await loadSchedules()
   updateScrollHeight()
   window.addEventListener('resize', updateScrollHeight)
   window.addEventListener('orientationchange', updateScrollHeight)
@@ -591,6 +666,7 @@ onBeforeUnmount(() => {
 
 watch(weekStart, async () => {
   await nextTick()
+  await loadSchedules()
   scrollToDay(todayKey.value)
 })
 
@@ -616,12 +692,13 @@ const selecting = ref(false)
 const selection = reactive({ colFrom: -1, colTo: -1, slotFrom: -1, slotTo: -1 })
 
 function normalizeSelection() {
-  const c1 = Math.min(selection.colFrom, selection.colTo)
-  const c2 = Math.max(selection.colFrom, selection.colTo)
+  const c1 = selection.colFrom   // 고정 (가로 확장 금지)
+  const c2 = selection.colFrom   // 고정 (가로 확장 금지)
   const s1 = Math.min(selection.slotFrom, selection.slotTo)
   const s2 = Math.max(selection.slotFrom, selection.slotTo)
   return { c1, c2, s1, s2 }
 }
+
 function isSelected(colIdx: number, slotIdx: number) {
   if (!selecting.value && selection.colFrom < 0) return false
   const { c1, c2, s1, s2 } = normalizeSelection()
@@ -642,16 +719,18 @@ const selectionVisible = computed(() => selection.colFrom >= 0 && selection.slot
 
 const selectionRectStyle = computed(() => {
   if (!selectionVisible.value) return {}
-  const { c1, c2, s1, s2 } = normalizeSelection()
+  const { c1, s1, s2 } = normalizeSelection()
   return {
     left: `${c1 * COL_WIDTH}px`,
     top: `${s1 * ROW_HEIGHT}px`,
-    width: `${(c2 - c1 + 1) * COL_WIDTH}px`,
-    height: `${(s2 - s1 + 1) * ROW_HEIGHT}px`,
+    width: `${COL_WIDTH}px`,
+    height: `${(s2 - s1 + 1) * ROW_HEIGHT}px`
   }
 })
 
 function onCellPointerDown(_e: PointerEvent, colIdx: number, slotIdx: number) {
+  if (!canWrite.value) return
+
   selecting.value = true
   selection.colFrom = colIdx
   selection.colTo = colIdx
@@ -667,11 +746,11 @@ function onSelectingPointerMove(e: PointerEvent) {
   const cell = el?.closest?.('[data-cal-cell="1"]') as HTMLElement | null
   if (!cell) return
 
-  const c = Number(cell.dataset.col)
   const s = Number(cell.dataset.slot)
-  if (!Number.isFinite(c) || !Number.isFinite(s)) return
+  if (!Number.isFinite(s)) return
 
-  selection.colTo = c
+  // 가로는 고정, 세로만 변화
+  selection.colTo = selection.colFrom
   selection.slotTo = s
 }
 function onSelectingPointerUp() {
@@ -714,14 +793,138 @@ const pendingDayLabel = ref<string>('')   // 선택된 라벨 (MM.DD 요일)
 const pendingSlot = ref<number>(0)        // 선택된 슬롯 (startSlot)
 const pendingRoom = ref<number | null>(null)
 
+const etcRoomId = computed<number | null>(() => {
+  const etc = rooms.value.find(r => /기타/.test(r.label))
+  return etc?.room ?? null
+})
+
+const isEtcSelected = computed(() => {
+  return pendingRoom.value != null && etcRoomId.value != null && pendingRoom.value === etcRoomId.value
+})
+
+const pending = reactive({ c1: 0, c2: 0, s1: 0, s2: 0 })
 const pendingDateTimeLabel = computed(() => {
   const day = pendingDayLabel.value || pendingDayKey.value
   return `${day} · ${timeLabel(pending.s1)} - ${timeLabel(pending.s2 + 1)}`
 })
 
 const canSave = computed(() => {
-  return !!pendingDayKey.value && pendingRoom.value != null && eventTitle.value.trim().length > 0
+  if (!pendingDayKey.value) return false
+  if (pendingRoom.value == null) return false
+  if (!pickedCustomer.value?.customerId) return false
+  if (isEtcSelected.value && !memo.value.trim()) return false
+  return true
 })
+
+function canResize(ev: ScheduleEvent) {
+  return canEditEvent(ev)
+}
+
+const resizing = ref<null | {
+  id: string
+  edge: 'start' | 'end'
+  startY: number
+  baseStart: number
+  baseEnd: number
+  moved: boolean
+  snapshot: ScheduleEvent // 롤백용
+}>(null)
+
+function onResizeDown(e: PointerEvent, ev: ScheduleEvent, edge: 'start' | 'end') {
+  if (!canResize(ev)) return
+
+  resizing.value = {
+    id: ev.id,
+    edge,
+    startY: e.clientY,
+    baseStart: ev.startSlot,
+    baseEnd: ev.endSlot,
+    moved: false,
+    snapshot: { ...ev }
+  }
+
+  window.addEventListener('pointermove', onResizeMove, { passive: true })
+  window.addEventListener('pointerup', onResizeUp, { once: true })
+}
+
+function onResizeMove(e: PointerEvent) {
+  const r = resizing.value
+  if (!r) return
+
+  const dy = e.clientY - r.startY
+  const slotDelta = Math.round(dy / ROW_HEIGHT)
+  if (Math.abs(dy) > 2) r.moved = true
+
+  events.value = events.value.map(ev => {
+    if (ev.id !== r.id) return ev
+
+    const minDur = 1
+    if (r.edge === 'end') {
+      const nextEnd = clamp(r.baseEnd + slotDelta, r.baseStart + minDur, slotCount)
+      return { ...ev, endSlot: nextEnd }
+    } else {
+      const nextStart = clamp(r.baseStart + slotDelta, 0, r.baseEnd - minDur)
+      return { ...ev, startSlot: nextStart }
+    }
+  })
+}
+
+const suppressOpenModal = ref<{ id: string; until: number } | null>(null)
+function isSuppressed(ev: ScheduleEvent) {
+  const s = suppressOpenModal.value
+  return !!(s && s.id === ev.id && Date.now() < s.until)
+}
+async function onResizeUp() {
+  window.removeEventListener('pointermove', onResizeMove)
+
+  const r = resizing.value
+  resizing.value = null
+  if (!r) return
+  if (!r.moved) return
+  suppressOpenModal.value = { id: r.id, until: Date.now() + 250 }
+
+  const ev = events.value.find(x => x.id === r.id)
+  if (!ev) return
+
+  // 서버 반영 (실패하면 스냅샷으로 롤백)
+  submitting.value = true
+  try {
+    const startAt = slotToLdt(ev.dayKey, ev.startSlot)
+    const endAt = slotToLdt(ev.dayKey, ev.endSlot)
+
+    const payload = {
+      customerId: ev.customerId,
+      roomId: ev.room,
+      startAt,
+      endAt,
+      memo: ev.memo ?? null
+    }
+
+    await axios.put(`/api/work/visit/schedules/${ev.id}`, payload)
+    await loadSchedules()
+  } catch (err) {
+    // 롤백
+    events.value = events.value.map(x => (x.id === r.id ? r.snapshot : x))
+  } finally {
+    submitting.value = false
+  }
+}
+
+const editingScheduledByName = ref('')
+type VisitScheduleRow = {
+  visitId: number
+  customerId: number
+  customerName: string
+  customerPhone: string
+  scheduledByUserId: number
+  scheduledByName: string
+  centerColor: string | null
+  roomId: number | null
+  roomName: string | null
+  visitAt: string
+  visitEndAt: string
+  memo: string | null
+}
 
 type ScheduleEvent = {
   id: string
@@ -729,8 +932,86 @@ type ScheduleEvent = {
   dayKey: string
   dayLabel: string
   room: number
+  roomName?: string
   startSlot: number
-  endSlot: number // exclusive
+  endSlot: number
+  centerColor: string
+  customerId: number
+  customerName: string
+  customerPhone: string
+  memo?: string
+  scheduledByUserId: number
+  scheduledByName: string
+}
+
+function parseLocalDateTime(s: string) {
+  if (!s) return null
+  const iso = s.includes('T') ? s : s.replace(' ', 'T')
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function slotOf(d: Date) {
+  const m = d.getHours() * 60 + d.getMinutes()
+  return Math.floor((m - START_MINUTES) / SLOT_MINUTES)
+}
+
+function slotCeilOf(d: Date) {
+  const m = d.getHours() * 60 + d.getMinutes()
+  return Math.ceil((m - START_MINUTES) / SLOT_MINUTES)
+}
+
+function slotToLdt(dayKey: string, slotIdx: number) {
+  const totalMin = START_MINUTES + slotIdx * SLOT_MINUTES
+  const hh = Math.floor(totalMin / 60)
+  const mm = totalMin % 60
+  return `${dayKey}T${pad2(hh)}:${pad2(mm)}:00`
+}
+
+function resolveRoomId(roomId: number | null) {
+  if (roomId != null) return roomId
+  const etc = rooms.value.find(r => r.label === '기타')
+  return etc?.room ?? (roomListForGrid.value[0]?.room ?? 1)
+}
+
+function toEvent(r: VisitScheduleRow): ScheduleEvent | null {
+  const startDt = parseLocalDateTime(r.visitAt)
+  const endDt = parseLocalDateTime(r.visitEndAt)
+  if (!startDt || !endDt) return null
+
+  const dk = ymd(startDt)
+  const dlabel = days.value.find(d => d.key === dk)?.label ?? dk
+
+  const start = slotOf(startDt)
+  const end = slotCeilOf(endDt)
+  if (start < 0 || start >= slotCount) return null
+  if (end <= start) return null
+
+  return {
+    id: String(r.visitId),
+    title: r.scheduledByName || '',
+    dayKey: dk,
+    dayLabel: dlabel,
+    room: resolveRoomId(r.roomId),
+    roomName: r.roomName ?? undefined,
+    startSlot: start,
+    endSlot: Math.min(end, slotCount),
+    centerColor: r.centerColor || '#64748B',
+    customerId: r.customerId,
+    customerName: r.customerName,
+    customerPhone: r.customerPhone,
+    memo: r.memo ?? '',
+    scheduledByUserId: r.scheduledByUserId,
+    scheduledByName: r.scheduledByName
+  }
+}
+
+async function loadSchedules() {
+  const from = ymd(weekStart.value)
+  const to = ymd(addDays(weekStart.value, 7)) // exclusive
+  const { data } = await axios.get('/api/work/visit/schedules', { params: { from, to } })
+  const rows: VisitScheduleRow[] = Array.isArray(data) ? data : []
+  events.value = rows.map(toEvent).filter(Boolean) as ScheduleEvent[]
 }
 
 function roomIndexOf(roomId: number) {
@@ -756,54 +1037,50 @@ function colIndexOf(dayKey: string, roomId: number) {
   return dayIdx * roomsPerDay.value + roomIdx
 }
 
-const events = ref<ScheduleEvent[]>([
-  // 샘플
-  (() => {
-    const dk = todayKey.value
-    const dlabel = days.value.find(d => d.key === dk)?.label ?? dk
-    return { id: '1', title: '유현우', dayKey: dk, dayLabel: dlabel, room: 1, startSlot: 4, endSlot: 6 }
-  })()
-])
+const events = ref<ScheduleEvent[]>([])
 
 const visibleEvents = computed(() => {
   const daySet = new Set(days.value.map(d => d.key))
   return events.value.filter(e => daySet.has(e.dayKey))
 })
 
-function roomColorClass(room: number) {
-  switch (room) {
-    case 1: return 'bg-fuchsia-500/15 border-fuchsia-500/40 text-fuchsia-900 dark:text-fuchsia-200'
-    case 2: return 'bg-red-500/15 border-red-500/40 text-red-900 dark:text-red-200'
-    case 3: return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-900 dark:text-yellow-200'
-    case 4: return 'bg-blue-500/15 border-blue-500/40 text-blue-900 dark:text-blue-200'
-    case 5: return 'bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
-    default: return 'bg-gray-500/10 border-gray-400/40 text-gray-800 dark:text-gray-200'
-  }
+function hexToRgba(hex: string, a: number) {
+  const h = (hex || '').replace('#', '')
+  const v = h.length === 3 ? h.split('').map(x => x + x).join('') : h
+  const r = parseInt(v.slice(0, 2), 16)
+  const g = parseInt(v.slice(2, 4), 16)
+  const b = parseInt(v.slice(4, 6), 16)
+  if (![r, g, b].every(Number.isFinite)) return `rgba(100,116,139,${a})`
+  return `rgba(${r},${g},${b},${a})`
 }
-function eventClass(ev: ScheduleEvent) {
-  return `border ${roomColorClass(ev.room)}`
+
+function eventClass(_ev: ScheduleEvent) {
+  return 'border text-gray-900 dark:text-gray-100'
 }
+
 function eventStyle(ev: ScheduleEvent) {
   const colIdx = colIndexOf(ev.dayKey, ev.room)
-  const left = colIdx * COL_WIDTH // 이벤트 레이어가 TIME_COL_WIDTH만큼 밀려있음
+  const left = colIdx * COL_WIDTH
   const top = ev.startSlot * ROW_HEIGHT
   const height = Math.max(ROW_HEIGHT, (ev.endSlot - ev.startSlot) * ROW_HEIGHT)
+
   return {
     left: `${left}px`,
     top: `${top}px`,
     width: `${COL_WIDTH}px`,
     height: `${height}px`,
     padding: '2px',
-    cursor: dragging.value?.id === ev.id ? 'grabbing' : 'grab'
+    cursor: canEditEvent(ev)
+        ? (dragging.value?.id === ev.id ? 'grabbing' : 'grab')
+        : 'default',
+    backgroundColor: hexToRgba(ev.centerColor, 0.10),
+    borderColor: hexToRgba(ev.centerColor, 0.45),
   } as any
 }
 
 /** ===== 모달(추가/수정) ===== */
 const isOpen = ref(false)
-const eventTitle = ref('')
 const editingEventId = ref<string | null>(null)
-
-const pending = reactive({ c1: 0, c2: 0, s1: 0, s2: 0 })
 
 const pendingStartLabel = computed(() => timeLabel(pending.s1))
 const pendingEndLabel = computed(() => timeLabel(pending.s2 + 1))
@@ -821,9 +1098,16 @@ const selectionSummary = computed(() => {
 })
 
 function closeModal() {
+  if (pendingDragEdit.value && pendingDragEdit.value.id === editingEventId.value) {
+    const snap = pendingDragEdit.value.snapshot
+    events.value = events.value.map(x => (x.id === snap.id ? snap : x))
+    pendingDragEdit.value = null
+  }
+
   isOpen.value = false
   editingEventId.value = null
-  eventTitle.value = ''
+  editingScheduledByName.value = ''
+  memo.value = ''
 
   customerQuery.value = ''
   customerResults.value = []
@@ -843,7 +1127,6 @@ function openAddFromSelection() {
   pending.s2 = s2
 
   editingEventId.value = null
-  eventTitle.value = ''
   isOpen.value = true
 }
 
@@ -853,7 +1136,7 @@ function openManualAdd() {
   pending.s1 = 2
   pending.s2 = 2
   editingEventId.value = null
-  eventTitle.value = ''
+  editingScheduledByName.value = myUserName.value
   isOpen.value = true
 }
 
@@ -862,6 +1145,9 @@ async function openEditEvent(ev: any) {
   pendingDayLabel.value = ev.dayLabel
   pendingSlot.value = ev.startSlot
   pendingRoom.value = ev.room
+  memo.value = ev.memo ?? ''
+  editingEventId.value = ev.id
+  editingScheduledByName.value = ev.scheduledByName ?? ''
 
   const col = colIndexOf(ev.dayKey, ev.room)
   pending.c1 = col >= 0 ? col : 0
@@ -870,7 +1156,6 @@ async function openEditEvent(ev: any) {
   pending.s2 = Math.max(ev.startSlot, (ev.endSlot ?? ev.startSlot + 1) - 1)
 
   editingEventId.value = ev.id
-  eventTitle.value = ev.title
 
   if (ev.customerId) {
     pickedCustomer.value = {
@@ -920,69 +1205,57 @@ async function openModalFromSelection(range: { c1: number; c2: number; s1: numbe
   }
 
   editingEventId.value = null
+  editingScheduledByName.value = myUserName.value
   isOpen.value = true
   await nextTick()
   modalRoot.value?.focus?.()
 }
 
-function saveEvent() {
-  const title = eventTitle.value.trim()
+async function saveEvent() {
+  if (!editingEventId.value && !canWrite.value) return
+  if (editingEventId.value && !modalCanEdit.value) return
   if (!canSave.value) return
 
-  // 세로 선택 범위 그대로 1개 이벤트로 합치기
-  const startSlot = pending.s1
-  const endSlot = pending.s2 + 1 // exclusive
+  submitting.value = true
+  try {
+    const startAt = slotToLdt(pendingDayKey.value, pending.s1)
+    const endAt = slotToLdt(pendingDayKey.value, pending.s2 + 1)
 
-  // 편집이면 1개만 수정
-  if (editingEventId.value) {
-    const id = editingEventId.value
-    events.value = events.value.map((e: any) => {
-      if (e.id !== id) return e
-      return {
-        ...e,
-        title,
-        dayKey: pendingDayKey.value,
-        dayLabel: pendingDayLabel.value,
-        room: pendingRoom.value!,
-        startSlot,
-        endSlot,
-        customerId: pickedCustomer.value?.customerId ?? null,
-        customerName: pickedCustomer.value?.customerName ?? null,
-        customerPhone: pickedCustomer.value?.customerPhone ?? null
-      }
-    })
+    const payload = {
+      customerId: pickedCustomer.value!.customerId,
+      roomId: pendingRoom.value!,
+      startAt,
+      endAt,
+      memo: memo.value.trim() || null
+    }
+
+    if (editingEventId.value) {
+      await axios.put(`/api/work/visit/schedules/${editingEventId.value}`, payload)
+      pendingDragEdit.value = null
+    } else {
+      await axios.post(`/api/work/visit/schedules`, payload)
+    }
+
+    await loadSchedules()
     closeModal()
-    return
+  } finally {
+    submitting.value = false
   }
-
-  // 추가면: 가로로 여러 컬럼 선택했으면 컬럼마다 1개씩 생성(세로는 합쳐진 1개)
-  const created: any[] = []
-  for (let c = pending.c1; c <= pending.c2; c++) {
-    const { dayKey, dayLabel, room } = dayRoomFromColIndex(c)
-    if (!dayKey) continue
-
-    created.push({
-      id: `${Date.now()}-${dayKey}-${room}-${startSlot}-${c}`,
-      title,
-      dayKey,
-      dayLabel: dayLabel || dayKey,
-      room,
-      startSlot,
-      endSlot,
-      customerId: pickedCustomer.value?.customerId ?? null,
-      customerName: pickedCustomer.value?.customerName ?? null,
-      customerPhone: pickedCustomer.value?.customerPhone ?? null
-    })
-  }
-
-  events.value = [...events.value, ...created]
-  closeModal()
 }
 
-function deleteEvent(id: string | null) {
+async function deleteEvent(id: string | null) {
   if (!id) return
-  events.value = events.value.filter(e => e.id !== id)
-  if (editingEventId.value === id) closeModal()
+  const ev = events.value.find(e => e.id === id)
+  if (!ev || !canEditEvent(ev)) return
+
+  submitting.value = true
+  try {
+    await axios.delete(`/api/work/visit/schedules/${id}`)
+    await loadSchedules()
+    if (editingEventId.value === id) closeModal()
+  } finally {
+    submitting.value = false
+  }
 }
 
 /** ===== 이벤트 드래그 이동 ===== */
@@ -994,11 +1267,13 @@ const dragging = ref<null | {
   baseStart: number
   baseEnd: number
   moved: boolean
+  snapshot: ScheduleEvent
 }>(null)
 
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)) }
 
 function onEventPointerDown(e: PointerEvent, ev: ScheduleEvent) {
+  if (!canEditEvent(ev)) return
   const col = colIndexOf(ev.dayKey, ev.room)
   dragging.value = {
     id: ev.id,
@@ -1007,7 +1282,8 @@ function onEventPointerDown(e: PointerEvent, ev: ScheduleEvent) {
     baseCol: col,
     baseStart: ev.startSlot,
     baseEnd: ev.endSlot,
-    moved: false
+    moved: false,
+    snapshot: { ...ev }
   }
 
   try { (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId) } catch {}
@@ -1046,13 +1322,76 @@ function onEventPointerMove(e: PointerEvent) {
   })
 }
 
-function onEventPointerUp() {
+const pendingDragEdit = ref<null | { id: string; snapshot: ScheduleEvent }>(null)
+async function onEventPointerUp() {
   window.removeEventListener('pointermove', onEventPointerMove)
-  // 클릭-열기 방지용 플래그는 onEventClick에서 확인
-  setTimeout(() => { dragging.value = null }, 0)
+
+  const d = dragging.value
+  // click-열기 방지용 플래그는 onEventClick에서 확인하니까, 여기서는 바로 null로 두면 안됨
+  // (moved 판정 후 setTimeout으로 비워야 함)
+  if (!d) return
+
+  // 드래그 안 했으면 종료
+  if (!d.moved) {
+    setTimeout(() => { dragging.value = null }, 0)
+    return
+  }
+
+  // 드래그한 결과 좌표로 서버 저장
+  const ev = events.value.find(x => x.id === d.id)
+  if (!ev) {
+    setTimeout(() => { dragging.value = null }, 0)
+    return
+  }
+
+  // 내 이벤트 아니면 즉시 롤백 + (모달 종료)
+  if (!canEditEvent(ev)) {
+    events.value = events.value.map(x => (x.id === d.id ? d.snapshot : x))
+    setTimeout(() => { dragging.value = null }, 0)
+    return
+  }
+
+  const etcId = etcRoomId.value
+  const isEtcRoom = etcId != null && ev.room === etcId
+  const hasMemo = (ev.memo ?? '').trim().length > 0
+
+  if (isEtcRoom && !hasMemo) {
+    pendingDragEdit.value = { id: d.id, snapshot: d.snapshot }
+
+    await openEditEvent(ev)
+
+    setTimeout(() => { dragging.value = null }, 0)
+    return
+  }
+
+  submitting.value = true
+  try {
+    const startAt = slotToLdt(ev.dayKey, ev.startSlot)
+    const endAt = slotToLdt(ev.dayKey, ev.endSlot)
+
+    const payload = {
+      customerId: ev.customerId,
+      roomId: ev.room,
+      startAt,
+      endAt,
+      memo: (ev.memo ?? '').trim() || null
+    }
+
+    await axios.put(`/api/work/visit/schedules/${ev.id}`, payload)
+
+    // 서버값으로 다시 맞추기
+    await loadSchedules()
+  } catch (err) {
+    // 실패하면 원복
+    events.value = events.value.map(x => (x.id === d.id ? d.snapshot : x))
+  } finally {
+    submitting.value = false
+    setTimeout(() => { dragging.value = null }, 0)
+  }
 }
 
 function onEventClick(ev: ScheduleEvent) {
+  if (isSuppressed(ev)) return
   // 드래그 직후 click가 따라오는 케이스 방지
   if (dragging.value?.id === ev.id && dragging.value?.moved) return
   openEditEvent(ev)
@@ -1069,19 +1408,38 @@ function goToday() {
 /** ====== api호출 ===== */
 async function loadRooms() {
   try {
-    const { data } = await axios.get('/api/work/visit/rooms')
-    const arr = Array.isArray(data) ? data : []
+    const resp = await axios.get('/api/work/visit/rooms')
+    const data = resp.data
+
+    // console.log('rooms status =', resp.status)
+    // console.log('rooms api data =', data)
+
+    const arr =
+        Array.isArray(data) ? data
+            : Array.isArray((data as any)?.rooms) ? (data as any).rooms
+                : Array.isArray((data as any)?.items) ? (data as any).items
+                    : []
 
     rooms.value = arr
-        .filter((r: any) => r && (r.isActive === true || r.isActive === 1 || r.isActive === 'Y' || r.isActive == null))
-        .map((r: any) => ({
-          room: Number(r.roomId ?? r.id),
-          label: String(r.roomName ?? r.name)
-        }))
-        .filter(r => Number.isFinite(r.room) && r.room > 0 && r.label.length > 0)
+        .filter((r: any) => !!r)
+        // 서버가 이미 active만 주는 게 정상이라 isActive로 거르지 말고 일단 다 받는 게 안전함
+        .map((r: any) => {
+          const room = Number(
+              r.roomId ?? r.id ?? r.room ?? r.room_id ?? r.roomID ?? r.roomNo
+          )
+          const label = String(
+              r.roomName ?? r.name ?? r.label ?? r.room_name ?? r.roomNM ?? ''
+          ).trim()
 
-    if (!rooms.value.length) throw new Error('empty rooms')
-  } catch (e) {
+          return { room, label }
+        })
+        .filter((r: any) => Number.isFinite(r.room) && r.room > 0 && r.label.length > 0)
+
+    // console.log('rooms parsed =', rooms.value)
+  } catch (e: any) {
+    console.error('loadRooms failed', e)
+    console.error('status =', e?.response?.status)
+    console.error('data =', e?.response?.data)
     rooms.value = []
   }
 }
@@ -1098,7 +1456,6 @@ async function loadLockedCustomer() {
       customerPhone: data.customerPhone,
       customerCreatedAt: data.customerCreatedAt
     }
-    if (!eventTitle.value.trim()) eventTitle.value = pickedCustomer.value.customerName
   } catch (e) {
     console.error(e)
   }
@@ -1120,8 +1477,7 @@ async function searchCustomers() {
       return
     }
     const { data } = await axios.get('/api/work/visit/customers', {
-      params: { q: customerQuery.value }
-      // 서버에서: status=내방 AND reservation_at IS NULL 같은 조건으로 필터링
+      params: { keyword: customerQuery.value }
     })
     customerResults.value = (Array.isArray(data) ? data : []).map(mapCustomer)
   } catch (e) {
@@ -1137,7 +1493,6 @@ function debouncedCustomerSearch() {
 
 function selectCustomer(c: CustomerPick) {
   pickedCustomer.value = c
-  if (!eventTitle.value.trim()) eventTitle.value = c.customerName
 }
 
 function clearPickedCustomer() {
@@ -1170,9 +1525,22 @@ async function openModalFromCell(colIdx: number, slotIdx: number) {
   }
 
   editingEventId.value = null
+  editingScheduledByName.value = myUserName.value
   isOpen.value = true
   await nextTick()
   modalRoot.value?.focus?.()
 }
 
+// 새로고침
+const loadingSchedules = ref(false)
+async function onRefreshSchedules() {
+  if (loadingSchedules.value) return
+  loadingSchedules.value = true
+  try {
+    await loadRooms()      // 룸 변경 가능성 있으면 같이
+    await loadSchedules()  // 주간 일정 다시 로드
+  } finally {
+    loadingSchedules.value = false
+  }
+}
 </script>
