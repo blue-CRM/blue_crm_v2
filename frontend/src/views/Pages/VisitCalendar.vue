@@ -616,7 +616,7 @@ function updateScrollHeight() {
   if (!el) return
   const rect = el.getBoundingClientRect()
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight
-  const bottomPadding = 110
+  const bottomPadding = 40
   let h = viewportHeight - rect.top - bottomPadding
   if (h < 260) h = 260
   scrollMaxHeight.value = `${h}px`
@@ -680,7 +680,7 @@ function timeLabel(slotIdx: number) {
   return `${ap} ${hh12}시${mm === 0 ? '' : ' 30분'}`
 }
 function rowTopBorderStyle(slotIdx: number) {
-  const noonSlot = ((12 * 60) - START_MINUTES) / SLOT_MINUTES
+  const noonSlot = ((13 * 60) - START_MINUTES) / SLOT_MINUTES
   if (slotIdx === noonSlot) {
     return { borderTop: '2px solid rgb(209 213 219)' }
   }
