@@ -9,8 +9,11 @@ import java.util.List;
 
 @Mapper
 public interface VisitScheduleMapper {
-  List<VisitScheduleRowDto> findSchedules(@Param("from") LocalDateTime from,
-                                          @Param("to") LocalDateTime to);
+  List<VisitScheduleRowDto> findSchedules(
+      @Param("from") LocalDateTime from,
+      @Param("to") LocalDateTime to,
+      @Param("viewerUserId") Long viewerUserId
+  );
   VisitScheduleFocusDto findFocusByCustomerId(@Param("customerId") Long customerId);
   
   int countConflicts(@Param("roomId") Long roomId,
@@ -34,10 +37,11 @@ public interface VisitScheduleMapper {
   int deleteSchedule(@Param("visitId") Long visitId);
   
   VisitScheduleMetaDto findScheduleMeta(@Param("visitId") Long visitId);
-  VisitCustomerPickDto findCustomerById(Long customerId);
+  VisitCustomerPickDto findCustomerById(
+      @Param("customerId") Long customerId,
+      @Param("userId") Long userId
+  );
   
-  int countOwnedCustomer(@Param("customerId") Long customerId,
-                         @Param("userId") Long userId);
   int countSelectableCustomer(@Param("customerId") Long customerId,
                               @Param("userId") Long userId);
   List<VisitCustomerPickDto> findSelectableCustomers(@Param("userId") Long userId,

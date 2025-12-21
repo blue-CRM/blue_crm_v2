@@ -8,7 +8,15 @@
         vs.visit_id              AS visitId,
         vs.customer_id           AS customerId,
         cu.customer_name         AS customerName,
-        cu.customer_phone        AS customerPhone,
+        CASE
+            WHEN viewer.manager_phone_access = 'N'
+                THEN CONCAT(
+                    SUBSTRING(cu.customer_phone, 1, 3),
+                    '-****-',
+                    SUBSTRING(cu.customer_phone, -4)
+                     )
+            ELSE cu.customer_phone
+        END AS customerPhone,
 
         vs.scheduled_by_user_id  AS scheduledByUserId,
         u.user_name              AS scheduledByName,
@@ -25,6 +33,7 @@
         FROM visit_schedule vs
         JOIN customers cu ON cu.customer_id = vs.customer_id
         JOIN users u      ON u.user_id      = vs.scheduled_by_user_id
+        JOIN users viewer ON viewer.user_id = #{viewerUserId}
         LEFT JOIN centers ce       ON ce.center_id = u.center_id
         LEFT JOIN meeting_rooms mr ON mr.room_id   = vs.room_id
         WHERE vs.visit_at &gt;= #{from}
@@ -104,8 +113,17 @@
         SELECT
             c.customer_id   AS customerId,
             c.customer_name AS customerName,
-            c.customer_phone AS customerPhone
+            CASE
+                WHEN u.manager_phone_access = 'N'
+                    THEN CONCAT(
+                        SUBSTRING(c.customer_phone, 1, 3),
+                        '-****-',
+                        SUBSTRING(c.customer_phone, -4)
+                         )
+                ELSE c.customer_phone
+            END AS customerPhone
         FROM customers c
+        JOIN users u ON u.user_id = #{userId}
         WHERE c.customer_id = #{customerId}
         LIMIT 1
     </select>

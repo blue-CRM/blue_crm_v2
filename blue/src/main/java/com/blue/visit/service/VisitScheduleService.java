@@ -44,9 +44,12 @@ public class VisitScheduleService {
     requireLogin(email);
     requireValidRange(from, to);
     
+    VisitUserContextDto ctx = requireUser(email);
+    
     LocalDateTime fromDt = from.atStartOfDay();
-    LocalDateTime toDt = to.atStartOfDay(); // exclusive
-    return mapper.findSchedules(fromDt, toDt);
+    LocalDateTime toDt = to.atStartOfDay();
+    
+    return mapper.findSchedules(fromDt, toDt, ctx.getUserId());
   }
   
   @Transactional(readOnly = true)
@@ -140,8 +143,13 @@ public class VisitScheduleService {
     return meetingRoomMapper.findActiveRooms();
   }
   
+  @Transactional(readOnly = true)
   public VisitCustomerPickDto getCustomerById(String email, Long customerId) {
-    VisitCustomerPickDto dto = mapper.findCustomerById(customerId);
+    VisitUserContextDto ctx = requireUser(email);
+    
+    VisitCustomerPickDto dto =
+        mapper.findCustomerById(customerId, ctx.getUserId());
+    
     if (dto == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
