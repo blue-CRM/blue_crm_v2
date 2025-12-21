@@ -13,7 +13,8 @@ public interface OrgAdminMapper {
   // ===== BRANCHES =====
   List<BranchDto> findBranches(@Param("keyword") String keyword);
   
-  boolean existsBranchName(@Param("branchName") String branchName);
+  boolean existsBranchName(@Param("branchName") String branchName,
+                           @Param("branchId") Long branchId);
   
   int insertBranch(BranchDto dto);
   
@@ -26,7 +27,8 @@ public interface OrgAdminMapper {
   // ===== CENTERS =====
   List<CenterDto> findCenters(@Param("keyword") String keyword);
   
-  boolean existsCenterName(@Param("centerName") String centerName);
+  boolean existsCenterName(@Param("centerName") String centerName,
+                           @Param("centerId") Long centerId);
   
   int insertCenter(CenterDto dto);
   
@@ -34,7 +36,8 @@ public interface OrgAdminMapper {
   
   int updateCenter(@Param("centerId") Long centerId,
                    @Param("centerName") String centerName,
-                   @Param("branchId") Long branchId);
+                   @Param("branchId") Long branchId,
+                   @Param("centerColor") String centerColor);
   
   int deleteCenter(@Param("centerId") Long centerId);
 }

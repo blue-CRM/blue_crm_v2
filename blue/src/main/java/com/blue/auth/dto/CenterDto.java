@@ -11,4 +11,5 @@ public class CenterDto {
   private Long centerId;
   private Long branchId;
   private String centerName;
+  private String centerColor;
 }

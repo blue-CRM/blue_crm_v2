@@ -77,6 +77,9 @@ public class CustomerRevokeService {
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
     
+    // 내방 이벤트 삭제
+    mapper.deleteSchedulesByCustomerIds(lockIds);
+    
     // 회수 처리: 상태=회수, 프로=NULL, 예약시간=NULL, 최초/업셀 매출 = 0
     mapper.updateToRevoked(lockIds);
     
@@ -105,6 +108,9 @@ public class CustomerRevokeService {
     
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+    
+    // 내방 이벤트 삭제
+    mapper.deleteSchedulesByCustomerIds(lockIds);
     
     // 회수 처리
     mapper.updateToManagerPool(lockIds, me.getUserId());
@@ -135,6 +141,9 @@ public class CustomerRevokeService {
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
     
+    // 내방 이벤트 삭제
+    mapper.deleteSchedulesByCustomerIds(lockIds);
+    
     // 회수 처리
     mapper.updateToRevoked(lockIds);
     
@@ -163,6 +172,9 @@ public class CustomerRevokeService {
     
     // 매출 초기화 로그 기록 ('RESET' 타입)
     mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+    
+    // 내방 이벤트 삭제
+    mapper.deleteSchedulesByCustomerIds(lockIds);
     
     // 회수 처리
     mapper.updateToRevoked(lockIds);

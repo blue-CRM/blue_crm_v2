@@ -1,0 +1,184 @@
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blue.visit.mapper.VisitScheduleMapper">
+
+    <select id="findSchedules" resultType="com.blue.visit.dto.VisitScheduleRowDto">
+        SELECT
+        vs.visit_id              AS visitId,
+        vs.customer_id           AS customerId,
+        cu.customer_name         AS customerName,
+        CASE
+            WHEN viewer.manager_phone_access = 'N'
+                THEN CONCAT(
+                    SUBSTRING(cu.customer_phone, 1, 3),
+                    '-****-',
+                    SUBSTRING(cu.customer_phone, -4)
+                     )
+            ELSE cu.customer_phone
+        END AS customerPhone,
+
+        vs.scheduled_by_user_id  AS scheduledByUserId,
+        u.user_name              AS scheduledByName,
+        ce.center_id             AS centerId,
+        ce.center_name           AS centerName,
+        COALESCE(ce.center_color, '#64748B') AS centerColor,
+
+        vs.room_id               AS roomId,
+        mr.room_name             AS roomName,
+
+        vs.visit_at              AS visitAt,
+        vs.visit_end_at          AS visitEndAt,
+        vs.memo                  AS memo
+        FROM visit_schedule vs
+        JOIN customers cu ON cu.customer_id = vs.customer_id
+        JOIN users u      ON u.user_id      = vs.scheduled_by_user_id
+        JOIN users viewer ON viewer.user_id = #{viewerUserId}
+        LEFT JOIN centers ce       ON ce.center_id = u.center_id
+        LEFT JOIN meeting_rooms mr ON mr.room_id   = vs.room_id
+        WHERE vs.visit_at &gt;= #{from}
+        AND vs.visit_at &lt; #{to}
+        ORDER BY vs.visit_at ASC, mr.room_name ASC, vs.visit_id ASC
+    </select>
+
+    <select id="findFocusByCustomerId" resultType="com.blue.visit.dto.VisitScheduleFocusDto">
+        SELECT
+            vs.visit_id     AS visitId,
+            vs.customer_id  AS customerId,
+            vs.room_id      AS roomId,
+            vs.visit_at     AS visitAt,
+            vs.visit_end_at AS visitEndAt
+        FROM visit_schedule vs
+        WHERE vs.customer_id = #{customerId}
+        LIMIT 1
+    </select>
+
+    <select id="countConflicts" resultType="int">
+        SELECT COUNT(*)
+        FROM visit_schedule vs
+        WHERE vs.room_id = #{roomId}
+        AND vs.visit_at &lt; #{endAt}
+        AND vs.visit_end_at > #{startAt}
+        <if test="excludeVisitId != null">
+            AND vs.visit_id != #{excludeVisitId}
+        </if>
+    </select>
+
+    <insert id="insertSchedule">
+        INSERT INTO visit_schedule
+        (customer_id, room_id, scheduled_by_user_id, visit_at, visit_end_at, memo)
+        VALUES
+            (#{customerId}, #{roomId}, #{scheduledByUserId}, #{startAt}, #{endAt}, #{memo})
+    </insert>
+
+    <update id="updateSchedule">
+        UPDATE visit_schedule
+        SET room_id = #{roomId},
+            visit_at = #{startAt},
+            visit_end_at = #{endAt},
+            memo = #{memo}
+        WHERE visit_id = #{visitId}
+    </update>
+
+    <delete id="deleteSchedule">
+        DELETE FROM visit_schedule WHERE visit_id = #{visitId}
+    </delete>
+
+    <select id="findUserIdByEmail" resultType="long">
+        SELECT user_id FROM users WHERE user_email = #{email} LIMIT 1
+    </select>
+
+    <select id="findUserContextByEmail" resultType="com.blue.visit.dto.VisitUserContextDto">
+        SELECT
+            user_id   AS userId,
+            user_role AS role,
+            user_name AS userName
+        FROM users
+        WHERE user_email = #{email}
+        LIMIT 1
+    </select>
+
+    <select id="findScheduleMeta" resultType="com.blue.visit.dto.VisitScheduleMetaDto">
+        SELECT
+            visit_id             AS visitId,
+            customer_id          AS customerId,
+            scheduled_by_user_id AS scheduledByUserId
+        FROM visit_schedule
+        WHERE visit_id = #{visitId}
+        LIMIT 1
+    </select>
+
+    <select id="findCustomerById"
+            resultType="com.blue.visit.dto.VisitCustomerPickDto">
+        SELECT
+            c.customer_id   AS customerId,
+            c.customer_name AS customerName,
+            CASE
+                WHEN u.manager_phone_access = 'N'
+                    THEN CONCAT(
+                        SUBSTRING(c.customer_phone, 1, 3),
+                        '-****-',
+                        SUBSTRING(c.customer_phone, -4)
+                         )
+                ELSE c.customer_phone
+            END AS customerPhone
+        FROM customers c
+        JOIN users u ON u.user_id = #{userId}
+        WHERE c.customer_id = #{customerId}
+        LIMIT 1
+    </select>
+
+    <select id="countOwnedCustomer" resultType="int">
+        SELECT COUNT(*)
+        FROM customers
+        WHERE customer_id = #{customerId}
+          AND user_id = #{userId}
+    </select>
+
+    <select id="countSelectableCustomer" resultType="int">
+        SELECT COUNT(*)
+        FROM customers
+        WHERE customer_id = #{customerId}
+          AND user_id = #{userId}
+          AND customer_status = '내방'
+          AND customer_promise_time IS NULL
+    </select>
+
+    <select id="findSelectableCustomers" resultType="com.blue.visit.dto.VisitCustomerPickDto">
+        SELECT
+        customer_id    AS customerId,
+        customer_name  AS customerName,
+        customer_phone AS customerPhone
+        FROM customers
+        WHERE user_id = #{userId}
+        AND customer_status = '내방'
+        AND customer_promise_time IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+            customer_name LIKE CONCAT('%', #{keyword}, '%')
+            OR customer_phone LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY customer_id DESC
+    </select>
+
+    <select id="isEtcRoom" resultType="int">
+        SELECT COUNT(*)
+        FROM meeting_rooms
+        WHERE room_id = #{roomId}
+          AND room_name = '기타'
+    </select>
+
+    <update id="updateCustomerPromiseTime">
+        UPDATE customers
+        SET customer_promise_time = #{promiseTime}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <update id="clearCustomerPromiseTime">
+        UPDATE customers
+        SET customer_promise_time = NULL
+        WHERE customer_id = #{customerId}
+    </update>
+
+</mapper>

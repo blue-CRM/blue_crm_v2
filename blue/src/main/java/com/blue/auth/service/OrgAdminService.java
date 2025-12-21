@@ -57,7 +57,7 @@ public class OrgAdminService {
     }
     String trimmed = branchName.trim();
     
-    if (orgAdminMapper.existsBranchName(trimmed)) {
+    if (orgAdminMapper.existsBranchName(trimmed, null)) {
       throw new AuthException("이미 존재하는 지점명입니다.", HttpStatus.CONFLICT);
     }
     
@@ -78,7 +78,7 @@ public class OrgAdminService {
     }
     String trimmed = newName.trim();
     
-    if (orgAdminMapper.existsBranchName(trimmed)) {
+    if (orgAdminMapper.existsBranchName(trimmed, branchId)) {
       throw new AuthException("이미 존재하는 지점명입니다.", HttpStatus.CONFLICT);
     }
     
@@ -131,8 +131,14 @@ public class OrgAdminService {
     return orgAdminMapper.findCenters(k);
   }
   
+  private String normalizeHex6(String v) {
+    if (v == null) return null;
+    String s = v.trim();
+    return s.matches("^#[0-9a-fA-F]{6}$") ? s : null;
+  }
+  
   @Transactional
-  public void createCenter(String callerEmail, String centerName, Long branchId) {
+  public void createCenter(String callerEmail, String centerName, Long branchId, String centerColor) {
     ensureSuper(callerEmail);
     
     if (centerName == null || centerName.isBlank()) {
@@ -140,19 +146,20 @@ public class OrgAdminService {
     }
     String trimmed = centerName.trim();
     
-    if (orgAdminMapper.existsCenterName(trimmed)) {
+    if (orgAdminMapper.existsCenterName(trimmed, null)) {
       throw new AuthException("이미 존재하는 팀명입니다.", HttpStatus.CONFLICT);
     }
     
     CenterDto dto = new CenterDto();
     dto.setCenterName(trimmed);
     dto.setBranchId(branchId);
+    dto.setCenterColor(normalizeHex6(centerColor));
     
     orgAdminMapper.insertCenter(dto);
   }
   
   @Transactional
-  public void updateCenter(String callerEmail, Long centerId, String centerName, Long branchId) {
+  public void updateCenter(String callerEmail, Long centerId, String centerName, Long branchId, String centerColor) {
     // 1) 권한 체크
     ensureSuper(callerEmail);
     
@@ -171,11 +178,11 @@ public class OrgAdminService {
     }
     String trimmed = centerName.trim();
     
-     if (orgAdminMapper.existsCenterName(trimmed)) {
-       throw new AuthException("이미 존재하는 팀명입니다.", HttpStatus.CONFLICT);
-     }
+    if (orgAdminMapper.existsCenterName(trimmed, centerId)) {
+      throw new AuthException("이미 존재하는 팀명입니다.", HttpStatus.CONFLICT);
+    }
     
-    int updated = orgAdminMapper.updateCenter(centerId, trimmed, branchId);
+    int updated = orgAdminMapper.updateCenter(centerId, trimmed, branchId, centerColor);
     if (updated == 0) {
       throw new AuthException("존재하지 않는 팀입니다.", HttpStatus.NOT_FOUND);
     }

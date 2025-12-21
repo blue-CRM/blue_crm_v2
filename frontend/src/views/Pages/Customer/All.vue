@@ -199,7 +199,10 @@ const {
     return {
       items: raw.map(r => ({
         ...r,
-        staffView: r.status === '없음' ? '' : (r.staff ?? '')
+        staffView: r.status === '없음' ? '' : (r.staff ?? ''),
+        reservation: (r.status === '내방' && typeof r.reservation === 'string')
+            ? r.reservation.replace(/\n+/g, ' / ')
+            : r.reservation,
       })),
       totalPages: res?.data?.totalPages ?? 1,
       totalCount: res?.data?.totalCount ?? raw.length
@@ -354,9 +357,7 @@ function onVisitSchedule(row) {
   }
 
   const query = new URLSearchParams({
-    customerId: row.id,
-    name: row.name ?? '',
-    phone: row.phone ?? '',
+    customerId: row.id
   }).toString();
 
   window.open(`/visit-calendar?${query}`, '_blank');
@@ -484,7 +485,7 @@ function onManagerStatusSelect({ idx, value }) {
 const viewOptions = ref({
   status: false, // 상태별 보기
   oldest: false, // 과거순 보기
-  mine: false    // 내 DB만 보기 (Manager 전용)
+  mine: false    // 팀 DB 보기 (Manager 전용)
 });
 
 // 활성화된 버튼 라벨 계산
@@ -492,7 +493,7 @@ const activeLabels = computed(() => {
   const arr = [];
   if (viewOptions.value.status) arr.push('상태별 보기');
   if (viewOptions.value.oldest) arr.push('과거순 보기');
-  if (viewOptions.value.mine)   arr.push('내 DB만 보기');
+  if (!viewOptions.value.mine)   arr.push('팀 DB 보기');
   return arr;
 });
 
@@ -500,7 +501,7 @@ const activeLabels = computed(() => {
 const adminButtons = ['상태별 보기', '과거순 보기', '중복DB로 이동'];
 const managerButtons = computed(() => {
   const arr = ['상태별 보기', '과거순 보기'];
-  if (isManager.value) arr.push('내 DB만 보기'); // 매니저만 추가
+  if (isManager.value) arr.push('팀 DB 보기'); // 매니저만 추가
   return arr;
 });
 
@@ -543,7 +544,7 @@ async function onCommonButtonClick(btn) {
     // 2) 상태/구분 토글
     if (btn === "상태별 보기") viewOptions.value.status = !viewOptions.value.status;
     if (btn === "과거순 보기") viewOptions.value.oldest = !viewOptions.value.oldest;
-    if (btn === "내 DB만 보기") viewOptions.value.mine = !viewOptions.value.mine;
+    if (btn === "팀 DB 보기") viewOptions.value.mine = !viewOptions.value.mine;
 
     // 3) sort 조합
     const sortParts = [];
@@ -554,7 +555,7 @@ async function onCommonButtonClick(btn) {
     // 3-1) Mine 파라미터 조합 (Manager만 해당)
     if (isManager.value) {
       setFilter("mine", viewOptions.value.mine ? "Y" : null);
-      setFilter("staffUserId", viewOptions.value.mine ? auth.userId : null);
+      setFilter("staffUserId", null);
     }
 
     // 선택 초기화
@@ -604,8 +605,8 @@ async function refetchAndClamp() {
 onMounted(async () => {
   // 매니저 초기 세팅
   if (isManager.value) {
-    mineOnly.value = true;
-    setFilter('mine', null);
+    viewOptions.value.mine = true;
+    setFilter('mine', 'y');
     setFilter('staffUserId', null);
     if (page.value !== 1) changePage(1);
   }

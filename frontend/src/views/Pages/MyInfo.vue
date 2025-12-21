@@ -1036,6 +1036,7 @@
                              disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200
                              dark:disabled:bg-gray-900/40 dark:disabled:text-gray-500 dark:disabled:border-gray-700"
                   />
+
                   <select
                       v-model="newCenterBranchId"
                       class="h-11 w-full md:w-48 rounded-lg border px-3 bg-white text-gray-800
@@ -1053,6 +1054,102 @@
                       {{ b.branchName }}
                     </option>
                   </select>
+
+                  <!-- 컬러피커 + 스와치 10개 -->
+                  <div class="flex items-center gap-2">
+                    <div class="relative flex items-center gap-2">
+                      <!-- 트리거: 현재 색 -->
+                      <button
+                          type="button"
+                          class="h-11 w-14 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-white dark:bg-gray-800"
+                          :style="{ backgroundColor: newCenterColor }"
+                          @click="toggleColorPopover"
+                          ref="colorBtnRef"
+                      />
+
+                      <Teleport to="body">
+                        <div v-if="colorOpen" class="fixed inset-0 z-[2147483000]" @mousedown="onBackdropDown">
+                          <!-- 실제 팝오버 -->
+                          <div
+                              ref="colorPopoverRef"
+                              class="absolute w-80 rounded-xl border border-gray-200 dark:border-gray-700
+                                      bg-white dark:bg-gray-900 p-3 shadow-lg"
+                              :style="colorPopoverStyle"
+                              @mousedown.stop
+                          >
+                            <!-- 헤더 -->
+                            <div class="flex items-center justify-end mb-2">
+                            </div>
+
+                            <!-- 컬러 선택 + 미리보기 -->
+                            <div class="flex gap-3 items-start">
+                              <!-- 왼쪽: 컬러 피커 -->
+                              <input
+                                  type="color"
+                                  v-model="colorDraft"
+                                  class="h-10 w-27 rounded-md border p-1
+                                         border-gray-200 dark:border-gray-700
+                                         bg-white dark:bg-gray-800"
+                              />
+
+                              <!-- 오른쪽: 미리보기 배지 -->
+                              <div class="flex-1 flex items-center justify-center gap-2">
+                                <span
+                                    class="inline-flex items-center h-10 rounded-full border px-4 text-sm font-medium"
+                                    :style="centerBadgeStyle(colorDraft)"
+                                >
+                                  미리보기
+                                </span>
+
+                                <div
+                                    class="inline-flex items-center justify-center h-10 px-3 rounded-lg border
+                                           text-xs tabular-nums text-gray-600 dark:text-gray-300
+                                           border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                                >
+                                  {{ colorDraft }}
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- 프리셋 -->
+                            <div class="ml-2 mt-4 grid grid-cols-5 gap-1">
+                              <button
+                                  v-for="c in CENTER_COLOR_PRESETS"
+                                  :key="c"
+                                  type="button"
+                                  class="h-8 w-8 rounded-md ring-1 ring-black/10 dark:ring-white/10"
+                                  :class="colorDraft === c ? 'outline outline-2 outline-brand-500' : ''"
+                                  :style="{ backgroundColor: c }"
+                                  @click="colorDraft = c"
+                              />
+                            </div>
+
+                            <!-- 하단 버튼 -->
+                            <div class="mt-4 flex justify-end gap-2">
+                              <button
+                                  type="button"
+                                  class="h-9 px-4 rounded-lg text-sm
+                                       bg-gray-200 text-gray-800 hover:bg-gray-300
+                                       dark:bg-gray-700 dark:text-gray-100"
+                                  @click="cancelColor"
+                              >
+                                취소
+                              </button>
+                              <button
+                                  type="button"
+                                  class="h-9 px-4 rounded-lg text-sm text-white
+                                          bg-brand-500 hover:bg-brand-600"
+                                  @click="confirmColor"
+                              >
+                                확인
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </Teleport>
+                    </div>
+                  </div>
+
                   <button
                       type="button"
                       class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
@@ -1062,6 +1159,7 @@
                     추가
                   </button>
                 </div>
+
                 <p v-if="centerFormError" class="text-xs text-error-500">
                   {{ centerFormError }}
                 </p>
@@ -1096,6 +1194,7 @@
                                text-xs text-gray-500 dark:text-gray-400"
                     >
                       <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
+                      <th class="w-28 px-3 py-2 text-left whitespace-nowrap">색상</th>
                       <th class="px-3 py-2 text-left whitespace-nowrap">팀명</th>
                       <th class="w-40 px-3 py-2 text-left whitespace-nowrap">지점</th>
                       <th class="w-24 px-3 py-2 text-center whitespace-nowrap">관리</th>
@@ -1114,6 +1213,32 @@
                     >
                       <td class="px-3 py-3 text-center text-xs text-gray-400 whitespace-nowrap">
                         {{ idx + 1 }}
+                      </td>
+
+                      <td class="px-3 py-3">
+                        <template v-if="editingCenterId === c.centerId">
+                          <div class="flex items-center gap-2">
+                            <input type="color" v-model="editingCenter.centerColor" class="h-9 w-12 rounded-md border ... p-1" />
+                            <div class="flex flex-wrap gap-1">
+                              <button
+                                  v-for="col in CENTER_COLOR_PRESETS"
+                                  :key="col"
+                                  type="button"
+                                  class="h-6 w-6 rounded-md ring-1 ring-black/10 dark:ring-white/10"
+                                  :style="{ backgroundColor: col }"
+                                  @click="editingCenter.centerColor = col"
+                              />
+                            </div>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <span
+                              class="inline-flex items-center rounded-full border px-3 py-1 text-xs"
+                              :style="centerBadgeStyle(c.centerColor)"
+                          >
+                            {{ c.centerColor || '미지정' }}
+                          </span>
+                        </template>
                       </td>
 
                       <!-- 팀명 -->
@@ -1445,6 +1570,228 @@
                               :disabled="!expertsEditing"
                               @click="deleteExpert(e.expertId)"
                           >
+                            삭제
+                          </button>
+                        </template>
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 구분선 -->
+              <div class="col-span-2">
+                <hr class="my-6 border-gray-200 dark:border-gray-700" />
+              </div>
+
+              <!-- ===== 회의실 관리 ===== -->
+              <div class="col-span-2">
+                <hr class="my-6 border-gray-200 dark:border-gray-700" />
+              </div>
+
+              <div class="col-span-2">
+                <div class="flex items-center justify-between">
+                  <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    회의실 관리
+                  </h3>
+                  <div class="flex gap-2">
+                    <button
+                        v-if="!roomsEditing"
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
+                        @click="roomsEditing = true"
+                    >수정</button>
+
+                    <button
+                        v-else
+                        type="button"
+                        class="h-9 rounded-lg bg-gray-200 px-3 text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100"
+                        @click="roomsEditing = false; cancelRoomEdit(); newRoomName=''; roomFormError='';"
+                    >취소</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 검색 -->
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                검색
+              </div>
+              <div class="col-start-2">
+                <div class="flex gap-2 w-full">
+                  <div class="relative flex-1">
+                    <input
+                        v-model="roomSearchInput"
+                        type="text"
+                        placeholder="회의실명 검색"
+                        @keyup.enter="applyRoomSearch"
+                        class="h-10 w-full rounded-lg border px-3 pr-8 bg-white text-gray-800
+                               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <button
+                        v-if="roomSearchInput"
+                        type="button"
+                        class="absolute inset-y-0 right-4 my-auto text-xs text-gray-400 hover:text-gray-600
+                                dark:text-gray-500 dark:hover:text-gray-300"
+                        @click="clearRoomSearch"
+                    >✕</button>
+                  </div>
+
+                  <button
+                      type="button"
+                      class="h-10 px-4 rounded-lg bg-brand-500 text-xs sm:text-sm font-medium text-white hover:bg-brand-600"
+                      @click="applyRoomSearch"
+                  >검색</button>
+                </div>
+              </div>
+
+              <!-- 신규 회의실 -->
+              <div v-if="roomsEditing" class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                신규 회의실
+              </div>
+              <div v-if="roomsEditing" class="col-start-2">
+                <div class="flex gap-2">
+                  <input
+                      v-model="newRoomName"
+                      placeholder="예) 1회의실"
+                      class="h-11 w-full rounded-lg border px-3 bg-white text-gray-800
+                             focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+                             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  />
+                  <button
+                      type="button"
+                      class="h-11 shrink-0 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                      :disabled="!roomsEditing || !canAddRoom"
+                      @click="addRoom"
+                  >추가</button>
+                </div>
+                <p v-if="roomFormError" class="text-xs text-error-500">{{ roomFormError }}</p>
+              </div>
+
+              <!-- 목록 -->
+              <div class="col-span-2 mt-4">
+                <div class="ip-scroll rounded-md border border-gray-100 dark:border-gray-800 max-h-60 overflow-auto spin-dark">
+                  <div v-if="roomsLoading" class="p-4 text-sm text-gray-500 dark:text-gray-400">불러오는 중…</div>
+
+                  <div v-else-if="!rooms || rooms.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    등록된 회의실이 없습니다.
+                  </div>
+
+                  <div v-else-if="filteredRooms.length === 0" class="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    검색 결과가 없습니다.
+                  </div>
+
+                  <table v-else class="min-w-full table-fixed text-sm">
+                    <thead class="sticky top-0 z-10 bg-white dark:bg-gray-900
+                    shadow-[0_1px_0_0_rgba(229,231,235,0.7)]
+                    dark:shadow-[0_1px_0_0_rgba(31,41,55,0.8)]">
+                    <tr class="border-b border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                      <th class="w-10 px-3 py-2 text-center whitespace-nowrap">번호</th>
+                      <th class="px-3 py-2 text-left whitespace-nowrap">회의실명</th>
+                      <th class="w-20 px-3 py-2 text-center whitespace-nowrap">상태</th>
+                      <th class="w-28 px-3 py-2 text-right whitespace-nowrap">수정일</th>
+                      <th class="w-24 px-3 py-2 text-center whitespace-nowrap">관리</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr
+                        v-for="(r, idx) in filteredRooms"
+                        :key="r.roomId ?? idx"
+                        :class="[
+                          'border-b border-gray-100 dark:border-gray-800',
+                          idx % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/60'
+                        ]"
+                    >
+                      <td class="px-3 py-3 text-center text-xs text-gray-400 whitespace-nowrap">{{ idx + 1 }}</td>
+
+                      <td class="px-3 py-3">
+                        <template v-if="editingRoomId === r.roomId">
+                          <input
+                              v-model="editingRoom.roomName"
+                              class="w-full rounded-md border border-gray-200 px-2 py-1 text-xs
+                       bg-white text-gray-800
+                       focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          />
+                        </template>
+                        <template v-else>
+                          <span class="text-sm text-gray-800 dark:text-gray-200">{{ r.roomName }}</span>
+                        </template>
+                      </td>
+
+                      <td class="px-3 py-3 text-center whitespace-nowrap">
+                        <template v-if="editingRoomId === r.roomId">
+                          <select
+                              v-model="editingRoom.isActive"
+                              class="h-8 rounded-md border border-gray-300 px-2 text-xs
+                       bg-white text-gray-800
+                       focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10
+                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          >
+                            <option :value="true">사용</option>
+                            <option :value="false">중지</option>
+                          </select>
+                        </template>
+                        <template v-else>
+                          <span
+                              class="inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-medium"
+                              :class="r.isActive
+                              ? 'bg-[#D1F2D6] text-[#2F855A] dark:bg-[#1B3A2E] dark:text-[#5FA97A]'
+                              : 'bg-[#E5E7EB] text-[#4B5563] dark:bg-[#374151] dark:text-[#D1D5DB]'"
+                          >
+                            {{ r.isActive ? '사용' : '중지' }}
+                          </span>
+                        </template>
+                      </td>
+
+                      <td class="px-3 py-3 text-right text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        <template v-if="r.updatedAt || r.createdAt">
+                          <span class="block">{{ splitDateTime(r.updatedAt || r.createdAt)[0] }}</span>
+                          <span class="block">{{ splitDateTime(r.updatedAt || r.createdAt)[1] }}</span>
+                        </template>
+                        <span v-else>-</span>
+                      </td>
+
+                      <!-- 관리 -->
+                      <td class="px-3 py-3 text-center whitespace-nowrap">
+                        <template v-if="editingRoomId === r.roomId">
+                          <button type="button"
+                            class="mr-1 px-2 py-1 text-xs rounded-md border border-brand-500 bg-brand-500 text-white hover:bg-brand-600"
+                            :disabled="roomsSaving"
+                            @click="saveRoomRow(r)">
+                            저장
+                          </button>
+                          <button type="button"
+                            class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                               bg-white text-gray-700 hover:bg-gray-50
+                               dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700"
+                            :disabled="roomsSaving"
+                            @click="cancelRoomEdit">
+                            취소
+                          </button>
+                        </template>
+
+                        <template v-else>
+                          <button type="button"
+                            class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                               bg-white text-gray-700 hover:bg-gray-50
+                               dark:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700
+                               disabled:opacity-50"
+                            :disabled="!roomsEditing || roomsSaving"
+                            @click="startRoomEdit(r)">
+                            수정
+                          </button>
+
+                          <!-- 하드 삭제(완전 삭제) -->
+                          <button type="button"
+                            class="ml-1 px-2 py-1 text-xs rounded-md border border-red-200 dark:border-red-700
+                                 bg-white text-red-600 hover:bg-red-50
+                                 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-900/40
+                                 disabled:opacity-50"
+                            :disabled="!roomsEditing || roomsSaving"
+                            @click="hardDeleteRoom(r)">
                             삭제
                           </button>
                         </template>
@@ -1981,6 +2328,7 @@ const editingCenterId = ref(null)
 const editingCenter = ref({
   centerName: '',
   branchId: null,
+  centerColor: null,
 })
 
 // 지점 id → 이름 맵
@@ -2101,6 +2449,175 @@ function onBranchesCancel() {
 
 /* ----- 센터(Center / 팀) ----- */
 
+// 색상 팔레트
+const CENTER_COLOR_PRESETS = [
+  '#B23A48', '#9A3412', '#C026D3', '#1E40AF', '#B7791F',
+  '#2F855A', '#00796B', '#5B4B9A', '#944E2A', '#4B5563',
+]
+
+const newCenterColor = ref(CENTER_COLOR_PRESETS[0])
+const isDark = ref(false)
+let themeObs = null
+
+const colorDraft = ref(newCenterColor.value)   // 팝업 내부 임시값
+const colorOrigin = ref(newCenterColor.value)  // 팝업 열기 전 원본
+
+const colorOpen = ref(false)
+const colorBtnRef = ref(null)
+const colorPopoverRef = ref(null)
+
+const colorPopoverStyle = ref({
+  left: '0px',
+  top: '0px',
+})
+
+function placeColorPopover() {
+  const btn = colorBtnRef.value
+  if (!btn) return
+  const r = btn.getBoundingClientRect()
+
+  const popW = 288 // w-72 = 18rem = 288px
+  const popH = 220 // 대충(스와치+컬러픽커). 정확히 하려면 nextTick 후 offsetHeight로
+
+  const gap = 8
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  // 기본: 버튼 오른쪽에 띄우기
+  let left = r.right + gap
+  let top = r.top
+
+  // 오른쪽 공간 없으면 왼쪽으로
+  if (left + popW > vw - 8) {
+    left = Math.max(8, r.left - gap - popW)
+  }
+
+  // 아래로 벗어나면 위로 보정
+  if (top + popH > vh - 8) {
+    top = Math.max(8, vh - popH - 8)
+  }
+
+  colorPopoverStyle.value = {
+    left: `${Math.round(left)}px`,
+    top: `${Math.round(top)}px`,
+  }
+}
+
+async function toggleColorPopover() {
+  if (!colorOpen.value) {
+    // 열 때
+    colorOrigin.value = newCenterColor.value
+    colorDraft.value = newCenterColor.value
+    colorOpen.value = true
+    await nextTick()
+    placeColorPopover()
+  } else {
+    // 닫을 때 (X랑 동일)
+    cancelColor()
+  }
+}
+
+function confirmColor() {
+  newCenterColor.value = colorDraft.value
+  colorOpen.value = false
+}
+
+function cancelColor() {
+  colorDraft.value = colorOrigin.value
+  colorOpen.value = false
+}
+
+function onBackdropDown() {
+  cancelColor()
+}
+
+// 스크롤/리사이즈 시 재배치 or 닫기
+function onWindowChange() {
+  if (!colorOpen.value) return
+  placeColorPopover()
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onWindowChange, { passive: true })
+  window.addEventListener('scroll', onWindowChange, { passive: true, capture: true })
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', onWindowChange)
+  window.removeEventListener('scroll', onWindowChange, true)
+})
+
+onMounted(() => {
+  isDark.value = document.documentElement.classList.contains('dark')
+  themeObs = new MutationObserver(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+  })
+  themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+})
+onUnmounted(() => themeObs?.disconnect())
+
+function normalizeHex6(v) {
+  const s = String(v || '').trim()
+  return /^#[0-9a-fA-F]{6}$/.test(s) ? s : null
+}
+function hexToRgb(hex) {
+  const h = normalizeHex6(hex)
+  if (!h) return null
+  const n = parseInt(h.slice(1), 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+function rgba(hex, a) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return null
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`
+}
+function srgbToLin(c) {
+  const v = c / 255
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+}
+function luminance(rgb) {
+  const r = srgbToLin(rgb.r)
+  const g = srgbToLin(rgb.g)
+  const b = srgbToLin(rgb.b)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+function contrast(a, b) {
+  const L1 = luminance(a)
+  const L2 = luminance(b)
+  const hi = Math.max(L1, L2)
+  const lo = Math.min(L1, L2)
+  return (hi + 0.05) / (lo + 0.05)
+}
+function blend(fg, alpha, bg) {
+  return {
+    r: Math.round(fg.r * alpha + bg.r * (1 - alpha)),
+    g: Math.round(fg.g * alpha + bg.g * (1 - alpha)),
+    b: Math.round(fg.b * alpha + bg.b * (1 - alpha)),
+  }
+}
+
+// 요구사항: light 0.12 / dark 0.22
+function centerBadgeStyle(centerColor) {
+  const base = normalizeHex6(centerColor) || '#4B5563'
+  const a = isDark.value ? 0.32 : 0.18
+  const borderA = isDark.value ? 0.5 : 0.4
+
+  // 배경이 흰/다크(#111827) 위에 깔린다고 가정해서 합성 색으로 대비 계산
+  const fg = hexToRgb(base)
+  const bg = isDark.value ? { r: 17, g: 24, b: 39 } : { r: 255, g: 255, b: 255 }
+  const mixed = blend(fg, a, bg)
+
+  const white = { r: 255, g: 255, b: 255 }
+  const darkText = { r: 17, g: 24, b: 39 }
+
+  const text = contrast(mixed, white) >= contrast(mixed, darkText) ? '#FFFFFF' : '#111827'
+
+  return {
+    backgroundColor: rgba(base, a),
+    borderColor: rgba(base, borderA),
+    color: text,
+  }
+}
+
 async function fetchCenters(keyword = '') {
   try {
     centersLoading.value = true
@@ -2123,6 +2640,7 @@ async function addCenter() {
   const payload = {
     centerName: name,
     branchId: newCenterBranchId.value || null, // '' → null
+    centerColor: normalizeHex6(newCenterColor.value) || null,
   }
 
   try {
@@ -2137,6 +2655,8 @@ async function addCenter() {
     else if (s === 403) alert('접근 권한이 없습니다.')
     else alert('팀 추가에 실패했습니다.')
   }
+
+  newCenterColor.value = CENTER_COLOR_PRESETS[centers.value.length % CENTER_COLOR_PRESETS.length]
 }
 
 function startCenterEdit(c) {
@@ -2145,6 +2665,7 @@ function startCenterEdit(c) {
   editingCenter.value = {
     centerName: c.centerName || '',
     branchId: c.branchId ?? null,
+    centerColor: normalizeHex6(c.centerColor) || null,
   }
 }
 
@@ -2163,6 +2684,7 @@ async function saveCenterRow(c) {
   const payload = {
     centerName: name,
     branchId: editingCenter.value.branchId || null,
+    centerColor: normalizeHex6(editingCenter.value.centerColor) || null,
   }
 
   try {
@@ -2873,25 +3395,6 @@ async function saveIpRow(row) {
   }
 }
 
-// 행 삭제
-async function deleteIpRow(row) {
-  if (!row || !row.ipId) return
-  if (!confirm('이 IP를 삭제하시겠습니까?')) return
-
-  try {
-    ipSaving.value = true
-    await axios.delete(`/api/me/ip-whitelist/${row.ipId}`, { withCredentials: true })
-    ipList.value = (ipList.value || []).filter(r => r.ipId !== row.ipId)
-    if (editingRowId.value === row.ipId) {
-      cancelIpRowEdit()
-    }
-  } catch (e) {
-    alert(e?.response?.data || 'IP 삭제에 실패했습니다.')
-  } finally {
-    ipSaving.value = false
-  }
-}
-
 // 행 완전삭제
 async function hardDeleteIpRow(row) {
   if (!row || !row.ipId) return
@@ -2923,14 +3426,165 @@ watch(
     async (ok) => {
       if (!ok) return
       await Promise.all([
+        loadSheetConfig(),
         fetchBranches(branchSearch.value),
         fetchCenters(centerSearch.value),
         fetchExperts(expertSearch.value),
         fetchIpWhitelist(),
+        fetchRooms(''),
       ])
     },
     { immediate: true },
 )
+
+// ===== 회의실 관리 =====
+const rooms = ref([])
+const roomsLoading = ref(false)
+const roomsSaving = ref(false)
+const roomsEditing = ref(false)
+
+const newRoomName = ref('')
+const roomFormError = ref('')
+
+const editingRoomId = ref(null)
+const editingRoom = ref({ roomName: '', isActive: true })
+
+const roomSearchInput = ref('')
+const roomSearch = ref('')
+
+const filteredRooms = computed(() => {
+  const list = rooms.value || []
+  const q = (roomSearch.value || '').trim().toLowerCase()
+  if (!q) return list
+  return list.filter(r => String(r.roomName || '').toLowerCase().includes(q))
+})
+
+const canAddRoom = computed(() => {
+  const name = (newRoomName.value || '').trim()
+  if (!name) return false
+  return !roomFormError.value
+})
+
+watch(newRoomName, (val) => {
+  const name = (val || '').trim()
+  if (!name) { roomFormError.value = ''; return }
+  if (name.length < 2) roomFormError.value = '회의실명은 2자 이상이어야 합니다.'
+  else if (name.length > 40) roomFormError.value = '회의실명은 40자 이하로 입력하세요.'
+  else roomFormError.value = ''
+})
+
+async function fetchRooms(keyword = '') {
+  try {
+    roomsLoading.value = true
+    const { data } = await axios.get('/api/me/meeting-rooms', {
+      withCredentials: true,
+      params: { keyword: keyword || '' }
+    })
+    rooms.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    alert(e?.response?.data || '회의실 목록을 불러오지 못했습니다.')
+  } finally {
+    roomsLoading.value = false
+  }
+}
+
+async function applyRoomSearch() {
+  roomSearch.value = (roomSearchInput.value || '').trim()
+  await fetchRooms(roomSearch.value)
+}
+async function clearRoomSearch() {
+  roomSearchInput.value = ''
+  roomSearch.value = ''
+  await fetchRooms('')
+}
+
+async function addRoom() {
+  const name = (newRoomName.value || '').trim()
+  if (!name) return alert('회의실명을 입력하세요.')
+  if (roomFormError.value) return alert(roomFormError.value)
+
+  try {
+    roomsSaving.value = true
+    await axios.post('/api/me/meeting-rooms', { roomName: name }, { withCredentials: true })
+    newRoomName.value = ''
+    await fetchRooms(roomSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '이미 존재하는 회의실명입니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert(e?.response?.data || '회의실 추가 실패')
+  } finally {
+    roomsSaving.value = false
+  }
+}
+
+function startRoomEdit(r) {
+  if (!roomsEditing.value) return
+  editingRoomId.value = r.roomId
+  editingRoom.value = {
+    roomId: r.roomId,
+    roomName: r.roomName || '',
+    isActive: !!r.isActive,
+  }
+}
+
+function cancelRoomEdit() {
+  editingRoomId.value = null
+  editingRoom.value = { roomName: '', isActive: true }
+}
+
+async function saveRoomRow(r) {
+  const name = (editingRoom.value.roomName || '').trim()
+  if (!name) return alert('회의실명을 입력하세요.')
+
+  try {
+    roomsSaving.value = true
+    await axios.put(`/api/me/meeting-rooms/${r.roomId}`, {
+      roomName: name,
+      isActive: !!editingRoom.value.isActive
+    }, { withCredentials: true })
+
+    cancelRoomEdit()
+    await fetchRooms(roomSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '이미 존재하는 회의실명입니다.')
+    else if (s === 404) alert(e?.response?.data || '존재하지 않는 회의실입니다.')
+    else if (s === 403) alert('접근 권한이 없습니다.')
+    else alert(e?.response?.data || '회의실 수정 실패')
+  } finally {
+    roomsSaving.value = false
+  }
+}
+
+// 소프트 삭제(중지)
+async function softDeleteRoom(r) {
+  try {
+    roomsSaving.value = true
+    await axios.patch(`/api/me/meeting-rooms/${r.roomId}/soft-delete`, null, { withCredentials: true })
+    await fetchRooms(roomSearch.value)
+  } catch (e) {
+    alert(e?.response?.data || '회의실 비활성화 실패')
+  } finally {
+    roomsSaving.value = false
+  }
+}
+
+// 하드 삭제(완전 삭제)
+async function hardDeleteRoom(r) {
+  if (!confirm('이 회의실을 정말 완전히 삭제하시겠습니까?\n(기록이 복구되지 않습니다)')) return
+  try {
+    roomsSaving.value = true
+    await axios.delete(`/api/me/meeting-rooms/${r.roomId}/hard-delete`, { withCredentials: true })
+    await fetchRooms(roomSearch.value)
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 409) alert(e?.response?.data || '연결된 데이터가 있어 삭제할 수 없습니다.')
+    else alert(e?.response?.data || '회의실 삭제 실패')
+  } finally {
+    roomsSaving.value = false
+  }
+}
 
 // 라우트 이탈 시 초기화
 onBeforeRouteLeave(() => { onDelegateCancel() })
