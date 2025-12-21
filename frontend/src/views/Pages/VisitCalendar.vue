@@ -504,9 +504,18 @@ const COL_WIDTH = 130
 const START_HOUR = 8
 const SLOT_MINUTES = 30
 
+const AUTO_SCROLL_MARGIN = 60
+const AUTO_SCROLL_MIN = 2
+const AUTO_SCROLL_MAX = 14
+const AUTO_SCROLL_EASE = 0.25
+
 const START_MINUTES = START_HOUR * 60
 const END_MINUTES_EXCLUSIVE = (22 * 60) + 30
 const slotCount = (END_MINUTES_EXCLUSIVE - START_MINUTES) / SLOT_MINUTES
+
+const booting = ref(true)
+const focusDayKey = ref<string | null>(null)
+const shouldAutoOpenFocus = ref(false)
 
 const memo = ref('')
 
@@ -642,10 +651,20 @@ function scrollToDay(dayKey: string) {
   const target = idx * roomsPerDay.value * COL_WIDTH
   host.scrollLeft = target
 }
+function scrollToEventVertical(ev: ScheduleEvent) {
+  const host = scrollHost.value
+  if (!host) return
+
+  const paddingTop = 80 // sticky header 여유
+  const targetTop = ev.startSlot * ROW_HEIGHT
+
+  host.scrollTop = Math.max(0, targetTop - paddingTop)
+}
 
 onMounted(async () => {
   await loadMyId()
   await loadRooms()
+  await loadFocusIfLocked()
   await loadSchedules()
   updateScrollHeight()
   window.addEventListener('resize', updateScrollHeight)
@@ -654,7 +673,25 @@ onMounted(async () => {
   const host = scrollHost.value
   if (host) host.addEventListener('wheel', handleHorizontalWheel, {passive: false})
 
-  requestAnimationFrame(() => scrollToDay(todayKey.value))
+  // 스크롤 대상: focusDayKey > (이번주면 오늘) > 주 시작
+  await nextTick()
+  const target =
+      (focusDayKey.value && days.value.some(d => d.key === focusDayKey.value)) ? focusDayKey.value
+          : (days.value.some(d => d.key === todayKey.value) ? todayKey.value : days.value[0]?.key)
+
+  if (target) {
+    requestAnimationFrame(() => {
+      scrollToDay(target)
+
+      // ⬇ customerId로 포커스 들어온 경우만 세로 스크롤
+      if (lockedCustomerId.value) {
+        const ev = events.value.find(e => e.customerId === lockedCustomerId.value)
+        if (ev) scrollToEventVertical(ev)
+      }
+    })
+  }
+
+  booting.value = false
 })
 
 onBeforeUnmount(() => {
@@ -665,9 +702,26 @@ onBeforeUnmount(() => {
 })
 
 watch(weekStart, async () => {
+  if (booting.value) return
+
   await nextTick()
   await loadSchedules()
-  scrollToDay(todayKey.value)
+
+  const target =
+      (focusDayKey.value && days.value.some(d => d.key === focusDayKey.value)) ? focusDayKey.value
+          : (days.value.some(d => d.key === todayKey.value) ? todayKey.value : days.value[0]?.key)
+
+  if (target) {
+    requestAnimationFrame(() => {
+      scrollToDay(target)
+
+      // ⬇ customerId로 포커스 들어온 경우만 세로 스크롤
+      if (lockedCustomerId.value) {
+        const ev = events.value.find(e => e.customerId === lockedCustomerId.value)
+        if (ev) scrollToEventVertical(ev)
+      }
+    })
+  }
 })
 
 /** ===== 시간 라벨 / 정오 라인 ===== */
@@ -1268,6 +1322,7 @@ const dragging = ref<null | {
   baseEnd: number
   moved: boolean
   snapshot: ScheduleEvent
+  autoVx: number
 }>(null)
 
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)) }
@@ -1283,7 +1338,8 @@ function onEventPointerDown(e: PointerEvent, ev: ScheduleEvent) {
     baseStart: ev.startSlot,
     baseEnd: ev.endSlot,
     moved: false,
-    snapshot: { ...ev }
+    snapshot: { ...ev },
+    autoVx: 0,
   }
 
   try { (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId) } catch {}
@@ -1292,12 +1348,57 @@ function onEventPointerDown(e: PointerEvent, ev: ScheduleEvent) {
   window.addEventListener('pointerup', onEventPointerUp, { once: true })
 }
 
+function autoScrollWhileDraggingX(clientX: number, d: { autoVx: number }) {
+  const host = scrollHost.value
+  if (!host) return 0
+
+  const rect = host.getBoundingClientRect()
+
+  let dir = 0
+  let t = 0 // 0..1 (엣지에 가까울수록 1)
+
+  const leftEdge = rect.left + AUTO_SCROLL_MARGIN
+  const rightEdge = rect.right - AUTO_SCROLL_MARGIN
+
+  if (clientX < leftEdge) {
+    dir = -1
+    t = (leftEdge - clientX) / AUTO_SCROLL_MARGIN
+  } else if (clientX > rightEdge) {
+    dir = 1
+    t = (clientX - rightEdge) / AUTO_SCROLL_MARGIN
+  } else {
+    // 엣지 밖이면 속도 0으로 수렴
+    d.autoVx += (0 - d.autoVx) * AUTO_SCROLL_EASE
+    if (Math.abs(d.autoVx) < 0.05) d.autoVx = 0
+    return 0
+  }
+
+  t = clamp(t, 0, 1)
+
+  const targetV = dir * (AUTO_SCROLL_MIN + (AUTO_SCROLL_MAX - AUTO_SCROLL_MIN) * t)
+
+  // 속도 스무딩(저역통과)
+  d.autoVx += (targetV - d.autoVx) * AUTO_SCROLL_EASE
+
+  const before = host.scrollLeft
+  host.scrollLeft = before + d.autoVx
+
+  return host.scrollLeft - before // 실제로 움직인 값(경계에 막히면 줄어듦)
+}
 function onEventPointerMove(e: PointerEvent) {
   const d = dragging.value
   if (!d) return
 
+  // 1) 스크롤 먼저(스무딩됨)
+  const scrolled = autoScrollWhileDraggingX(e.clientX, d)
+
+  // 2) 스크롤로 content가 움직인 만큼 startX를 보정 (이게 핵심)
+  if (scrolled) d.startX -= scrolled
+
+  // 3) 이제 dx/dy 계산
   const dx = e.clientX - d.startX
   const dy = e.clientY - d.startY
+
   if (Math.abs(dx) + Math.abs(dy) > 2) d.moved = true
 
   const colDelta = Math.round(dx / COL_WIDTH)
@@ -1485,6 +1586,35 @@ async function searchCustomers() {
   }
 }
 
+type VisitFocusResp = {
+  visitId: number
+  customerId: number
+  roomId: number
+  visitAt: string
+  visitEndAt: string
+}
+
+async function loadFocusIfLocked() {
+  if (!lockedCustomerId.value) return
+
+  try {
+    const { data } = await axios.get<VisitFocusResp>('/api/work/visit/schedules/focus', {
+      params: { customerId: lockedCustomerId.value }
+    })
+
+    const dt = parseLocalDateTime(data.visitAt)
+    if (dt) {
+      focusDayKey.value = ymd(dt)
+      weekStart.value = startOfWeek(dt)   // 여기서 주가 바뀜
+      shouldAutoOpenFocus.value = true
+    }
+  } catch {
+    // 예약이 없으면(404) 그냥 현재 주 유지
+    focusDayKey.value = null
+    shouldAutoOpenFocus.value = false
+  }
+}
+
 let ct: any = null
 function debouncedCustomerSearch() {
   clearTimeout(ct)
@@ -1498,37 +1628,6 @@ function selectCustomer(c: CustomerPick) {
 function clearPickedCustomer() {
   if (isCustomerLocked.value) return
   pickedCustomer.value = null
-}
-
-async function openModalFromCell(colIdx: number, slotIdx: number) {
-  // 선택 범위 저장 (1칸)
-  pending.c1 = colIdx
-  pending.c2 = colIdx
-  pending.s1 = slotIdx
-  pending.s2 = slotIdx
-
-  const { dayKey, dayLabel, room } = dayRoomFromColIndex(colIdx)
-  pendingDayKey.value = dayKey || ''
-  pendingDayLabel.value = dayLabel || ''
-  pendingSlot.value = slotIdx
-  pendingRoom.value = room
-
-  await loadRooms()
-
-  if (isCustomerLocked.value) {
-    await loadLockedCustomer()
-    const exist = events.value.find(e => (e as any).customerId === lockedCustomerId.value)
-    if (exist) {
-      openEditEvent(exist as any)
-      return
-    }
-  }
-
-  editingEventId.value = null
-  editingScheduledByName.value = myUserName.value
-  isOpen.value = true
-  await nextTick()
-  modalRoot.value?.focus?.()
 }
 
 // 새로고침

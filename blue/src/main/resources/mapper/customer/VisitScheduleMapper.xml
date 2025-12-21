@@ -32,6 +32,18 @@
         ORDER BY vs.visit_at ASC, mr.room_name ASC, vs.visit_id ASC
     </select>
 
+    <select id="findFocusByCustomerId" resultType="com.blue.visit.dto.VisitScheduleFocusDto">
+        SELECT
+            vs.visit_id     AS visitId,
+            vs.customer_id  AS customerId,
+            vs.room_id      AS roomId,
+            vs.visit_at     AS visitAt,
+            vs.visit_end_at AS visitEndAt
+        FROM visit_schedule vs
+        WHERE vs.customer_id = #{customerId}
+        LIMIT 1
+    </select>
+
     <select id="countConflicts" resultType="int">
         SELECT COUNT(*)
         FROM visit_schedule vs

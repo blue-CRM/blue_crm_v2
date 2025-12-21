@@ -172,18 +172,38 @@
               <div
                   v-else-if="props.data[rowIndex]?.status === '내방'"
                   class="absolute inset-0 px-2 py-1 text-xs leading-tight
-                       text-indigo-600 dark:text-indigo-400ㅍcursor-pointer
-                       rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                     cursor-pointer rounded-md
+                     text-gray-500 dark:text-gray-400
+                     hover:text-blue-600 dark:hover:text-blue-400
+                     group"
                   @click.stop="goVisitSchedule(row)"
               >
                 <template v-if="row[col.key]">
-                  <div class="whitespace-nowrap">
-                    {{ row[col.key].date }}
-                  </div>
-                  <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                    {{ row[col.key].room }}
-                  </div>
+                  <template v-if="typeof row[col.key] === 'string'">
+                    <!-- time -->
+                    <div class="whitespace-nowrap">
+                      {{ row[col.key].split(/\s*\/\s*|\n/)[0] }}
+                    </div>
+
+                    <!-- room -->
+                    <div class="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap
+                  group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                      {{ row[col.key].split(/\s*\/\s*|\n/).slice(1).join(' / ') || '미등록' }}
+                    </div>
+                  </template>
+
+                  <template v-else>
+                    <!-- 객체로 오는 경우 -->
+                    <div class="whitespace-nowrap">
+                      {{ row[col.key]?.date }}
+                    </div>
+                    <div class="text-[11px] text-gray-500 dark:text-gray-400
+                  group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                      {{ row[col.key]?.room || '미등록' }}
+                    </div>
+                  </template>
                 </template>
+
                 <template v-else>
                   <span class="text-gray-400">없음</span>
                 </template>

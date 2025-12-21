@@ -199,7 +199,10 @@ const {
     return {
       items: raw.map(r => ({
         ...r,
-        staffView: r.status === '없음' ? '' : (r.staff ?? '')
+        staffView: r.status === '없음' ? '' : (r.staff ?? ''),
+        reservation: (r.status === '내방' && typeof r.reservation === 'string')
+            ? r.reservation.replace(/\n+/g, ' / ')
+            : r.reservation,
       })),
       totalPages: res?.data?.totalPages ?? 1,
       totalCount: res?.data?.totalCount ?? raw.length

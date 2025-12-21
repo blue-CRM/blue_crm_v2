@@ -3,6 +3,7 @@ package com.blue.visit.controller;
 import com.blue.auth.dto.MeetingRoomDto;
 import com.blue.auth.service.MeetingRoomService;
 import com.blue.visit.dto.VisitCustomerPickDto;
+import com.blue.visit.dto.VisitScheduleFocusDto;
 import com.blue.visit.dto.VisitScheduleRowDto;
 import com.blue.visit.dto.VisitScheduleUpsertReq;
 import com.blue.visit.service.VisitScheduleService;
@@ -35,6 +36,13 @@ public class VisitRoomController {
   ) {
     String email = (auth == null) ? null : auth.getName();
     return visitScheduleService.listWeek(email, from, to);
+  }
+  
+  @GetMapping("/schedules/focus")
+  public VisitScheduleFocusDto focus(Authentication auth,
+                                     @RequestParam Long customerId) {
+    String email = (auth == null) ? null : auth.getName();
+    return visitScheduleService.focusByCustomer(email, customerId);
   }
   
   @PostMapping("/schedules")

@@ -1,9 +1,6 @@
 package com.blue.visit.mapper;
 
-import com.blue.visit.dto.VisitCustomerPickDto;
-import com.blue.visit.dto.VisitScheduleMetaDto;
-import com.blue.visit.dto.VisitScheduleRowDto;
-import com.blue.visit.dto.VisitUserContextDto;
+import com.blue.visit.dto.*;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -14,6 +11,7 @@ import java.util.List;
 public interface VisitScheduleMapper {
   List<VisitScheduleRowDto> findSchedules(@Param("from") LocalDateTime from,
                                           @Param("to") LocalDateTime to);
+  VisitScheduleFocusDto findFocusByCustomerId(@Param("customerId") Long customerId);
   
   int countConflicts(@Param("roomId") Long roomId,
                      @Param("startAt") LocalDateTime startAt,

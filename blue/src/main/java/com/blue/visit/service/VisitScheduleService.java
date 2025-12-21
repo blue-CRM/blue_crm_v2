@@ -48,6 +48,20 @@ public class VisitScheduleService {
     return mapper.findSchedules(fromDt, toDt);
   }
   
+  @Transactional(readOnly = true)
+  public VisitScheduleFocusDto focusByCustomer(String email, Long customerId) {
+    requireLogin(email);
+    if (customerId == null) {
+      throw new AuthException("잘못된 요청입니다.", HttpStatus.BAD_REQUEST);
+    }
+    
+    VisitScheduleFocusDto dto = mapper.findFocusByCustomerId(customerId);
+    if (dto == null || dto.getVisitId() == null) {
+      throw new AuthException("예약이 없습니다.", HttpStatus.NOT_FOUND);
+    }
+    return dto;
+  }
+  
   @Transactional
   public void create(String requesterEmail, VisitScheduleUpsertReq req) {
     validate(req);
@@ -84,8 +98,9 @@ public class VisitScheduleService {
       throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
     }
     
-    int owned = mapper.countOwnedCustomer(meta.getCustomerId(), ctx.getUserId());
-    if (owned == 0) throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+    if (!ctx.getUserId().equals(meta.getScheduledByUserId())) {
+      throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+    }
     
     int conflict = mapper.countConflicts(req.getRoomId(), req.getStartAt(), req.getEndAt(), visitId);
     if (conflict > 0) throw new AuthException("해당 시간에 이미 예약이 있습니다.", HttpStatus.FORBIDDEN);
@@ -103,8 +118,9 @@ public class VisitScheduleService {
       throw new AuthException("존재하지 않는 일정입니다.", HttpStatus.FORBIDDEN);
     }
     
-    int owned = mapper.countOwnedCustomer(meta.getCustomerId(), ctx.getUserId());
-    if (owned == 0) throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+    if (!ctx.getUserId().equals(meta.getScheduledByUserId())) {
+      throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+    }
     
     mapper.deleteSchedule(visitId);
   }
