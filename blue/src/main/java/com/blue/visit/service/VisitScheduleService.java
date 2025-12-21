@@ -83,6 +83,11 @@ public class VisitScheduleService {
     
     mapper.insertSchedule(req.getCustomerId(), req.getRoomId(), ctx.getUserId(),
         req.getStartAt(), req.getEndAt(), req.getMemo());
+    
+    mapper.updateCustomerPromiseTime(
+        req.getCustomerId(),
+        req.getStartAt()
+    );
   }
   
   @Transactional
@@ -110,6 +115,11 @@ public class VisitScheduleService {
     if (conflict > 0) throw new AuthException("해당 시간에 이미 예약이 있습니다.", HttpStatus.FORBIDDEN);
     
     mapper.updateSchedule(visitId, req.getRoomId(), req.getStartAt(), req.getEndAt(), req.getMemo());
+    
+    mapper.updateCustomerPromiseTime(
+        req.getCustomerId(),
+        req.getStartAt()
+    );
   }
   
   @Transactional
@@ -127,6 +137,8 @@ public class VisitScheduleService {
     }
     
     mapper.deleteSchedule(visitId);
+    
+    mapper.clearCustomerPromiseTime(meta.getCustomerId());
   }
   
   @Transactional

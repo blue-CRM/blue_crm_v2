@@ -169,4 +169,16 @@
           AND room_name = '기타'
     </select>
 
+    <update id="updateCustomerPromiseTime">
+        UPDATE customers
+        SET customer_promise_time = #{promiseTime}
+        WHERE customer_id = #{customerId}
+    </update>
+
+    <update id="clearCustomerPromiseTime">
+        UPDATE customers
+        SET customer_promise_time = NULL
+        WHERE customer_id = #{customerId}
+    </update>
+
 </mapper>

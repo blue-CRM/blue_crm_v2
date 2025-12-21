@@ -49,4 +49,9 @@ public interface VisitScheduleMapper {
   
   int isEtcRoom(@Param("roomId") Long roomId);
   VisitUserContextDto findUserContextByEmail(@Param("email") String email);
+  
+  void updateCustomerPromiseTime(@Param("customerId") Long customerId,
+                                 @Param("promiseTime") LocalDateTime promiseTime);
+  
+  void clearCustomerPromiseTime(@Param("customerId") Long customerId);
 }
