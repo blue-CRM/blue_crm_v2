@@ -99,6 +99,17 @@
         LIMIT 1
     </select>
 
+    <select id="findCustomerById"
+            resultType="com.blue.visit.dto.VisitCustomerPickDto">
+        SELECT
+            c.customer_id   AS customerId,
+            c.customer_name AS customerName,
+            c.customer_phone AS customerPhone
+        FROM customers c
+        WHERE c.customer_id = #{customerId}
+        LIMIT 1
+    </select>
+
     <select id="countOwnedCustomer" resultType="int">
         SELECT COUNT(*)
         FROM customers

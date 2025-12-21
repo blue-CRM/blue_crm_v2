@@ -34,6 +34,7 @@ public interface VisitScheduleMapper {
   int deleteSchedule(@Param("visitId") Long visitId);
   
   VisitScheduleMetaDto findScheduleMeta(@Param("visitId") Long visitId);
+  VisitCustomerPickDto findCustomerById(Long customerId);
   
   int countOwnedCustomer(@Param("customerId") Long customerId,
                          @Param("userId") Long userId);

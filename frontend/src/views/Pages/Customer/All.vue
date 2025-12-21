@@ -357,9 +357,7 @@ function onVisitSchedule(row) {
   }
 
   const query = new URLSearchParams({
-    customerId: row.id,
-    name: row.name ?? '',
-    phone: row.phone ?? '',
+    customerId: row.id
   }).toString();
 
   window.open(`/visit-calendar?${query}`, '_blank');
@@ -495,7 +493,7 @@ const activeLabels = computed(() => {
   const arr = [];
   if (viewOptions.value.status) arr.push('상태별 보기');
   if (viewOptions.value.oldest) arr.push('과거순 보기');
-  if (viewOptions.value.mine)   arr.push('팀 DB 보기');
+  if (!viewOptions.value.mine)   arr.push('팀 DB 보기');
   return arr;
 });
 
@@ -607,8 +605,8 @@ async function refetchAndClamp() {
 onMounted(async () => {
   // 매니저 초기 세팅
   if (isManager.value) {
-    viewOptions.value.mine = false;
-    setFilter('mine', null);
+    viewOptions.value.mine = true;
+    setFilter('mine', 'y');
     setFilter('staffUserId', null);
     if (page.value !== 1) changePage(1);
   }

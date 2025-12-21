@@ -66,4 +66,9 @@ public class VisitRoomController {
     return visitScheduleService.listSelectableCustomers(auth.getName(), keyword);
   }
   
+  @GetMapping("/customers/{customerId}")
+  public VisitCustomerPickDto customer(Authentication auth,
+                                       @PathVariable Long customerId) {
+    return visitScheduleService.getCustomerById(auth.getName(), customerId);
+  }
 }

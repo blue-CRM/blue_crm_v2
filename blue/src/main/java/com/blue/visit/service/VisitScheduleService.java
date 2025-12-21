@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -137,6 +138,14 @@ public class VisitScheduleService {
   public List<MeetingRoomDto> listActiveRoomsForVisit(String email) {
     requireLogin(email);
     return meetingRoomMapper.findActiveRooms();
+  }
+  
+  public VisitCustomerPickDto getCustomerById(String email, Long customerId) {
+    VisitCustomerPickDto dto = mapper.findCustomerById(customerId);
+    if (dto == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    }
+    return dto;
   }
   
   private void validate(VisitScheduleUpsertReq req) {
