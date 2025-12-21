@@ -35,10 +35,13 @@
     <!-- 지점 이름 중복 여부 -->
     <select id="existsBranchName" resultType="boolean">
         SELECT EXISTS (
-            SELECT 1
-            FROM branches
-            WHERE branch_name = #{branchName}
-            LIMIT 1
+        SELECT 1
+        FROM branches
+        WHERE branch_name = #{branchName}
+        <if test="branchId != null">
+            AND branch_id != #{branchId}
+        </if>
+        LIMIT 1
         )
     </select>
 
@@ -92,7 +95,8 @@
         SELECT
         c.center_id   AS centerId,
         c.center_name AS centerName,
-        c.branch_id   AS branchId
+        c.branch_id   AS branchId,
+        c.center_color AS centerColor
         FROM centers c
         LEFT JOIN branches b
         ON c.branch_id = b.branch_id
@@ -113,17 +117,20 @@
     <!-- 센터 이름 중복 여부 -->
     <select id="existsCenterName" resultType="boolean">
         SELECT EXISTS (
-            SELECT 1
-            FROM centers
-            WHERE center_name = #{centerName}
-            LIMIT 1
+        SELECT 1
+        FROM centers
+        WHERE center_name = #{centerName}
+        <if test="centerId != null">
+            AND center_id != #{centerId}
+        </if>
+        LIMIT 1
         )
     </select>
 
     <!-- 센터 추가 (branch_id는 NULL 허용) -->
     <insert id="insertCenter">
-        INSERT INTO centers (center_name, branch_id)
-        VALUES (#{centerName}, #{branchId})
+        INSERT INTO centers (center_name, branch_id, center_color)
+        VALUES (#{centerName}, #{branchId}, #{centerColor})
     </insert>
 
     <!-- 해당 센터에 소속된 사용자 수 -->
@@ -138,7 +145,8 @@
         UPDATE centers
         SET
             center_name = #{centerName},
-            branch_id   = #{branchId}
+            branch_id   = #{branchId},
+            center_color = #{centerColor}
         WHERE center_id = #{centerId}
     </update>
 

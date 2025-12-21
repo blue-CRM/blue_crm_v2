@@ -384,4 +384,12 @@
         AND (initial_price > 0 OR upsell_price > 0)
     </insert>
 
+    <delete id="deleteSchedulesByCustomerIds">
+        DELETE FROM visit_schedule
+        WHERE customer_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
 </mapper>

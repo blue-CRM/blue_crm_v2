@@ -169,7 +169,22 @@
         c.customer_memo         AS memo,
         c.customer_status       AS status,
         c.customer_promise_time AS promiseAt,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        CASE
+        WHEN c.customer_promise_time IS NULL THEN NULL
+        WHEN c.customer_status = '내방' THEN CONCAT_WS(
+        '\n',
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i'),
+        (
+        SELECT mr.room_name
+        FROM visit_schedule vs
+        JOIN meeting_rooms mr ON mr.room_id = vs.room_id
+        WHERE vs.customer_id = c.customer_id
+        ORDER BY vs.updated_at DESC, vs.visit_id DESC
+        LIMIT 1
+        )
+        )
+        ELSE DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i')
+        END AS reservation,
         c.initial_price         AS initialPrice,
         c.upsell_price          AS upsellPrice
         FROM customers c
@@ -408,7 +423,22 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        CASE
+        WHEN c.customer_promise_time IS NULL THEN NULL
+        WHEN c.customer_status = '내방' THEN CONCAT_WS(
+        '\n',
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i'),
+        (
+        SELECT mr.room_name
+        FROM visit_schedule vs
+        JOIN meeting_rooms mr ON mr.room_id = vs.room_id
+        WHERE vs.customer_id = c.customer_id
+        ORDER BY vs.updated_at DESC, vs.visit_id DESC
+        LIMIT 1
+        )
+        )
+        ELSE DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i')
+        END AS reservation,
         c.initial_price AS initialPrice,
         c.upsell_price  AS upsellPrice
         FROM customers c
@@ -448,7 +478,22 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        CASE
+        WHEN c.customer_promise_time IS NULL THEN NULL
+        WHEN c.customer_status = '내방' THEN CONCAT_WS(
+        '\n',
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i'),
+        (
+        SELECT mr.room_name
+        FROM visit_schedule vs
+        JOIN meeting_rooms mr ON mr.room_id = vs.room_id
+        WHERE vs.customer_id = c.customer_id
+        ORDER BY vs.updated_at DESC, vs.visit_id DESC
+        LIMIT 1
+        )
+        )
+        ELSE DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i')
+        END AS reservation,
         c.initial_price AS initialPrice,
         c.upsell_price  AS upsellPrice
         FROM customers c
@@ -495,12 +540,29 @@
         c.customer_memo AS memo,
         c.customer_status AS status,
         c.customer_promise_time AS promiseAt,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        CASE
+        WHEN c.customer_promise_time IS NULL THEN NULL
+        WHEN c.customer_status = '내방' THEN CONCAT_WS(
+        '\n',
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i'),
+        (
+        SELECT mr.room_name
+        FROM visit_schedule vs
+        JOIN meeting_rooms mr ON mr.room_id = vs.room_id
+        WHERE vs.customer_id = c.customer_id
+        ORDER BY vs.updated_at DESC, vs.visit_id DESC
+        LIMIT 1
+        )
+        )
+        ELSE DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i')
+        END AS reservation,
         c.initial_price AS initialPrice, c.upsell_price AS upsellPrice
         FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
         WHERE 1=1
         AND c.customer_source IN (
-        SELECT DISTINCT e.expert_name FROM experts e JOIN users u2 ON u2.expert_id = e.expert_id WHERE u2.center_id = #{centerId}
+        SELECT DISTINCT e.expert_name
+        FROM experts e JOIN users u2 ON u2.expert_id = e.expert_id
+        WHERE u2.center_id = #{centerId}
         )
         <if test="dateFrom != null and dateFrom != ''"> AND c.customer_created_at &gt;= #{dateFrom} </if>
         <if test="dateTo != null and dateTo != ''"> AND c.customer_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
@@ -530,7 +592,9 @@
         LEFT JOIN users u2 ON u2.user_id = c2.user_id
         WHERE d.duplicate_display = 1
         AND d.duplicate_source IN (
-        SELECT DISTINCT e.expert_name FROM experts e JOIN users u3 ON u3.expert_id = e.expert_id WHERE u3.center_id = #{centerId}
+        SELECT DISTINCT e.expert_name
+        FROM experts e JOIN users u3 ON u3.expert_id = e.expert_id
+        WHERE u3.center_id = #{centerId}
         )
         <if test="dateFrom != null and dateFrom != ''"> AND d.duplicate_created_at &gt;= #{dateFrom} </if>
         <if test="dateTo != null and dateTo != ''"> AND d.duplicate_created_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY) </if>
@@ -611,7 +675,22 @@
         c.customer_memo AS memo,
         c.customer_status AS status,
         c.customer_promise_time AS promiseAt,
-        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation,
+        CASE
+        WHEN c.customer_promise_time IS NULL THEN NULL
+        WHEN c.customer_status = '내방' THEN CONCAT_WS(
+        '\n',
+        DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i'),
+        (
+        SELECT mr.room_name
+        FROM visit_schedule vs
+        JOIN meeting_rooms mr ON mr.room_id = vs.room_id
+        WHERE vs.customer_id = c.customer_id
+        ORDER BY vs.updated_at DESC, vs.visit_id DESC
+        LIMIT 1
+        )
+        )
+        ELSE DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i')
+        END AS reservation,
         c.initial_price AS initialPrice,
         c.upsell_price AS upsellPrice
         FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
