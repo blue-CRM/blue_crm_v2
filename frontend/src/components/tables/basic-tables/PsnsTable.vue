@@ -205,7 +205,10 @@
                 </template>
 
                 <template v-else>
-                  <span class="text-gray-400">없음</span>
+                  <span class="text-gray-500 dark:text-gray-400
+                               group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    없음
+                  </span>
                 </template>
               </div>
             </div>
