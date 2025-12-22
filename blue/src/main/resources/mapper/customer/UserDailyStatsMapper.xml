@@ -38,22 +38,24 @@
     <!-- ================================
       MAIN: REVOKE (-) 감소 반영
 ================================= -->
-    <update id="applyRevokeMain">
-        UPDATE user_daily_stats s
-            JOIN (
-                SELECT
-                    action_date as stat_date,
-                    from_user_id,
-                    COUNT(*) as cnt
-                FROM alloc_logs
-                WHERE log_id > #{lastLogId} AND log_id &lt;= #{maxLogId}
-                  AND action_type = 'REVOKE'
-                  AND is_final_assign = 1
-                GROUP BY action_date, from_user_id
-            ) delta ON s.stat_date = delta.stat_date AND s.user_id = delta.from_user_id
-        SET s.main_count = s.main_count - delta.cnt,
-            s.updated_at = NOW()
-    </update>
+    <insert id="applyRevokeMain">
+        INSERT INTO user_daily_stats (stat_date, user_id, main_count, dup_count, updated_at)
+        SELECT
+            action_date as stat_date,
+            from_user_id,
+            -COUNT(*) as cnt,
+            0,
+            NOW()
+        FROM alloc_logs
+        WHERE log_id > #{lastLogId} AND log_id &lt;= #{maxLogId}
+          AND action_type = 'REVOKE'
+          AND is_final_assign = 1
+          AND from_user_id IS NOT NULL
+        GROUP BY action_date, from_user_id
+        ON DUPLICATE KEY UPDATE
+                             main_count = main_count + VALUES(main_count),
+                             updated_at = NOW()
+    </insert>
 
     <!-- ================================
           DUP: ASSIGN (+) 증가 반영
@@ -81,23 +83,25 @@
     <!-- ================================
           DUP: REVOKE (-) 감소 반영
     ================================= -->
-    <update id="applyRevokeDup">
-        UPDATE user_daily_stats s
-            JOIN (
-                SELECT
-                    l.action_date as stat_date,
-                    l.from_user_id,
-                    COUNT(d.duplicate_id) as cnt
-                FROM alloc_logs l
-                         INNER JOIN customers_duplicate d ON d.customer_id = l.customer_id
-                WHERE l.log_id > #{lastLogId} AND l.log_id &lt;= #{maxLogId}
-                  AND l.action_type = 'REVOKE'
-                  AND l.is_final_assign = 1
-                GROUP BY l.action_date, l.from_user_id
-            ) delta ON s.stat_date = delta.stat_date AND s.user_id = delta.from_user_id
-        SET s.dup_count = s.dup_count - delta.cnt,
-            s.updated_at = NOW()
-    </update>
+    <insert id="applyRevokeDup">
+        INSERT INTO user_daily_stats (stat_date, user_id, main_count, dup_count, updated_at)
+        SELECT
+            l.action_date as stat_date,
+            l.from_user_id,
+            0,
+            -COUNT(d.duplicate_id) as cnt,
+            NOW()
+        FROM alloc_logs l
+                 INNER JOIN customers_duplicate d ON d.customer_id = l.customer_id
+        WHERE l.log_id > #{lastLogId} AND l.log_id &lt;= #{maxLogId}
+          AND l.action_type = 'REVOKE'
+          AND l.is_final_assign = 1
+          AND l.from_user_id IS NOT NULL
+        GROUP BY l.action_date, l.from_user_id
+        ON DUPLICATE KEY UPDATE
+                             dup_count = dup_count + VALUES(dup_count),
+                             updated_at = NOW()
+    </insert>
 
     <!-- ================================
       커서 업데이트
