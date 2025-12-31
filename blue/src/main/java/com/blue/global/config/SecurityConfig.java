@@ -35,6 +35,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             // 모든 권한
             .requestMatchers(
+                "/api/pilsa/**",
                 "/actuator/health",
                 "/api/auth/**",
                 "/api/mail/**").permitAll()
