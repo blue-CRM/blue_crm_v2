@@ -1427,6 +1427,9 @@ async function saveEvent() {
 
     await loadSchedules()
     closeModal()
+  } catch (e: any) {
+    console.error(e)
+    alert(e?.response?.data ?? e?.message ?? '등록 중 오류가 발생했습니다.')
   } finally {
     submitting.value = false
   }
@@ -1437,11 +1440,16 @@ async function deleteEvent(id: string | null) {
   const ev = events.value.find(e => e.id === id)
   if (!ev || !canEditEvent(ev)) return
 
+  if (!confirm('정말 일정을 삭제하시겠습니까?')) return
+
   submitting.value = true
   try {
     await axios.delete(`/api/work/visit/schedules/${id}`)
     await loadSchedules()
     if (editingEventId.value === id) closeModal()
+  } catch (e: any) {
+    console.error(e)
+    alert(e?.response?.data ?? e?.message ?? '삭제 중 오류가 발생했습니다.')
   } finally {
     submitting.value = false
   }
