@@ -54,4 +54,5 @@ public interface VisitScheduleMapper {
                                  @Param("promiseTime") LocalDateTime promiseTime);
   
   void clearCustomerPromiseTime(@Param("customerId") Long customerId);
+  VisitSummaryDto findVisitSummary(@Param("customerId") Long customerId);
 }

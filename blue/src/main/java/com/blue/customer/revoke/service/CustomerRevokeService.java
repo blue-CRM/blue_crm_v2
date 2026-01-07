@@ -6,7 +6,9 @@ import com.blue.customer.alloclog.dto.CustomerOwnerSnapshotDto;
 import com.blue.customer.alloclog.mapper.AllocLogMapper;
 import com.blue.customer.revoke.dto.*;
 import com.blue.customer.revoke.mapper.CustomerRevokeMapper;
+import com.blue.global.exception.AuthException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +29,7 @@ public class CustomerRevokeService {
                                               String keyword, String dateFrom, String dateTo,
                                               String category, String division, String status, String sort) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
+    if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.",HttpStatus.GONE);
     
     int offset = (page - 1) * size;
     List<RevokeListRowDto> items;
@@ -50,7 +52,7 @@ public class CustomerRevokeService {
         items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, status, sort, me.getExpertId(), me.getVisible());
         total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, status, me.getExpertId(), me.getVisible());
       }
-      default -> throw new IllegalArgumentException("이 메뉴는 분배권한이 있는 사용자만 사용할 수 있습니다.");
+      default -> throw new AuthException("이 메뉴는 분배권한이 있는 사용자만 사용할 수 있습니다.",HttpStatus.GONE);
     }
     
     int totalPages = (int) Math.ceil((double) total / size);
@@ -61,7 +63,7 @@ public class CustomerRevokeService {
   public RevokeResult revokeByHq(String callerEmail, RevokeReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"SUPERADMIN".equals(me.getRole())) {
-      throw new IllegalArgumentException("본사만 수행할 수 있습니다.");
+      throw new AuthException("본사만 수행할 수 있습니다.",HttpStatus.GONE);
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new RevokeResult(0, 0);
@@ -74,11 +76,11 @@ public class CustomerRevokeService {
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 매출 초기화 로그 기록 ('RESET' 타입)
-    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
-    
-    // 내방 이벤트 삭제
-    mapper.deleteSchedulesByCustomerIds(lockIds);
+//    // [사용안함] 매출 초기화 로그 기록
+//    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+//
+//    // [사용안함] 내방 이벤트 삭제
+//    mapper.deleteSchedulesByCustomerIds(lockIds);
     
     // 회수 처리: 상태=회수, 프로=NULL, 예약시간=NULL, 최초/업셀 매출 = 0
     mapper.updateToRevoked(lockIds);
@@ -93,7 +95,7 @@ public class CustomerRevokeService {
   public RevokeResult revokeByManager(String callerEmail, RevokeReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"MANAGER".equals(me.getRole())) {
-      throw new IllegalArgumentException("팀장만 수행할 수 있습니다.");
+      throw new AuthException("팀장만 수행할 수 있습니다.",HttpStatus.GONE);
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new RevokeResult(0, 0);
@@ -106,11 +108,11 @@ public class CustomerRevokeService {
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 매출 초기화 로그 기록 ('RESET' 타입)
-    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
-    
-    // 내방 이벤트 삭제
-    mapper.deleteSchedulesByCustomerIds(lockIds);
+//    // [사용안함] 매출 초기화 로그 기록
+//    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+//
+//    // [사용안함] 내방 이벤트 삭제
+//    mapper.deleteSchedulesByCustomerIds(lockIds);
     
     // 회수 처리
     mapper.updateToManagerPool(lockIds, me.getUserId());
@@ -125,7 +127,7 @@ public class CustomerRevokeService {
   public RevokeResult revokeByCenterHead(String callerEmail, RevokeReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"CENTERHEAD".equals(me.getRole())) {
-      throw new IllegalArgumentException("센터장만 수행할 수 있습니다.");
+      throw new AuthException("센터장만 수행할 수 있습니다.",HttpStatus.GONE);
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new RevokeResult(0, 0);
@@ -138,11 +140,11 @@ public class CustomerRevokeService {
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 매출 초기화 로그 기록 ('RESET' 타입)
-    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
-    
-    // 내방 이벤트 삭제
-    mapper.deleteSchedulesByCustomerIds(lockIds);
+//    // [사용안함] 매출 초기화 로그 기록
+//    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+//
+//    // [사용안함] 내방 이벤트 삭제
+//    mapper.deleteSchedulesByCustomerIds(lockIds);
     
     // 회수 처리
     mapper.updateToRevoked(lockIds);
@@ -157,7 +159,7 @@ public class CustomerRevokeService {
   public RevokeResult revokeByExpert(String callerEmail, RevokeReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"EXPERT".equals(me.getRole())) {
-      throw new IllegalArgumentException("전문가만 수행할 수 있습니다.");
+      throw new AuthException("전문가만 수행할 수 있습니다.",HttpStatus.GONE);
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new RevokeResult(0, 0);
@@ -170,11 +172,11 @@ public class CustomerRevokeService {
     // 회수 직전 담당자 스냅샷
     List<CustomerOwnerSnapshotDto> owners = allocLogMapper.findOwnersByCustomerIds(lockIds);
     
-    // 매출 초기화 로그 기록 ('RESET' 타입)
-    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
-    
-    // 내방 이벤트 삭제
-    mapper.deleteSchedulesByCustomerIds(lockIds);
+//    // [사용안함] 매출 초기화 로그 기록
+//    mapper.insertRevokeSalesLogs(lockIds, me.getUserId());
+//
+//    // [사용안함] 내방 이벤트 삭제
+//    mapper.deleteSchedulesByCustomerIds(lockIds);
     
     // 회수 처리
     mapper.updateToRevoked(lockIds);

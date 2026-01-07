@@ -169,10 +169,10 @@ public class VisitScheduleService {
   }
   
   private void validate(VisitScheduleUpsertReq req) {
-    if (req.getCustomerId() == null) throw new IllegalArgumentException("customerId 필수");
-    if (req.getRoomId() == null) throw new IllegalArgumentException("roomId 필수");
-    if (req.getStartAt() == null || req.getEndAt() == null) throw new IllegalArgumentException("startAt/endAt 필수");
-    if (!req.getEndAt().isAfter(req.getStartAt())) throw new IllegalArgumentException("endAt은 startAt 이후여야 함");
+    if (req.getCustomerId() == null) throw new AuthException("customerId는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
+    if (req.getRoomId() == null) throw new AuthException("roomId는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
+    if (req.getStartAt() == null || req.getEndAt() == null) throw new AuthException("startAt/endAt는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
+    if (!req.getEndAt().isAfter(req.getStartAt())) throw new AuthException("endAt은 startAt 이후여야 합니다.", HttpStatus.FORBIDDEN);
     
     if (!req.getStartAt().toLocalDate().equals(req.getEndAt().toLocalDate())) {
       throw new AuthException("일정은 하루를 넘길 수 없습니다.", HttpStatus.FORBIDDEN);
@@ -199,5 +199,13 @@ public class VisitScheduleService {
     String role = ctx.getRole();
     boolean ok = "MANAGER".equals(role) || "STAFF".equals(role);
     if (!ok) throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+  }
+  
+  @Transactional(readOnly = true)
+  public VisitSummaryDto getSummary(String email, Long customerId) {
+    requireLogin(email);
+    
+    // 일정 없음 → null 반환 (프론트가 처리)
+    return mapper.findVisitSummary(customerId);
   }
 }

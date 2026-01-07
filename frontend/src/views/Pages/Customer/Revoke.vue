@@ -9,7 +9,7 @@
             v-if="role === 'SUPERADMIN' || role === 'CENTERHEAD' || role === 'EXPERT'"
             :selects="[
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
-                  '재콜', '내방', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
+                  '재콜', '내방', '내방취소', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
             :buttons="hqButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
@@ -37,7 +37,7 @@
             v-else-if="role === 'MANAGER'"
             :selects="[
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
-                  '재콜', '내방', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
+                  '재콜', '내방', '내방취소', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
             :buttons="mgrButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"

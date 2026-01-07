@@ -92,16 +92,12 @@
             </template>
 
             <!-- 배지 -->
-            <div v-else-if="col.type === 'badge'" class="relative inline-block w-[60px] h-[28px]">
+            <div v-else-if="col.type === 'badge'" class="relative inline-block w-[70px] h-[28px]">
                 <span
                     v-if="!(editState.row === rowIndex && editState.col === col.key)"
                     class="absolute inset-0 flex items-center justify-center rounded-full px-2 py-0.5 text-theme-xs font-medium cursor-pointer transition"
                     :class="[badgeClass(row[col.key]), col.editable ? 'hover:opacity-80' : '']"
-                    @click.stop="
-                      typeof col.editable === 'function'
-                        ? (col.editable(row) && startEdit(rowIndex, col.key, row[col.key]))
-                        : (col.editable ? startEdit(rowIndex, col.key, row[col.key]) : null)
-                    "
+                    @click.stop="onBadgeClick(row, rowIndex, col)"
                 >
                   <!-- render 함수가 있으면 그것을 사용 -->
                   <span v-if="typeof col.render === 'function'" v-html="col.render(row[col.key], row)"></span>
@@ -422,6 +418,25 @@ function emitSelected() {
 /* 배지 수정 */
 const editState = ref({ row: null, col: null })
 const editValue = ref(null)
+function onBadgeClick(row, rowIndex, col) {
+  // status 배지만 대상
+  if (col.key === 'status') {
+    // 클릭 시점의 값은 아직 과거 상태다
+    if (row.status === '내방' && row.reservation) {
+      alert('내방 예약시간이 있어 상태 변경이 불가합니다.\n내방일정 메뉴에서 일정삭제 후 시도하세요.');
+      return;
+    }
+  }
+
+  // 기존 로직 그대로
+  if (typeof col.editable === 'function') {
+    if (col.editable(row)) {
+      startEdit(rowIndex, col.key, row[col.key])
+    }
+  } else if (col.editable) {
+    startEdit(rowIndex, col.key, row[col.key])
+  }
+}
 function startEdit(rowIndex, colKey, currentValue) {
   // 다음 틱에서 편집 모드로
   setTimeout(() => {

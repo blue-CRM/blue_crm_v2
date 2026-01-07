@@ -149,8 +149,13 @@ public interface CustomerAllMapper {
   int updateCustomerReservation(@Param("customerId") Long customerId, @Param("when") LocalDateTime when);
   int updateCustomerStatus(@Param("customerId") Long customerId, @Param("status") String status);
   
+  // 현재 상태값 조회
+  String selectStatusOnly(@Param("customerId") Long customerId);
+  
   // 중복 숨김
   int hideDuplicates(@Param("ids") List<Long> duplicateIds);
+  // 일정 존재여부 확인
+  Integer existsVisitSchedule(@Param("customerId") Long customerId);
   
   // 전문가 리스트 조회
   List<ExpertDto> findAllExperts();

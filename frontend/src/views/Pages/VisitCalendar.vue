@@ -428,20 +428,20 @@
                 </button>
 
                 <button
-                    class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
-                    :disabled="submitting || !canSave || !modalCanEdit"
-                    @click="saveEvent"
-                >
-                  {{ submitting ? '처리 중...' : (editingEventId ? '수정 저장' : '추가') }}
-                </button>
-
-                <button
                     v-if="editingEventId"
                     class="h-10 px-4 rounded-lg border border-red-500 bg-red-500 text-white text-sm hover:bg-red-600 disabled:opacity-60"
                     :disabled="submitting || !modalCanEdit"
                     @click="deleteEvent(editingEventId)"
                 >
                   삭제
+                </button>
+
+                <button
+                    class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
+                    :disabled="submitting || !canSave || !modalCanEdit"
+                    @click="saveEvent"
+                >
+                  {{ submitting ? '처리 중...' : (editingEventId ? '수정 저장' : '추가') }}
                 </button>
               </div>
             </div>

@@ -275,7 +275,7 @@ const adminColumns = [
       // 회수와 신규 상태는 수동으로 줄 수 없음
       // 회수 : 팀장풀 혹은 개인에게 분배된 이후 회수된 데이터
       // 신규 : 최초의 확정분배 시에만 신규
-      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","가망","자연풀","카피","거절"] },
+      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","내방취소","가망","자연풀","카피","거절"] },
   { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
   { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
   { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
@@ -296,7 +296,7 @@ const commonColumns = [
   { key: "memo", label: "메모", type: "iconButton", icon: EyeIcon, disabled: (row)=> row.origin==='DUPLICATE' },
   { key: "status", label: "상태", type: "badge",
       editable: notDuplicate,
-      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","가망","자연풀","카피","거절"] },
+      options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","내방취소","가망","자연풀","카피","거절"] },
   { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
   { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
   { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
@@ -321,9 +321,18 @@ function onBadgeUpdate(row, key, newValue) {
     axios.patch(`/api/work/db/all/update/${row.id}`, {
       field: key,
       value: newValue
+    }).then(() => {
+      // 다른상태 -> 내방으로 바뀌는 순간 예약시간 null 처리와 UI 동기화
+      if (newValue === '내방') {
+        row.reservation = null;
+      }
     }).catch(err => {
-      console.error("상태 저장 실패", err);
-      alert("상태 저장 중 오류가 발생했습니다.");
+      const msg =
+          err?.response?.data?.message
+          || err?.response?.data
+          || '상태 변경 중 오류가 발생했습니다.'
+
+      alert(msg)
     });
   }
 
@@ -423,7 +432,7 @@ function closeMemo() {
 const divisionOptions = ['구분 전체', '최초', '유효', '중복'];
 const statusOptions = [
   '상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
-  '기타', '결번', '재콜', '내방', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'
+  '기타', '결번', '재콜', '내방', '내방취소', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'
 ];
 
 // 2. 동적 옵션 정의 (서버에서 가져올 전문가 리스트)
@@ -574,11 +583,14 @@ function onMemoSaved(patch) {
   const idx = arr.findIndex(r => r.id === patch.id);
   if (idx !== -1) {
     const cur = arr[idx];
-    arr.splice(idx, 1, {
-      ...cur,
-      status: patch.status,
-      reservation: patch.reservation, // 바로 리스트에 반영
-    });
+    const next = { ...cur };
+
+    if ('status' in patch) next.status = patch.status;
+    if ('reservation' in patch) next.reservation = patch.reservation;
+    if ('initialPrice' in patch) next.initialPrice = patch.initialPrice;
+    if ('upsellPrice' in patch) next.upsellPrice = patch.upsellPrice;
+
+    arr.splice(idx, 1, next);
   } else {
     // 현재 페이지에 행이 없을 때만 안전 재조회 (페이지 유지)
     const curPage = page.value;
