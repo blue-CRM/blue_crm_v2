@@ -92,7 +92,7 @@
             </template>
 
             <!-- 배지 -->
-            <div v-else-if="col.type === 'badge'" class="relative inline-block w-[70px] h-[28px]">
+            <div v-else-if="col.type === 'badge' && !(col.key === 'prevStatus' && row[col.key] === null)" class="relative inline-block w-[70px] h-[28px]">
                 <span
                     v-if="!(editState.row === rowIndex && editState.col === col.key)"
                     class="absolute inset-0 flex items-center justify-center rounded-full px-2 py-0.5 text-theme-xs font-medium cursor-pointer transition"

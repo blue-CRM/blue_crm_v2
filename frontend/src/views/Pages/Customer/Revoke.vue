@@ -111,10 +111,10 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import PsnsTable from '@/components/tables/basic-tables/PsnsTable.vue'
-import { useAuthStore } from '@/stores/auth'
-import { useTableQuery } from '@/composables/useTableQuery'
-import { globalFilters } from '@/composables/globalFilters'
-import axios from '@/plugins/axios'
+import { useAuthStore } from '@/stores/auth.js'
+import { useTableQuery } from '@/composables/useTableQuery.js'
+import { globalFilters } from '@/composables/globalFilters.js'
+import axios from '@/plugins/axios.js'
 
 /** 권한/페이지 타이틀 */
 const auth = useAuthStore()
@@ -182,7 +182,7 @@ const hqColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
-  { key: 'prevStatus', label: '직전상태', type: 'badge' },
+  { key: 'prevStatus', label: '직전상태', type: 'badge', hideIfEmpty: true },
   { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
@@ -201,7 +201,7 @@ const mgrColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
-  { key: 'prevStatus', label: '직전상태', type: 'badge' },
+  { key: 'prevStatus', label: '직전상태', type: 'badge', hideIfEmpty: true },
   { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
