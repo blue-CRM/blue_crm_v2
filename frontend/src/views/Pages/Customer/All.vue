@@ -190,6 +190,7 @@ const {
     mine: "mine",
     staffUserId: "staffUserId",
     status: "status",
+    prevStatus: "prevStatus",
     division: "division",
     expertName: "expertName"
   },
@@ -276,6 +277,7 @@ const adminColumns = [
       // 회수 : 팀장풀 혹은 개인에게 분배된 이후 회수된 데이터
       // 신규 : 최초의 확정분배 시에만 신규
       options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","내방취소","가망","자연풀","카피","거절"] },
+  { key: "prevStatus", label: "직전상태", type: "badge", editable: false},
   { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
   { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
   { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
@@ -297,6 +299,7 @@ const commonColumns = [
   { key: "status", label: "상태", type: "badge",
       editable: notDuplicate,
       options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","내방취소","가망","자연풀","카피","거절"] },
+  { key: "prevStatus", label: "직전상태", type: "badge", editable: false},
   { key: "reservation", label: "예약", type: "date", editable: notDuplicate },
   { key: "initialPrice", label: "최초(달러)", type: "money", editable: isSalesEditable },
   { key: "upsellPrice",  label: "업셀(달러)", type: "money", editable: isSalesEditable },
@@ -434,6 +437,10 @@ const statusOptions = [
   '상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
   '기타', '결번', '재콜', '내방', '내방취소', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'
 ];
+const prevStatusOptions = [
+  '직전상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
+  '기타', '결번', '재콜', '내방', '내방취소', '가망', '자연풀', '카피', '거절',
+];
 
 // 2. 동적 옵션 정의 (서버에서 가져올 전문가 리스트)
 const expertOptions = ref(['전문가 전체']); // 기본값 설정
@@ -443,7 +450,7 @@ const expertOptions = ref(['전문가 전체']); // 기본값 설정
 // 4. 권한별 최종 Select 배열 생성 (Computed)
 const adminSelects = computed(() => {
   // 기본: [0:구분, 1:상태]
-  const base = [divisionOptions, statusOptions];
+  const base = [divisionOptions, statusOptions, prevStatusOptions];
 
   // 전문가(EXPERT)가 아닐 때만 '전문가 선택' 드롭박스 추가
   if (role !== 'EXPERT') {
@@ -454,7 +461,7 @@ const adminSelects = computed(() => {
 });
 const managerSelects = computed(() => {
   // [0:상태, 1:전문가] (매니저는 구분 없음)
-  return [statusOptions, expertOptions.value];
+  return [statusOptions, prevStatusOptions, expertOptions.value];
 });
 
 // 필터 동작
@@ -467,7 +474,10 @@ function onAdminSelectChange({ idx, value }) {
     } else if (idx === 1) {
       // '상태 전체'면 해제
       setFilter("status", value === "상태 전체" ? null : value);
-    } else if (idx === 2) {
+    }  else if (idx === 2) {
+      // '직전상태 전체'면 해제
+      setFilter("prevStatus", value === "직전상태 전체" ? null : value);
+    } else if (idx === 3) {
       // '전문가 전체'면 해제 (EXPERT/전문가 권한은 해당사항 없음)
       setFilter("expertName", value === "전문가 전체" ? null : value);
     }
@@ -480,6 +490,9 @@ function onManagerStatusSelect({ idx, value }) {
       // '상태 전체'면 해제
       setFilter("status", value === "상태 전체" ? null : value);
     } else if (idx === 1) {
+      // '직전상태 전체'면 해제
+      setFilter("prevStatus", value === "직전상태 전체" ? null : value);
+    } else if (idx === 2) {
       // '전문가 전체'면 해제
       setFilter("expertName", value === "전문가 전체" ? null : value);
     }

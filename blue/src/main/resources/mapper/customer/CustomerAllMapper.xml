@@ -76,6 +76,16 @@
                 </otherwise>
             </choose>
         </if>
+        <if test="prevStatus != null and prevStatus != ''">
+            <choose>
+                <when test="prevStatus == '모든 부재'">
+                    AND t.prevStatus IN ('부재1','부재2','부재3','부재4','부재5')
+                </when>
+                <otherwise>
+                    AND t.prevStatus = #{prevStatus}
+                </otherwise>
+            </choose>
+        </if>
     </sql>
 
     <sql id="ADMIN_ORDER">
@@ -152,7 +162,7 @@
         SELECT
         t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
         t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation,
-        t.initialPrice, t.upsellPrice
+        t.initialPrice, t.upsellPrice, t.prevStatus
         FROM (
         /* ===== customers 분기 ===== */
         SELECT
@@ -168,6 +178,7 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
+        c.customer_prev_status AS prevStatus,
         c.customer_promise_time AS promiseAt,
         CASE
         WHEN c.customer_promise_time IS NULL THEN NULL
@@ -230,6 +241,7 @@
         d.duplicate_content     AS content,
         d.duplicate_memo        AS memo,
         '없음'                  AS status,
+        NULL                    AS prevStatus,
         NULL                    AS promiseAt,
         NULL                    AS reservation,
         0                       AS initialPrice,
@@ -269,6 +281,7 @@
         c.customer_content   AS content,
         c.customer_memo      AS memo,
         c.customer_status    AS status,
+        c.customer_prev_status AS prevStatus,
         c.customer_promise_time AS promiseAt,
         DATE_FORMAT(c.customer_promise_time, '%c월 %e일 %H:%i') AS reservation
         FROM customers c
@@ -314,6 +327,7 @@
         d.duplicate_content  AS content,
         d.duplicate_memo     AS memo,
         '없음'               AS status,
+        NULL                 AS prevStatus,
         NULL                   AS promiseAt,
         CAST(NULL AS CHAR(20)) AS reservation
         FROM customers_duplicate d
@@ -333,7 +347,6 @@
         <!-- 키워드/가시권한/추가 외부 조건 유지 -->
         <include refid="ADMIN_FILTERS"/>
     </select>
-
 
     <!-- 고객 전용 공통 필터/정렬 (MANAGER/STAFF) -->
     <sql id="CUSTOMER_ONLY_FILTERS">
@@ -365,6 +378,16 @@
                 </when>
                 <otherwise>
                     AND c.customer_status = #{pStatus}
+                </otherwise>
+            </choose>
+        </if>
+        <if test="prevStatus != null and prevStatus != ''">
+            <choose>
+                <when test="prevStatus == '모든 부재'">
+                    AND c.customer_prev_status IN ('부재1','부재2','부재3','부재4','부재5')
+                </when>
+                <otherwise>
+                    AND c.customer_prev_status = #{prevStatus}
                 </otherwise>
             </choose>
         </if>
@@ -423,6 +446,7 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
+        c.customer_prev_status AS prevStatus,
         CASE
         WHEN c.customer_promise_time IS NULL THEN NULL
         WHEN c.customer_status = '내방' THEN CONCAT_WS(
@@ -478,6 +502,7 @@
         c.customer_content      AS content,
         c.customer_memo         AS memo,
         c.customer_status       AS status,
+        c.customer_prev_status AS prevStatus,
         CASE
         WHEN c.customer_promise_time IS NULL THEN NULL
         WHEN c.customer_status = '내방' THEN CONCAT_WS(
@@ -523,7 +548,7 @@
         SELECT
         t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
         t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation,
-        t.initialPrice, t.upsellPrice
+        t.initialPrice, t.upsellPrice, t.prevStatus
         FROM (
         /* 1. customers */
         SELECT
@@ -539,6 +564,7 @@
         c.customer_content AS content,
         c.customer_memo AS memo,
         c.customer_status AS status,
+        c.customer_prev_status AS prevStatus,
         c.customer_promise_time AS promiseAt,
         CASE
         WHEN c.customer_promise_time IS NULL THEN NULL
@@ -583,6 +609,7 @@
         d.duplicate_content AS content,
         d.duplicate_memo AS memo,
         '없음' AS status,
+        NULL AS prevStatus,
         NULL AS promiseAt,
         NULL AS reservation,
         0 AS initialPrice,
@@ -618,6 +645,7 @@
         c.customer_phone AS phone,
         c.customer_source AS source,
         c.customer_status AS status,
+        c.customer_prev_status AS prevStatus,
         c.customer_memo AS memo
         FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
         WHERE 1=1
@@ -640,6 +668,7 @@
         c2.customer_phone AS phone,
         d.duplicate_source AS source,
         '없음' AS status,
+        NULL AS prevStatus,
         d.duplicate_memo AS memo
         FROM customers_duplicate d JOIN customers c2 ON c2.customer_id = d.customer_id LEFT JOIN users u2 ON u2.user_id = c2.user_id
         WHERE d.duplicate_display = 1
@@ -658,7 +687,7 @@
         SELECT
         t.id, t.origin, t.createdAt, t.staff, t.division, t.category,
         t.name, t.phone, t.source, t.content, t.memo, t.status, t.reservation,
-        t.initialPrice, t.upsellPrice
+        t.initialPrice, t.upsellPrice, t.prevStatus
         FROM (
         /* 1. customers */
         SELECT
@@ -674,6 +703,7 @@
         c.customer_content AS content,
         c.customer_memo AS memo,
         c.customer_status AS status,
+        c.customer_prev_status AS prevStatus,
         c.customer_promise_time AS promiseAt,
         CASE
         WHEN c.customer_promise_time IS NULL THEN NULL
@@ -715,6 +745,7 @@
         d.duplicate_content AS content,
         d.duplicate_memo AS memo,
         '없음' AS status,
+        NULL AS prevStatus,
         NULL AS promiseAt,
         NULL AS reservation,
         0 AS initialPrice,
@@ -746,6 +777,7 @@
         c.customer_phone AS phone,
         c.customer_source AS source,
         c.customer_status AS status,
+        c.customer_prev_status AS prevStatus,
         c.customer_memo AS memo
         FROM customers c LEFT JOIN users u ON u.user_id = c.user_id
         WHERE 1=1
@@ -766,6 +798,7 @@
         c2.customer_phone AS phone,
         d.duplicate_source AS source,
         '없음' AS status,
+        NULL AS prevStatus,
         d.duplicate_memo AS memo
         FROM customers_duplicate d JOIN customers c2 ON c2.customer_id = d.customer_id LEFT JOIN users u2 ON u2.user_id = c2.user_id
         WHERE d.duplicate_display = 1

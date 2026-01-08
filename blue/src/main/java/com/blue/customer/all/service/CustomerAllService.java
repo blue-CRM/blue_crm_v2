@@ -23,7 +23,7 @@ public class CustomerAllService {
       String callerEmail, int page, int size,
       String keyword, String dateFrom, String dateTo,
       String category, String division, String sort, String expertName,
-      String status, String mine, Long staffUserId
+      String status, String prevStatus, String mine, Long staffUserId
   ) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.", HttpStatus.GONE);
@@ -36,8 +36,8 @@ public class CustomerAllService {
       case "SUPERADMIN" -> {
 //        System.out.println("datefrom: " + dateFrom);
 //        System.out.println("dateto: " + dateTo);
-        items = mapper.findAllForAdmin(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getVisible());
-        total = mapper.countAllForAdmin(keyword, dateFrom, dateTo, category, division, expertName, status, me.getVisible());
+        items = mapper.findAllForAdmin(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, prevStatus, me.getVisible());
+        total = mapper.countAllForAdmin(keyword, dateFrom, dateTo, category, division, expertName, status, prevStatus, me.getVisible());
       }
       case "MANAGER" -> {
         // mine=Y이면 '내 DB만' → 클라 staffUserId 무시, 토큰의 본인 ID 강제
@@ -45,30 +45,30 @@ public class CustomerAllService {
         if (mineOnly) {
           Long myUserId = me.getUserId();
           items = mapper.findAllForStaff(
-              offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, myUserId
+              offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, prevStatus, myUserId
           );
           total = mapper.countAllForStaff(
-              keyword, dateFrom, dateTo, category, division, expertName, status, myUserId
+              keyword, dateFrom, dateTo, category, division, expertName, status, prevStatus, myUserId
           );
         } else {
           // 팀 범위
           items = mapper.findAllForManager(
-              offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getCenterId()
+              offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, prevStatus, me.getCenterId()
           );
           total = mapper.countAllForManager(
-              keyword, dateFrom, dateTo, category, division, expertName, status, me.getCenterId()
+              keyword, dateFrom, dateTo, category, division, expertName, status, prevStatus, me.getCenterId()
           );
         }
       }
       case "STAFF" -> {
         // STAFF는 원래 '내 DB'만
-        items = mapper.findAllForStaff(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getUserId());
-        total = mapper.countAllForStaff(keyword, dateFrom, dateTo, category, division, expertName, status, me.getUserId());
+        items = mapper.findAllForStaff(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, prevStatus, me.getUserId());
+        total = mapper.countAllForStaff(keyword, dateFrom, dateTo, category, division, expertName, status, prevStatus, me.getUserId());
       }
       case "CENTERHEAD" -> {
         // 센터장: 본인 센터 소속 전문가들의 출처 데이터 조회 (중복DB 포함, 이동 권한 O)
-        items = mapper.findAllForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getVisible(), me.getCenterId());
-        total = mapper.countAllForCenterHead(keyword, dateFrom, dateTo, category, division, expertName, status, me.getVisible(), me.getCenterId());
+        items = mapper.findAllForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, prevStatus, me.getVisible(), me.getCenterId());
+        total = mapper.countAllForCenterHead(keyword, dateFrom, dateTo, category, division, expertName, status, prevStatus, me.getVisible(), me.getCenterId());
       }
       case "EXPERT" -> {
         // 전문가: 본인 출처 데이터 조회 (중복DB 포함, 이동 권한 O)
@@ -79,8 +79,8 @@ public class CustomerAllService {
           items = List.of();
           total = 0;
         } else {
-          items = mapper.findAllForExpert(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, me.getVisible(), myExpertId);
-          total = mapper.countAllForExpert(keyword, dateFrom, dateTo, category, division, expertName, status, me.getVisible(), myExpertId);
+          items = mapper.findAllForExpert(offset, size, keyword, dateFrom, dateTo, category, division, sort, expertName, status, prevStatus, me.getVisible(), myExpertId);
+          total = mapper.countAllForExpert(keyword, dateFrom, dateTo, category, division, expertName, status, prevStatus, me.getVisible(), myExpertId);
         }
       }
       default -> throw new AuthException("Unknown role: " + me.getRole(), HttpStatus.GONE);
