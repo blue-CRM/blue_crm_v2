@@ -52,6 +52,9 @@
         <if test="status != null and status != ''">
             AND c.customer_status = #{status}
         </if>
+        <if test="prevStatus != null and prevStatus != ''">
+            AND c.customer_prev_status = #{prevStatus}
+        </if>
     </sql>
 
     <sql id="ORDER_DEFAULT">
@@ -88,6 +91,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         ctr.center_name       AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -136,6 +140,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -146,6 +151,7 @@
         WHERE c.customer_status != '회수'
             AND c.user_id IS NOT NULL
             AND u.center_id = #{managerCenterId}
+        AND NOT (c.customer_status = '없음' AND c.user_id = #{excludeUserId})
 
         <include refid="LIST_FILTERS_COMMON"/>
         <include refid="ORDER_DEFAULT"/>
@@ -160,6 +166,7 @@
         WHERE c.customer_status != '회수'
             AND c.user_id IS NOT NULL
             AND u.center_id = #{managerCenterId}
+        AND NOT (c.customer_status = '없음' AND c.user_id = #{excludeUserId})
 
         <include refid="LIST_FILTERS_COMMON"/>
     </select>
@@ -183,6 +190,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -248,6 +256,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -302,6 +311,7 @@
           FROM users u
           WHERE u.user_id = c.user_id
             AND u.center_id = #{managerCenterId}
+            AND NOT (c.customer_status = '없음' AND c.user_id = #{excludeUserId})
         )
 
       FOR UPDATE

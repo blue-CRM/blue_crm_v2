@@ -24,10 +24,10 @@ public class CustomerRevokeService {
   private final CustomerRevokeMapper mapper;
   private final AllocLogMapper allocLogMapper;
   
-  public PagedResponse<RevokeListRowDto> list(String callerEmail,
-                                              int page, int size,
+  public PagedResponse<RevokeListRowDto> list(String callerEmail, int page, int size,
                                               String keyword, String dateFrom, String dateTo,
-                                              String category, String division, String status, String sort) {
+                                              String category, String division, String status,
+                                              String prevStatus, String sort) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.",HttpStatus.GONE);
     
@@ -37,20 +37,20 @@ public class CustomerRevokeService {
     
     switch (me.getRole()) {
       case "SUPERADMIN" -> {
-        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, status, sort, me.getVisible());
-        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, status, me.getVisible());
+        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, status, prevStatus, sort, me.getVisible());
+        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, status, prevStatus, me.getVisible());
       }
       case "MANAGER" -> {
-        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, status, sort, me.getCenterId(), me.getVisible(), me.getUserId());
-        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, status, me.getCenterId(), me.getVisible(), me.getUserId());
+        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, status, prevStatus, sort, me.getCenterId(), me.getVisible(), me.getUserId());
+        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, status, prevStatus, me.getCenterId(), me.getVisible(), me.getUserId());
       }
       case "CENTERHEAD" -> {
-        items = mapper.findListForCenterHead(offset, size, keyword, dateFrom, dateTo, category, status, sort, me.getCenterId(), me.getVisible(), me.getUserId());
-        total = mapper.countListForCenterHead(keyword, dateFrom, dateTo, category, status, me.getCenterId(), me.getVisible(), me.getUserId());
+        items = mapper.findListForCenterHead(offset, size, keyword, dateFrom, dateTo, category, status, prevStatus, sort, me.getCenterId(), me.getVisible(), me.getUserId());
+        total = mapper.countListForCenterHead(keyword, dateFrom, dateTo, category, status, prevStatus, me.getCenterId(), me.getVisible(), me.getUserId());
       }
       case "EXPERT" -> {
-        items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, status, sort, me.getExpertId(), me.getVisible());
-        total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, status, me.getExpertId(), me.getVisible());
+        items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, status, prevStatus, sort, me.getExpertId(), me.getVisible());
+        total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, status, prevStatus, me.getExpertId(), me.getVisible());
       }
       default -> throw new AuthException("이 메뉴는 분배권한이 있는 사용자만 사용할 수 있습니다.",HttpStatus.GONE);
     }
