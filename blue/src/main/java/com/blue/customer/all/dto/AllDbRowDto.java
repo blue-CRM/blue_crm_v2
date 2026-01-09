@@ -62,6 +62,7 @@ public class AllDbRowDto {
   
   /** 상태. 고객은 customer_status / 중복은 항상 "없음"으로 강제 표기 */
   private String status;
+  private String prevStatus; // 직전상태
   
   /** 약속시간(예약). 고객: customer_promise_time / 중복: 항상 null */
   private String reservation;

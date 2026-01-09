@@ -19,16 +19,17 @@ public class CustomerRevokeController {
   // 목록 (본사/팀장)
   @GetMapping("/work/revoke/list")
   public PagedResponse<RevokeListRowDto> list(Authentication auth,
-                                              @RequestParam(defaultValue = "1") int page,
-                                              @RequestParam(defaultValue = "10") int size,
-                                              @RequestParam(required = false) String keyword,
-                                              @RequestParam(required = false) String dateFrom,
-                                              @RequestParam(required = false) String dateTo,
-                                              @RequestParam(required = false) String category,
-                                              @RequestParam(required = false) String division, // HQ only
-                                              @RequestParam(required = false) String status,
-                                              @RequestParam(required = false) String sort) {
-    return service.list(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, status, sort);
+          @RequestParam(defaultValue = "1") int page,
+          @RequestParam(defaultValue = "10") int size,
+          @RequestParam(required = false) String keyword,
+          @RequestParam(required = false) String dateFrom,
+          @RequestParam(required = false) String dateTo,
+          @RequestParam(required = false) String category,
+          @RequestParam(required = false) String division, // HQ only
+          @RequestParam(required = false) String status,
+          @RequestParam(required = false) String prevStatus,
+          @RequestParam(required = false) String sort) {
+    return service.list(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, status, prevStatus, sort);
   }
   
   // 본사 회수 실행

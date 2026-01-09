@@ -1,11 +1,13 @@
 package com.blue.info.service;
 
 
+import com.blue.global.exception.AuthException;
 import com.blue.info.dto.CenterDto;
 import com.blue.info.dto.UserRow;
 import com.blue.info.mapper.InfoMapper;
 import com.blue.user.dto.UpdateUserRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -252,10 +254,10 @@ public class InfoService {
     UserRow target = infoMapper.findById(targetUserId);
     
     if (viewer == null || target == null) {
-      throw new IllegalArgumentException("사용자 없음");
+      throw new AuthException("사용자 없음", HttpStatus.GONE);
     }
     if (!canEdit(viewer, target)) {
-      throw new IllegalStateException("권한이 없습니다.");
+      throw new AuthException("권한이 없습니다.", HttpStatus.GONE);
     }
     
     String field = Optional.ofNullable(req.getField()).orElse("").trim();
@@ -263,14 +265,14 @@ public class InfoService {
     
     switch (field) {
       case "name" -> {
-        if (value.isBlank()) throw new IllegalArgumentException("이름은 비어 있을 수 없습니다.");
+        if (value.isBlank()) throw new AuthException("이름은 비어 있을 수 없습니다.", HttpStatus.GONE);
         infoMapper.updateUserName(targetUserId, value); // ※ XML에서 updated_at 사용하지 마세요
       }
       case "phone" -> {
         String phone = normalizePhone(value);
         infoMapper.updateUserPhone(targetUserId, phone);
       }
-      default -> throw new IllegalArgumentException("지원하지 않는 필드: " + field);
+      default -> throw new AuthException("지원하지 않는 필드: " + field, HttpStatus.GONE);
     }
   }
   
@@ -309,7 +311,7 @@ public class InfoService {
   private String normalizePhone(String v) {
     String d = (v == null ? "" : v).replaceAll("\\D", "");
     if (!d.startsWith("010") || (d.length() != 10 && d.length() != 11)) {
-      throw new IllegalArgumentException("전화번호 형식 오류(예: 010-1234-5678)");
+      throw new AuthException("전화번호 형식 오류(예: 010-1234-5678)", HttpStatus.GONE);
     }
     return (d.length() == 10)
         ? String.format("010-%s-%s", d.substring(3, 6), d.substring(6))

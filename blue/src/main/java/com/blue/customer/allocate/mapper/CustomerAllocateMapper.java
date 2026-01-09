@@ -20,6 +20,7 @@ public interface CustomerAllocateMapper {
                                          @Param("dateTo") String dateTo,
                                          @Param("category") String category,
                                          @Param("division") String division,
+                                         @Param("prevStatus") String prevStatus,
                                          @Param("sort") String sort,
                                          @Param("visible") String visible);
   int countListForHq(@Param("keyword") String keyword,
@@ -27,6 +28,7 @@ public interface CustomerAllocateMapper {
                      @Param("dateTo") String dateTo,
                      @Param("category") String category,
                      @Param("division") String division,
+                     @Param("prevStatus") String prevStatus,
                      @Param("visible") String visible);
   
   // 목록 (MANAGER)
@@ -36,6 +38,7 @@ public interface CustomerAllocateMapper {
                                               @Param("dateFrom") String dateFrom,
                                               @Param("dateTo") String dateTo,
                                               @Param("category") String category,
+                                              @Param("prevStatus") String prevStatus,
                                               @Param("sort") String sort,
                                               @Param("managerUserId") Long managerUserId,
                                               @Param("visible") String visible);
@@ -43,6 +46,7 @@ public interface CustomerAllocateMapper {
                           @Param("dateFrom") String dateFrom,
                           @Param("dateTo") String dateTo,
                           @Param("category") String category,
+                          @Param("prevStatus") String prevStatus,
                           @Param("managerUserId") Long managerUserId,
                           @Param("visible") String visible);
   
@@ -54,6 +58,7 @@ public interface CustomerAllocateMapper {
                                                  @Param("dateTo") String dateTo,
                                                  @Param("category") String category,
                                                  @Param("division") String division,
+                                                 @Param("prevStatus") String prevStatus,
                                                  @Param("sort") String sort,
                                                  @Param("userId") Long userId,
                                                  @Param("visible") String visible,
@@ -63,6 +68,7 @@ public interface CustomerAllocateMapper {
                              @Param("dateTo") String dateTo,
                              @Param("category") String category,
                              @Param("division") String division,
+                             @Param("prevStatus") String prevStatus,
                              @Param("userId") Long userId,
                              @Param("visible") String visible,
                              @Param("centerId") Long centerId);
@@ -75,6 +81,7 @@ public interface CustomerAllocateMapper {
                                              @Param("dateTo") String dateTo,
                                              @Param("category") String category,
                                              @Param("division") String division,
+                                             @Param("prevStatus") String prevStatus,
                                              @Param("sort") String sort,
                                              @Param("userId") Long userId,
                                              @Param("visible") String visible,
@@ -84,6 +91,7 @@ public interface CustomerAllocateMapper {
                          @Param("dateTo") String dateTo,
                          @Param("category") String category,
                          @Param("division") String division,
+                         @Param("prevStatus") String prevStatus,
                          @Param("userId") Long userId,
                          @Param("visible") String visible,
                          @Param("expertId") Long expertId);

@@ -7,13 +7,15 @@
         <!-- SUPERADMIN (본사) -->
         <ComponentCard
             v-if="['SUPERADMIN', 'CENTERHEAD', 'EXPERT'].includes(role)"
-            :selects="[[ '전체','최초','유효' ]]"
+            :selects="[[ '전체','최초','유효' ],
+                       [ '직전상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
+                            '기타', '결번', '재콜', '내방', '내방취소', '가망', '자연풀', '카피', '거절' ]]"
             :buttons="allocatorButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
             @changeSize="setSize"
-            @selectChange="onDivisionSelect"
+            @selectChange="onHqSelectChange"
             @buttonClick="onHqButton"
         >
           <PsnsTable
@@ -34,11 +36,14 @@
         <!-- MANAGER (팀장) -->
         <ComponentCard
             v-else-if="role === 'MANAGER'"
+            :selects="[[ '직전상태 전체', '모든 부재', '부재1', '부재2', '부재3', '부재4', '부재5',
+                            '기타', '결번', '재콜', '내방', '내방취소', '가망', '자연풀', '카피', '거절' ]]"
             :buttons="mgrButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
             @refresh="onRefresh"
             @changeSize="setSize"
+            @selectChange="onMgrSelectChange"
             @buttonClick="onMgrButton"
         >
           <PsnsTable
@@ -75,6 +80,15 @@
           @close="closeResetModal"
           @refresh="fetchData"
         />
+
+        <Teleport to="body">
+          <Memo
+              v-if="memoOpen"
+              :row="memoRow"
+              :read-only="true"
+              @close="closeMemo"
+          />
+        </Teleport>
 
       </div>
     </div>
@@ -117,11 +131,13 @@ import ComponentCard from '@/components/common/ComponentCard.vue'
 import PsnsTable from '@/components/tables/basic-tables/PsnsTable.vue'
 import AllocateModal from '@/components/ui/AllocateModal.vue'
 import ResetModal from '@/components/ui/ResetModal.vue'
+import Memo from '@/components/ui/MEMO.vue'
+import { EyeIcon } from '@heroicons/vue/24/outline'
 import { ClipboardDocumentListIcon } from "@heroicons/vue/24/outline";
-import { useAuthStore } from '@/stores/auth'
-import { useTableQuery } from '@/composables/useTableQuery'
-import { globalFilters } from '@/composables/globalFilters'
-import axios from '@/plugins/axios'
+import { useAuthStore } from '@/stores/auth.js'
+import { useTableQuery } from '@/composables/useTableQuery.js'
+import { globalFilters } from '@/composables/globalFilters.js'
+import axios from '@/plugins/axios.js'
 
 const auth = useAuthStore()
 const role = auth.grants.role
@@ -131,7 +147,7 @@ const pageTitle = ref('DB 분배하기')
 const { items, page, size, totalPages, fetchData, changePage, setSize, setFilter, loading: tableLoading } = useTableQuery({
   url: '/api/work/allocate/list',
   externalFilters: globalFilters,
-  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword', sort: 'sort' },
+  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword', sort: 'sort', prevStatus: 'prevStatus', division: 'division' },
   mapper: (res:any) => ({ items: res.data.items, totalPages: res.data.totalPages, totalCount: res.data.totalCount })
 })
 
@@ -189,19 +205,40 @@ const hqColumns = [
     // 회수와 신규 상태는 수동으로 줄 수 없음
     // 회수 : DB회수하기 메뉴에서
     // 신규 : 한번도 분배가 되지 않은 항목만
-    options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","가망","자연풀","카피","거절"] },
+    options: ["부재1","부재2","부재3","부재4","부재5","기타","결번","재콜","내방","내방취소","가망","자연풀","카피","거절"] },
+  { key: 'prevStatus', label: '직전상태', type: 'badge', editable: false },
+  { key: 'memo',    label: '메모', type: 'iconButton', icon: EyeIcon },
   { key: 'actions', label: '관리', type: 'iconButton', icon: ClipboardDocumentListIcon }, // HQ 전용
   { key: 'paststaff',     label: '과거 이력', type: 'text', ellipsis: { width: 200 } }, // HQ 전용
 ]
 
 // 매니저는 과거 이력/구분 X (분배만)
-const mgrColumns = [ ...baseCols ]
+const mgrColumns = [ ...baseCols,
+  { key: 'prevStatus', label: '직전상태', type: 'badge', editable: false },
+  { key: 'memo', label: '메모', type: 'iconButton', icon: EyeIcon },
+  { key: 'paststaff', label: '과거 이력', type: 'text', ellipsis: { width: 200 } },
+]
 
 // ===== HQ 전용 구분 필터 =====
-function onDivisionSelect({ value }:{ value:string }){
-  return runBusy(async () => {
+function onHqSelectChange({ idx, value }:{ idx:number, value:string }){
+  return runBusy(async () => {if (idx === 0) {
+    // 구분 필터
     setFilter('division', value === '전체' ? null : value)
+  } else if (idx === 1) {
+    // 직전상태 필터
+    setFilter('prevStatus', value === '직전상태 전체' ? null : value)
+  }
     await fetchData()
+  })
+}
+// ===== MANAGER 전용 구분 필터 =====
+function onMgrSelectChange({ idx, value }:{ idx:number, value:string }) {
+  return runBusy(async () => {
+    if (idx === 0) {
+      // 직전상태 필터
+      setFilter('prevStatus', value === '직전상태 전체' ? null : value)
+      await fetchData()
+    }
   })
 }
 
@@ -254,6 +291,19 @@ async function toggleSort() {
   })
 }
 
+// ===== 메모 모달 관련 =====
+const memoOpen = ref(false)
+const memoRow = ref(null)
+
+function openMemo(row) {
+  memoRow.value = row
+  memoOpen.value = true
+}
+function closeMemo() {
+  memoOpen.value = false
+  memoRow.value = null
+}
+
 // ===== 모달 열기/닫기 =====
 const modal = ref<{ open:boolean, mode:'HQ'|'MANAGER' }>({ open:false, mode: 'HQ' })
 const resetModal = ref<{ open: boolean, targetId: number|null }>({ open: false, targetId: null })
@@ -286,6 +336,11 @@ function onMgrButton(btn:string){
 
 // 개별 모달 열기
 function onTableButtonClick(row: any, key: string) {
+  if (key === 'memo') {
+    openMemo(row)
+    return
+  }
+
   // 컬럼 정의에서 설정한 key가 'actions'일 때 동작
   if (key === 'actions') {
     if (role !== 'SUPERADMIN') {

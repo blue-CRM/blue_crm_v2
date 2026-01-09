@@ -181,4 +181,23 @@
         WHERE customer_id = #{customerId}
     </update>
 
+    <select id="findVisitSummary"
+            resultType="com.blue.visit.dto.VisitSummaryDto">
+        SELECT
+            vs.visit_id AS visitId,
+            CONCAT(
+                    MONTH(vs.visit_at), '월 ',
+                    DAY(vs.visit_at), '일 ',
+                    LPAD(HOUR(vs.visit_at), 2, '0'), ':',
+                    LPAD(MINUTE(vs.visit_at), 2, '0'),
+                    ' / ',
+                    COALESCE(mr.room_name, '미등록')
+            ) AS summary
+        FROM visit_schedule vs
+                 LEFT JOIN meeting_rooms mr ON mr.room_id = vs.room_id
+        WHERE vs.customer_id = #{customerId}
+        ORDER BY vs.visit_at DESC, vs.visit_id DESC
+        LIMIT 1
+    </select>
+
 </mapper>

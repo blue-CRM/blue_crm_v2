@@ -13,6 +13,7 @@ public class RevokeListRowDto {
   private String division;
   private String category;
   private String status;
+  private String prevStatus;
   private String centerName;
   private String source;
   private String content;
