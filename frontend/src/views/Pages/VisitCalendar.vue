@@ -428,20 +428,20 @@
                 </button>
 
                 <button
-                    class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
-                    :disabled="submitting || !canSave || !modalCanEdit"
-                    @click="saveEvent"
-                >
-                  {{ submitting ? '처리 중...' : (editingEventId ? '수정 저장' : '추가') }}
-                </button>
-
-                <button
                     v-if="editingEventId"
                     class="h-10 px-4 rounded-lg border border-red-500 bg-red-500 text-white text-sm hover:bg-red-600 disabled:opacity-60"
                     :disabled="submitting || !modalCanEdit"
                     @click="deleteEvent(editingEventId)"
                 >
                   삭제
+                </button>
+
+                <button
+                    class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
+                    :disabled="submitting || !canSave || !modalCanEdit"
+                    @click="saveEvent"
+                >
+                  {{ submitting ? '처리 중...' : (editingEventId ? '수정 저장' : '추가') }}
                 </button>
               </div>
             </div>
@@ -1427,6 +1427,9 @@ async function saveEvent() {
 
     await loadSchedules()
     closeModal()
+  } catch (e: any) {
+    console.error(e)
+    alert(e?.response?.data ?? e?.message ?? '등록 중 오류가 발생했습니다.')
   } finally {
     submitting.value = false
   }
@@ -1437,11 +1440,16 @@ async function deleteEvent(id: string | null) {
   const ev = events.value.find(e => e.id === id)
   if (!ev || !canEditEvent(ev)) return
 
+  if (!confirm('정말 일정을 삭제하시겠습니까?')) return
+
   submitting.value = true
   try {
     await axios.delete(`/api/work/visit/schedules/${id}`)
     await loadSchedules()
     if (editingEventId.value === id) closeModal()
+  } catch (e: any) {
+    console.error(e)
+    alert(e?.response?.data ?? e?.message ?? '삭제 중 오류가 발생했습니다.')
   } finally {
     submitting.value = false
   }

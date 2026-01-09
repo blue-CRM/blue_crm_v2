@@ -20,6 +20,7 @@ public interface CustomerRevokeMapper {
                                        @Param("category") String category,
                                        @Param("division") String division,
                                        @Param("status")   String status,
+                                       @Param("prevStatus") String prevStatus,
                                        @Param("sort") String sort,
                                        @Param("visible") String visible);
   int countListForHq(@Param("keyword") String keyword,
@@ -28,6 +29,7 @@ public interface CustomerRevokeMapper {
                      @Param("category") String category,
                      @Param("division") String division,
                      @Param("status")   String status,
+                     @Param("prevStatus") String prevStatus,
                      @Param("visible") String visible);
   
   List<RevokeListRowDto> findListForManager(@Param("offset") int offset,
@@ -37,6 +39,7 @@ public interface CustomerRevokeMapper {
                                             @Param("dateTo") String dateTo,
                                             @Param("category") String category,
                                             @Param("status")   String status,
+                                            @Param("prevStatus") String prevStatus,
                                             @Param("sort") String sort,
                                             @Param("managerCenterId") Long managerCenterId,
                                             @Param("visible") String visible,
@@ -46,6 +49,7 @@ public interface CustomerRevokeMapper {
                           @Param("dateTo") String dateTo,
                           @Param("category") String category,
                           @Param("status")   String status,
+                          @Param("prevStatus") String prevStatus,
                           @Param("managerCenterId") Long managerCenterId,
                           @Param("visible") String visible,
                           @Param("excludeUserId") Long excludeUserId);
@@ -57,6 +61,7 @@ public interface CustomerRevokeMapper {
                                                @Param("dateTo") String dateTo,
                                                @Param("category") String category,
                                                @Param("status") String status,
+                                               @Param("prevStatus") String prevStatus,
                                                @Param("sort") String sort,
                                                @Param("centerId") Long centerId,
                                                @Param("visible") String visible,
@@ -67,6 +72,7 @@ public interface CustomerRevokeMapper {
                              @Param("dateTo") String dateTo,
                              @Param("category") String category,
                              @Param("status") String status,
+                             @Param("prevStatus") String prevStatus,
                              @Param("centerId") Long centerId,
                              @Param("visible") String visible,
                              @Param("excludeUserId") Long excludeUserId);
@@ -78,6 +84,7 @@ public interface CustomerRevokeMapper {
                                            @Param("dateTo") String dateTo,
                                            @Param("category") String category,
                                            @Param("status") String status,
+                                           @Param("prevStatus") String prevStatus,
                                            @Param("sort") String sort,
                                            @Param("expertId") Long expertId,
                                            @Param("visible") String visible);
@@ -87,6 +94,7 @@ public interface CustomerRevokeMapper {
                          @Param("dateTo") String dateTo,
                          @Param("category") String category,
                          @Param("status") String status,
+                         @Param("prevStatus") String prevStatus,
                          @Param("expertId") Long expertId,
                          @Param("visible") String visible);
   

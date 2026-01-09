@@ -76,6 +76,7 @@
             </label>
             <input
                 v-model="nickname1"
+                :disabled="props.readOnly"
                 class="w-full border rounded-lg p-2 bg-white dark:bg-gray-800
                 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
              border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
@@ -89,6 +90,7 @@
             </label>
             <input
                 v-model="nickname2"
+                :disabled="props.readOnly"
                 class="w-full border rounded-lg p-2 bg-white dark:bg-gray-800
                 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
              border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
@@ -102,6 +104,7 @@
           <label class="block mb-1 text-sm font-medium text-gray-800 dark:text-gray-200">메모</label>
           <textarea
               v-model="memo"
+              :disabled="props.readOnly"
               rows="4"
               class="w-full border rounded-lg p-3 bg-white
                   focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
@@ -116,6 +119,7 @@
           <label class="block mb-1 text-sm font-medium text-gray-800 dark:text-gray-200">상태</label>
           <select
               v-model="status"
+              :disabled="props.readOnly"
               class="w-full border rounded-lg p-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100
                 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 "
           >
@@ -125,6 +129,8 @@
             <option value="부재4">부재4</option>
             <option value="부재5">부재5</option>
             <option value="재콜">재콜</option>
+            <option value="내방">내방</option>
+            <option value="내방취소">내방취소</option>
             <option value="가망">가망</option>
             <option value="자연풀">자연풀</option>
             <option value="카피">카피</option>
@@ -132,7 +138,7 @@
           </select>
         </div>
 
-        <!-- 약속시간 -->
+        <!-- 상태별 추가 UI (재콜 / 자연풀·카피 / 내방) -->
         <div v-if="status === '재콜'">
           <label class="block mb-1 text-sm font-medium text-gray-800 dark:text-gray-200">
             약속시간
@@ -140,6 +146,7 @@
           <input
               ref="timepicker"
               type="text"
+              :disabled="props.readOnly"
               class="w-full border rounded-lg p-2
          bg-white dark:bg-gray-800
          border-gray-300 dark:border-gray-600
@@ -148,15 +155,119 @@
           />
         </div>
 
+        <!-- 자연풀/카피: 최초/업셀 입력 (가로 1줄) -->
+        <div v-else-if="isSalesStatus" class="flex gap-4">
+          <div class="flex-1">
+            <label class="block mb-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+              최초(달러)
+            </label>
+
+            <div class="relative">
+              <span
+                  class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
+                       text-gray-600 dark:text-gray-400"
+              >
+                $
+              </span>
+
+              <input
+                  v-model="initialInput"
+                  :disabled="props.readOnly"
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  class="w-full border rounded-lg p-2 pl-7 bg-white dark:bg-gray-800
+               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+               border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                  placeholder="예: 100"
+              />
+            </div>
+          </div>
+
+          <div class="flex-1">
+            <label class="block mb-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+              업셀(달러)
+            </label>
+
+            <div class="relative">
+              <span
+                  class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
+                       text-gray-600 dark:text-gray-400"
+              >
+                $
+              </span>
+
+              <input
+                  v-model="upsellInput"
+                  :disabled="props.readOnly"
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  class="w-full border rounded-lg p-2 pl-7 bg-white dark:bg-gray-800
+               focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
+               border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                  placeholder="예: 50"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 내방일정 -->
+        <div v-else-if="status === '내방'">
+          <div class="grid grid-cols-12 items-center gap-x-6">
+            <!-- 1) 라벨 -->
+            <div class="col-span-2 text-center text-sm text-gray-600 dark:text-gray-300">
+              * 내방 일정 :
+            </div>
+
+            <!-- 2) 일정(밑줄 영역: 여기만) -->
+            <div class="col-span-6 h-11 flex items-center px-2
+                border-b border-gray-200 dark:border-gray-700 text-sm">
+              <span class="text-gray-800 dark:text-gray-100 truncate">
+                {{ visitSummary || '없음' }}
+              </span>
+            </div>
+
+            <!-- 3) 버튼 -->
+            <div class="col-span-4 flex items-center justify-end gap-2">
+              <!-- 이동 버튼 -->
+              <button
+                  type="button"
+                  @click="openVisitCalendar"
+                  class="h-11 px-3 rounded-lg border border-gray-200 text-sm font-medium
+               text-gray-500 hover:bg-gray-100
+               dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+              >
+                내방일정 메뉴로 이동
+              </button>
+
+              <!-- 새로고침 -->
+              <button
+                  :disabled="refreshingVisit"
+                  @click="refreshVisitOnly"
+                  title="새로고침"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full
+                     border border-gray-200 bg-white text-gray-600 hover:bg-gray-100
+                     disabled:opacity-60 disabled:cursor-not-allowed
+                     dark:border-gray-700 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-gray-800"
+              >
+                <RefreshIcon :class="['h-4 w-4', refreshingVisit ? 'animate-spin' : '']"/>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 다중 체크박스 -->
         <div class="mt-4">
           <label class="block mb-3 text-sm font-medium text-gray-800 dark:text-gray-200">가입/이용 정보</label>
           <div class="grid grid-cols-3 gap-y-2 gap-x-4 text-gray-700 dark:text-gray-300">
-            <label><input type="checkbox" value="무료방" v-model="options" /> 무료방</label>
-            <label><input type="checkbox" value="시그널방" v-model="options" /> 시그널방</label>
-            <label><input type="checkbox" value="거래소 가입유무" v-model="options" /> 거래소 가입유무</label>
-            <label><input type="checkbox" value="트레이딩뷰 가입유무" v-model="options" /> 트레이딩뷰 가입유무</label>
-            <label><input type="checkbox" value="지표 유무" v-model="options" /> 지표 유무</label>
+            <label><input type="checkbox" value="무료방" v-model="options" :disabled="props.readOnly" /> 무료방</label>
+            <label><input type="checkbox" value="시그널방" v-model="options" :disabled="props.readOnly" /> 시그널방</label>
+            <label><input type="checkbox" value="거래소 가입유무" v-model="options" :disabled="props.readOnly" /> 거래소 가입유무</label>
+            <label><input type="checkbox" value="트레이딩뷰 가입유무" v-model="options" :disabled="props.readOnly" /> 트레이딩뷰 가입유무</label>
+            <label><input type="checkbox" value="지표 유무" v-model="options" :disabled="props.readOnly" /> 지표 유무</label>
           </div>
         </div>
       </div>
@@ -170,6 +281,7 @@
           닫기
         </button>
         <button
+            v-if="!props.readOnly"
             class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-400"
             @click="save"
         >
@@ -185,12 +297,16 @@ import { ref, watch, nextTick, onBeforeUnmount, computed } from "vue"
 import { useAuthStore } from "@/stores/auth.js"
 import { onBeforeRouteLeave } from "vue-router"
 import axios from "@/plugins/axios.js"
+import { RefreshIcon } from '../../icons' // 아이콘
 
 import flatpickr from "flatpickr"
 import { Korean } from "flatpickr/dist/l10n/ko.js"
 import "flatpickr/dist/flatpickr.css"
 
-const props = defineProps({ row: Object })
+const props = defineProps({
+  row: { type: Object, default: null },
+  readOnly: { type: Boolean, default: false },
+})
 const emit  = defineEmits(["close", "saved"])
 
 const auth = useAuthStore()
@@ -206,6 +322,49 @@ const promiseTime = ref("")
 
 const detailStaff   = ref(null)   // 현재 담당 프로
 const staffHistory  = ref([])     // 담당 프로 이력
+
+// 최초 업셀 등 매출 관련
+const initialInput = ref("")  // 자연풀/카피일 때 입력값
+const upsellInput  = ref("")
+
+const currentInitial = ref(null) // 서버에 이미 저장된 값(비교용)
+const currentUpsell  = ref(null)
+
+const isSalesStatus = computed(() => ['자연풀', '카피'].includes(status.value))
+
+// 내방 관련
+const refreshingVisit = ref(false)
+const visitSummary = computed(() => {
+  const fromRow = (props.row?.reservation ?? '').toString().trim()
+  return fromRow || null
+})
+
+function openVisitCalendar() {
+  const id = props.row?.id
+  if (!id) return
+  const query = new URLSearchParams({ customerId: id }).toString()
+  window.open(`/visit-calendar?${query}`, '_blank')
+}
+
+async function refreshVisitOnly() {
+  if (!props.row?.id) return
+  if (refreshingVisit.value) return
+
+  refreshingVisit.value = true
+  try {
+    const { data } = await axios.get(
+        `/api/work/visit/customers/${props.row.id}/summary`
+    )
+
+    // 모달 내부 표시용 갱신
+    props.row.reservation = data?.summary || null
+  } catch (e) {
+    console.error(e)
+    alert("내방 일정 새로고침 중 오류가 발생했습니다.")
+  } finally {
+    refreshingVisit.value = false
+  }
+}
 
 // input ref (timepicker)
 const timepicker = ref(null)
@@ -258,6 +417,7 @@ function detachCommit(ins){
 }
 
 function initTimepicker(){
+  if (props.readOnly) return
   if (!timepicker.value) return;
 
   if (fpInstance) {
@@ -359,6 +519,18 @@ async function fetchDetail(id) {
     promiseTime.value = data.promiseTime ? String(data.promiseTime).replace("T"," ").slice(0,16) : "" // 'YYYY-MM-DD HH:mm'
     detailStaff.value  = data.staff ?? null
     staffHistory.value = Array.isArray(data.staffHistory) ? data.staffHistory : []
+
+    // 매출 폴백 세팅 (detail이 주면 detail 우선, 없으면 리스트 row 폴백)
+    const init = data.initialPrice ?? props.row?.initialPrice ?? null
+    const ups  = data.upsellPrice  ?? props.row?.upsellPrice  ?? null
+
+    currentInitial.value = (init === null || init === undefined) ? null : Number(init)
+    currentUpsell.value  = (ups === null || ups === undefined) ? null : Number(ups)
+
+    // input은 빈값이면 빈 문자열, 값 있으면 숫자 문자열
+    initialInput.value = (init === null || init === undefined) ? "" : String(init)
+    upsellInput.value  = (ups === null || ups === undefined) ? "" : String(ups)
+
     const opts = []
     if ((data.freeRoom|0) === 1)           opts.push("무료방")
     if ((data.signalRoom|0) === 1)         opts.push("시그널방")
@@ -395,7 +567,16 @@ function toKRReservationString(s) {
 
 // 저장
 async function save() {
+  if (props.readOnly) return;
   if (!props.row?.id) return
+
+  // 내방 -> 다른 상태: 일정 요약이 있으면 1차 차단
+  const summary = (props.row?.reservation ?? '').toString().trim()
+  if (props.row?.status === '내방' && status.value !== '내방' && summary.length > 0) {
+    alert('내방 예약시간이 있어 상태 변경이 불가합니다.\n내방일정 메뉴에서 일정삭제 후 시도하세요.')
+    return
+  }
+
   try {
     const has = (label) => options.value.includes(label)
     const normalizedPromise =
@@ -418,17 +599,63 @@ async function save() {
 
     await axios.patch(`/api/work/db/memo/${props.row.id}`, body)
 
+    // 자연풀/카피면 최초/업셀 저장(필요한 것만)
+    if (isSalesStatus.value) {
+      const norm = (v) => {
+        if (v === '' || v === null || v === undefined) return null
+        const n = parseInt(v, 10)
+        if (Number.isNaN(n) || n < 0) return null
+        return n
+      }
+
+      const initVal = norm(initialInput.value)
+      const upsVal  = norm(upsellInput.value)
+
+      // INITIAL
+      if (initVal !== null && initVal !== currentInitial.value) {
+        await axios.post(`/api/work/db/sales`, {
+          customerId: props.row.id,
+          type: 'INITIAL',
+          amount: initVal
+        })
+        currentInitial.value = initVal
+      }
+
+      // UPSELL
+      if (upsVal !== null && upsVal !== currentUpsell.value) {
+        await axios.post(`/api/work/db/sales`, {
+          customerId: props.row.id,
+          type: 'UPSELL',
+          amount: upsVal
+        })
+        currentUpsell.value = upsVal
+      }
+    }
+
     const reservationText =
         body.status === '재콜' && body.promiseTime
             ? toKRReservationString(body.promiseTime) // 예: '9월 8일 20:30'
             : null;
 
     // 부모 테이블이 국지 갱신할 수 있도록 변경분을 함께 보냄
-    emit("saved", {
+    const patch = {
       id: props.row.id,
       status: body.status,
-      reservation: reservationText
-    })
+      initialPrice: isSalesStatus.value ? currentInitial.value : undefined,
+      upsellPrice:  isSalesStatus.value ? currentUpsell.value  : undefined,
+    }
+
+    // 재콜일 때만 reservation 내려보내기
+    if (body.status === '재콜') {
+      patch.reservation = reservationText
+    }
+
+    // 내방이면 잔상 제거용으로 null 내려보내기
+    if (body.status === '내방') {
+      patch.reservation = null;
+    }
+
+    emit("saved", patch)
     handleClose()
   } catch (e) {
     console.error(e)
@@ -447,9 +674,9 @@ watch(
 
 // status 또는 input DOM 등장 후에만 flatpickr 초기화 (렌더 이후 실행)
 watch(
-    () => [status.value, timepicker.value],
-    async ([st, el]) => {
-      if (st !== "재콜" || !el) { cleanupPicker(); return }
+    () => [props.readOnly, status.value, timepicker.value],
+    async ([ro, st, el]) => {
+      if (ro || st !== "재콜" || !el) { cleanupPicker(); return }
       await nextTick()
       initTimepicker()
     },
