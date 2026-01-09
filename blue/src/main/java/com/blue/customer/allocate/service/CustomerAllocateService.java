@@ -22,10 +22,9 @@ public class CustomerAllocateService {
   private final CustomerAllocateMapper mapper;
   private final AllocLogMapper allocLogMapper;
   
-  public PagedResponse<AllocateListRowDto> list(String callerEmail,
-                                                int page, int size,
+  public PagedResponse<AllocateListRowDto> list(String callerEmail, int page, int size,
                                                 String keyword, String dateFrom, String dateTo,
-                                                String category, String division, String sort) {
+                                                String category, String division, String prevStatus, String sort) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.", HttpStatus.GONE);
     
@@ -36,27 +35,27 @@ public class CustomerAllocateService {
     switch (me.getRole()) {
       case "SUPERADMIN" -> {
         // HQ 리스트는 "담당 프로 없음 AND 상태 ∈ {없음, 회수}"가 XML에서 강제됨
-        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getVisible());
-        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, me.getVisible());
+        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, prevStatus, sort, me.getVisible());
+        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, prevStatus, me.getVisible());
       }
       case "MANAGER" -> {
         // MANAGER 리스트는 "담당 프로=나 AND 상태=없음"이 XML에서 강제됨
-        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, sort, me.getUserId(), me.getVisible());
-        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, me.getUserId(), me.getVisible());
+        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, prevStatus, sort, me.getUserId(), me.getVisible());
+        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, prevStatus, me.getUserId(), me.getVisible());
       }
       case "CENTERHEAD" -> {
         if (!"Y".equals(me.getCanAllocate())) {
           return new PagedResponse<>(Collections.emptyList(), 0, 0);
         }
-        items = mapper.findListForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getUserId(), me.getVisible(), me.getCenterId());
-        total = mapper.countListForCenterHead(keyword, dateFrom, dateTo, category, division, me.getUserId(), me.getVisible(), me.getCenterId());
+        items = mapper.findListForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, prevStatus, sort, me.getUserId(), me.getVisible(), me.getCenterId());
+        total = mapper.countListForCenterHead(keyword, dateFrom, dateTo, category, division, prevStatus, me.getUserId(), me.getVisible(), me.getCenterId());
       }
       case "EXPERT" -> {
         if (!"Y".equals(me.getCanAllocate())) {
           return new PagedResponse<>(Collections.emptyList(), 0, 0);
         }
-        items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getUserId(), me.getVisible(), me.getExpertId());
-        total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, division, me.getUserId(), me.getVisible(), me.getExpertId());
+        items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, division, prevStatus, sort, me.getUserId(), me.getVisible(), me.getExpertId());
+        total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, division, prevStatus, me.getUserId(), me.getVisible(), me.getExpertId());
       }
       
       default -> throw new AuthException("권한이 없습니다.", HttpStatus.GONE);

@@ -14,6 +14,7 @@ public class AllocateListRowDto {
   private String division;    // '최초' | '유효'
   private String category;    // 카테고리
   private String status;      // '없음','회수',... 등
+  private String prevStatus;  // 직전상태 칼럼
   private String centerName;  // 현재 담당 프로의 센터명 (nullable)
   private String source;      // DB출처
   private String content;     // 내용

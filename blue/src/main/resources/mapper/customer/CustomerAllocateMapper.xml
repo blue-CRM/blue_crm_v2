@@ -56,6 +56,9 @@
         <if test="category != null and category != ''">
             AND c.customer_category = #{category}
         </if>
+        <if test="prevStatus != null and prevStatus != ''">
+            AND c.customer_prev_status = #{prevStatus}
+        </if>
     </sql>
 
     <sql id="ORDER_DEFAULT">
@@ -100,6 +103,7 @@
             c.customer_division     AS division,
             c.customer_category     AS category,
             c.customer_status       AS status,
+            c.customer_prev_status  AS prevStatus,
             ctr.center_name         AS centerName,
             c.customer_source       AS source,
             c.customer_content      AS content,
@@ -140,12 +144,17 @@
             c.customer_name         AS name,
             c.customer_phone        AS phone,
 
-            <!-- 이력은 본사만 노출 -->
-            NULL                    AS paststaff,
+            IFNULL((
+            SELECT GROUP_CONCAT(u2.user_name ORDER BY cpu.past_user_id SEPARATOR ', ')
+            FROM customer_past_users cpu
+            JOIN users u2 ON u2.user_id = cpu.user_id
+            WHERE cpu.customer_phone = c.customer_phone
+            ), '') AS paststaff,
 
             c.customer_division     AS division,
             c.customer_category     AS category,
             c.customer_status       AS status,
+            c.customer_prev_status  AS prevStatus,
             (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
             c.customer_source       AS source,
             c.customer_content      AS content,
@@ -198,6 +207,7 @@
         c.customer_division     AS division,
         c.customer_category     AS category,
         c.customer_status       AS status,
+        c.customer_prev_status  AS prevStatus,
         ctr.center_name         AS centerName,
         c.customer_source       AS source,
         c.customer_content      AS content,
@@ -269,6 +279,7 @@
         c.customer_division     AS division,
         c.customer_category     AS category,
         c.customer_status       AS status,
+        c.customer_prev_status  AS prevStatus,
         ctr.center_name         AS centerName,
         c.customer_source       AS source,
         c.customer_content      AS content,

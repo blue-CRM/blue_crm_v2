@@ -76,6 +76,7 @@
             </label>
             <input
                 v-model="nickname1"
+                :disabled="props.readOnly"
                 class="w-full border rounded-lg p-2 bg-white dark:bg-gray-800
                 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
              border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
@@ -89,6 +90,7 @@
             </label>
             <input
                 v-model="nickname2"
+                :disabled="props.readOnly"
                 class="w-full border rounded-lg p-2 bg-white dark:bg-gray-800
                 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
              border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
@@ -102,6 +104,7 @@
           <label class="block mb-1 text-sm font-medium text-gray-800 dark:text-gray-200">메모</label>
           <textarea
               v-model="memo"
+              :disabled="props.readOnly"
               rows="4"
               class="w-full border rounded-lg p-3 bg-white
                   focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
@@ -116,6 +119,7 @@
           <label class="block mb-1 text-sm font-medium text-gray-800 dark:text-gray-200">상태</label>
           <select
               v-model="status"
+              :disabled="props.readOnly"
               class="w-full border rounded-lg p-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100
                 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 "
           >
@@ -142,6 +146,7 @@
           <input
               ref="timepicker"
               type="text"
+              :disabled="props.readOnly"
               class="w-full border rounded-lg p-2
          bg-white dark:bg-gray-800
          border-gray-300 dark:border-gray-600
@@ -158,15 +163,16 @@
             </label>
 
             <div class="relative">
-      <span
-          class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
-               text-gray-600 dark:text-gray-400"
-      >
-        $
-      </span>
+              <span
+                  class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
+                       text-gray-600 dark:text-gray-400"
+              >
+                $
+              </span>
 
               <input
                   v-model="initialInput"
+                  :disabled="props.readOnly"
                   type="number"
                   min="0"
                   step="1"
@@ -185,15 +191,16 @@
             </label>
 
             <div class="relative">
-      <span
-          class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
-               text-gray-600 dark:text-gray-400"
-      >
-        $
-      </span>
+              <span
+                  class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
+                       text-gray-600 dark:text-gray-400"
+              >
+                $
+              </span>
 
               <input
                   v-model="upsellInput"
+                  :disabled="props.readOnly"
                   type="number"
                   min="0"
                   step="1"
@@ -256,11 +263,11 @@
         <div class="mt-4">
           <label class="block mb-3 text-sm font-medium text-gray-800 dark:text-gray-200">가입/이용 정보</label>
           <div class="grid grid-cols-3 gap-y-2 gap-x-4 text-gray-700 dark:text-gray-300">
-            <label><input type="checkbox" value="무료방" v-model="options" /> 무료방</label>
-            <label><input type="checkbox" value="시그널방" v-model="options" /> 시그널방</label>
-            <label><input type="checkbox" value="거래소 가입유무" v-model="options" /> 거래소 가입유무</label>
-            <label><input type="checkbox" value="트레이딩뷰 가입유무" v-model="options" /> 트레이딩뷰 가입유무</label>
-            <label><input type="checkbox" value="지표 유무" v-model="options" /> 지표 유무</label>
+            <label><input type="checkbox" value="무료방" v-model="options" :disabled="props.readOnly" /> 무료방</label>
+            <label><input type="checkbox" value="시그널방" v-model="options" :disabled="props.readOnly" /> 시그널방</label>
+            <label><input type="checkbox" value="거래소 가입유무" v-model="options" :disabled="props.readOnly" /> 거래소 가입유무</label>
+            <label><input type="checkbox" value="트레이딩뷰 가입유무" v-model="options" :disabled="props.readOnly" /> 트레이딩뷰 가입유무</label>
+            <label><input type="checkbox" value="지표 유무" v-model="options" :disabled="props.readOnly" /> 지표 유무</label>
           </div>
         </div>
       </div>
@@ -274,6 +281,7 @@
           닫기
         </button>
         <button
+            v-if="!props.readOnly"
             class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-400"
             @click="save"
         >
@@ -295,7 +303,10 @@ import flatpickr from "flatpickr"
 import { Korean } from "flatpickr/dist/l10n/ko.js"
 import "flatpickr/dist/flatpickr.css"
 
-const props = defineProps({ row: Object })
+const props = defineProps({
+  row: { type: Object, default: null },
+  readOnly: { type: Boolean, default: false },
+})
 const emit  = defineEmits(["close", "saved"])
 
 const auth = useAuthStore()
@@ -406,6 +417,7 @@ function detachCommit(ins){
 }
 
 function initTimepicker(){
+  if (props.readOnly) return
   if (!timepicker.value) return;
 
   if (fpInstance) {
@@ -555,6 +567,7 @@ function toKRReservationString(s) {
 
 // 저장
 async function save() {
+  if (props.readOnly) return;
   if (!props.row?.id) return
 
   // 내방 -> 다른 상태: 일정 요약이 있으면 1차 차단
@@ -661,9 +674,9 @@ watch(
 
 // status 또는 input DOM 등장 후에만 flatpickr 초기화 (렌더 이후 실행)
 watch(
-    () => [status.value, timepicker.value],
-    async ([st, el]) => {
-      if (st !== "재콜" || !el) { cleanupPicker(); return }
+    () => [props.readOnly, status.value, timepicker.value],
+    async ([ro, st, el]) => {
+      if (ro || st !== "재콜" || !el) { cleanupPicker(); return }
       await nextTick()
       initTimepicker()
     },
