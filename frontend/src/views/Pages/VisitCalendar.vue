@@ -493,7 +493,12 @@ const role = computed(() => auth.grants.role)
 const canWrite = computed(() => role.value === 'MANAGER' || role.value === 'STAFF')
 const myUserName = ref<string>('')
 function canEditEvent(ev: ScheduleEvent) {
-  return canWrite.value && myUserId.value != null && ev.scheduledByUserId === myUserId.value
+  return (
+      canWrite.value &&
+      myUserId.value != null &&
+      ev.scheduledByUserId != null &&
+      ev.scheduledByUserId === myUserId.value
+  )
 }
 
 // 버튼 색상
@@ -772,7 +777,8 @@ watch(weekStart, async () => {
   await loadSchedules()
 
   const target =
-      (focusDayKey.value && days.value.some(d => d.key === focusDayKey.value)) ? focusDayKey.value
+      (followCustomerFocus.value && focusDayKey.value && days.value.some(d => d.key === focusDayKey.value))
+          ? focusDayKey.value
           : (days.value.some(d => d.key === todayKey.value) ? todayKey.value : days.value[0]?.key)
 
   if (target) {
@@ -780,7 +786,7 @@ watch(weekStart, async () => {
       scrollToDay(target)
 
       // ⬇ customerId로 포커스 들어온 경우만 세로 스크롤
-      if (lockedCustomerId.value) {
+      if (followCustomerFocus.value && lockedCustomerId.value) {
         const ev = events.value.find(e => e.customerId === lockedCustomerId.value)
         if (ev) scrollToEventVertical(ev)
       }
@@ -1030,8 +1036,8 @@ type VisitScheduleRow = {
   customerId: number
   customerName: string
   customerPhone: string
-  scheduledByUserId: number
-  scheduledByName: string
+  scheduledByUserId: number | null
+  scheduledByName: string | null
   centerColor: string | null
   roomId: number | null
   roomName: string | null
@@ -1054,8 +1060,8 @@ type ScheduleEvent = {
   customerName: string
   customerPhone: string
   memo?: string
-  scheduledByUserId: number
-  scheduledByName: string
+  scheduledByUserId: number | null
+  scheduledByName: string | null
 }
 
 function parseLocalDateTime(s: string) {
@@ -1181,8 +1187,8 @@ function toEvent(r: VisitScheduleRow): ScheduleEvent | null {
     customerName: r.customerName,
     customerPhone: r.customerPhone,
     memo: r.memo ?? '',
-    scheduledByUserId: r.scheduledByUserId,
-    scheduledByName: r.scheduledByName
+    scheduledByUserId: r.scheduledByUserId ?? null,
+    scheduledByName: r.scheduledByName ?? '회수됨'
   }
 }
 
@@ -1667,6 +1673,9 @@ function goPrevWeek() { weekStart.value = addDays(weekStart.value, -7) }
 function goNextWeek() { weekStart.value = addDays(weekStart.value, 7) }
 function goToday() {
   todayKey.value = ymd(new Date())
+  focusDayKey.value = null
+  followCustomerFocus.value = false
+  shouldAutoOpenFocus.value = false
   weekStart.value = startOfWeek(new Date())
 }
 
@@ -1757,6 +1766,8 @@ type VisitFocusResp = {
   visitEndAt: string
 }
 
+// 자동스크롤 포커스 토글 변수
+const followCustomerFocus = ref(false)
 async function loadFocusIfLocked() {
   if (!lockedCustomerId.value) return
 
@@ -1767,6 +1778,7 @@ async function loadFocusIfLocked() {
 
     const dt = parseLocalDateTime(data.visitAt)
     if (dt) {
+      followCustomerFocus.value = true
       focusDayKey.value = ymd(dt)
       weekStart.value = startOfWeek(dt)   // 여기서 주가 바뀜
       shouldAutoOpenFocus.value = true
@@ -1774,6 +1786,7 @@ async function loadFocusIfLocked() {
   } catch {
     // 예약이 없으면(404) 그냥 현재 주 유지
     focusDayKey.value = null
+    followCustomerFocus.value = false
     shouldAutoOpenFocus.value = false
   }
 }
