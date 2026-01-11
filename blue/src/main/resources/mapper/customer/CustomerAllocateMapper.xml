@@ -445,9 +445,14 @@
     </update>
 
     <!-- 상태 '신규'로 통일 (HQ→직원, 팀장→본인/직원) -->
+    <!-- 단, 직전상태가 '내방'일 경우 현재상태 '내방'으로 고정 -->
     <update id="updateStatusToNew">
         UPDATE customers
-        SET customer_status = '신규'
+        SET customer_status =
+        CASE
+            WHEN customer_prev_status = '내방' THEN '내방'
+            ELSE '신규'
+        END
         WHERE customer_id IN
             <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </update>
