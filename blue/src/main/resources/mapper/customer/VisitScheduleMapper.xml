@@ -19,7 +19,12 @@
         END AS customerPhone,
 
         vs.scheduled_by_user_id  AS scheduledByUserId,
-        u.user_name              AS scheduledByName,
+
+        CASE
+            WHEN vs.scheduled_by_user_id IS NULL THEN '회수됨'
+            ELSE u.user_name
+        END AS scheduledByName,
+
         ce.center_id             AS centerId,
         ce.center_name           AS centerName,
         COALESCE(ce.center_color, '#64748B') AS centerColor,
@@ -31,8 +36,8 @@
         vs.visit_end_at          AS visitEndAt,
         vs.memo                  AS memo
         FROM visit_schedule vs
-        JOIN customers cu ON cu.customer_id = vs.customer_id
-        JOIN users u      ON u.user_id      = vs.scheduled_by_user_id
+        LEFT JOIN customers cu ON cu.customer_id = vs.customer_id
+        LEFT JOIN users u      ON u.user_id      = vs.scheduled_by_user_id
         JOIN users viewer ON viewer.user_id = #{viewerUserId}
         LEFT JOIN centers ce       ON ce.center_id = u.center_id
         LEFT JOIN meeting_rooms mr ON mr.room_id   = vs.room_id
@@ -92,7 +97,8 @@
         SELECT
             user_id   AS userId,
             user_role AS role,
-            user_name AS userName
+            user_name AS userName,
+            is_super  AS isSuper
         FROM users
         WHERE user_email = #{email}
         LIMIT 1
