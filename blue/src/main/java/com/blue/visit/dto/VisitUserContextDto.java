@@ -9,4 +9,5 @@ public class VisitUserContextDto {
   private Long userId;
   private String role;
   private String userName;
+  private String isSuper;
 }

@@ -68,14 +68,17 @@ public class VisitScheduleService {
   
   @Transactional
   public void create(String requesterEmail, VisitScheduleUpsertReq req) {
-    validate(req);
-    
     VisitUserContextDto ctx = requireUser(requesterEmail);
-    requireWritable(ctx);
     
-    int selectable = mapper.countSelectableCustomer(req.getCustomerId(), ctx.getUserId());
-    if (selectable == 0) {
-      throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+    // customerId가 null이면 "고객 없는 일정(블럭)"
+    if (req.getCustomerId() == null) {
+      requireSuper(ctx);
+      validateBlock(req);
+    } else {
+      requireWritable(ctx);
+      validateCustomer(req);
+      int selectable = mapper.countSelectableCustomer(req.getCustomerId(), ctx.getUserId());
+      if (selectable == 0) throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
     }
     
     int conflict = mapper.countConflicts(req.getRoomId(), req.getStartAt(), req.getEndAt(), null);
@@ -84,31 +87,41 @@ public class VisitScheduleService {
     mapper.insertSchedule(req.getCustomerId(), req.getRoomId(), ctx.getUserId(),
         req.getStartAt(), req.getEndAt(), req.getMemo());
     
-    mapper.updateCustomerPromiseTime(
-        req.getCustomerId(),
-        req.getStartAt()
-    );
+    if (req.getCustomerId() != null) {
+      mapper.updateCustomerPromiseTime(
+          req.getCustomerId(),
+          req.getStartAt()
+      );
+    }
   }
   
   @Transactional
   public void update(String requesterEmail, Long visitId, VisitScheduleUpsertReq req) {
-    validate(req);
-    
     VisitUserContextDto ctx = requireUser(requesterEmail);
-    requireWritable(ctx);
     
     VisitScheduleMetaDto meta = mapper.findScheduleMeta(visitId);
-    if (meta == null || meta.getCustomerId() == null) {
+    if (meta == null) {
       throw new AuthException("존재하지 않는 일정입니다.", HttpStatus.FORBIDDEN);
     }
     
-    // customerId 조작 방지
-    if (!meta.getCustomerId().equals(req.getCustomerId())) {
-      throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+    // 1) 블럭(고객없음) 일정
+    if (meta.getCustomerId() == null) {
+      requireSuper(ctx); // 슈퍼만 수정
+      validateBlock(req); // 고객 검증 X, memo 필수 등
     }
-    
-    if (!ctx.getUserId().equals(meta.getScheduledByUserId())) {
-      throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+    // 2) 고객 일정
+    else {
+      requireWritable(ctx); // MANAGER/STAFF만
+      validateCustomer(req); // customerId 필수 + 공통 검증
+      
+      // customerId 조작 방지
+      if (!meta.getCustomerId().equals(req.getCustomerId())) {
+        throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+      }
+      // 내 일정만 수정 가능
+      if (!ctx.getUserId().equals(meta.getScheduledByUserId())) {
+        throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
+      }
     }
     
     int conflict = mapper.countConflicts(req.getRoomId(), req.getStartAt(), req.getEndAt(), visitId);
@@ -116,21 +129,32 @@ public class VisitScheduleService {
     
     mapper.updateSchedule(visitId, req.getRoomId(), req.getStartAt(), req.getEndAt(), req.getMemo());
     
-    mapper.updateCustomerPromiseTime(
-        req.getCustomerId(),
-        req.getStartAt()
-    );
+    if (meta.getCustomerId() != null) {
+      mapper.updateCustomerPromiseTime(
+          req.getCustomerId(),
+          req.getStartAt()
+      );
+    }
   }
   
   @Transactional
   public void delete(String requesterEmail, Long visitId) {
     VisitUserContextDto ctx = requireUser(requesterEmail);
-    requireWritable(ctx);
     
     VisitScheduleMetaDto meta = mapper.findScheduleMeta(visitId);
-    if (meta == null || meta.getCustomerId() == null) {
+    if (meta == null) {
       throw new AuthException("존재하지 않는 일정입니다.", HttpStatus.FORBIDDEN);
     }
+    
+    // 1) 블럭(고객없는 일정) 삭제: SUPER만 가능 (담당자 null이어도 시간대는 점유중이니까 삭제 권한은 슈퍼만)
+    if (meta.getCustomerId() == null) {
+      requireSuper(ctx);
+      mapper.deleteSchedule(visitId);
+      return;
+    }
+    
+    // 2) 고객 일정 삭제: MANAGER/STAFF + 내 일정만
+    requireWritable(ctx);
     
     if (!ctx.getUserId().equals(meta.getScheduledByUserId())) {
       throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
@@ -168,24 +192,6 @@ public class VisitScheduleService {
     return dto;
   }
   
-  private void validate(VisitScheduleUpsertReq req) {
-    if (req.getCustomerId() == null) throw new AuthException("customerId는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
-    if (req.getRoomId() == null) throw new AuthException("roomId는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
-    if (req.getStartAt() == null || req.getEndAt() == null) throw new AuthException("startAt/endAt는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
-    if (!req.getEndAt().isAfter(req.getStartAt())) throw new AuthException("endAt은 startAt 이후여야 합니다.", HttpStatus.FORBIDDEN);
-    
-    if (!req.getStartAt().toLocalDate().equals(req.getEndAt().toLocalDate())) {
-      throw new AuthException("일정은 하루를 넘길 수 없습니다.", HttpStatus.FORBIDDEN);
-    }
-    
-    int etc = mapper.isEtcRoom(req.getRoomId());
-    if (etc > 0) {
-      if (req.getMemo() == null || req.getMemo().isBlank()) {
-        throw new AuthException("기타 회의실은 메모가 필수입니다.", HttpStatus.FORBIDDEN);
-      }
-    }
-  }
-  
   private VisitUserContextDto requireUser(String email) {
     requireLogin(email);
     VisitUserContextDto ctx = mapper.findUserContextByEmail(email);
@@ -207,5 +213,40 @@ public class VisitScheduleService {
     
     // 일정 없음 → null 반환 (프론트가 처리)
     return mapper.findVisitSummary(customerId);
+  }
+  
+  private void validateCommon(VisitScheduleUpsertReq req) {
+    if (req.getRoomId() == null) throw new AuthException("roomId는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
+    if (req.getStartAt() == null || req.getEndAt() == null) throw new AuthException("startAt/endAt는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
+    if (!req.getEndAt().isAfter(req.getStartAt())) throw new AuthException("endAt은 startAt 이후여야 합니다.", HttpStatus.FORBIDDEN);
+    
+    if (!req.getStartAt().toLocalDate().equals(req.getEndAt().toLocalDate())) {
+      throw new AuthException("일정은 하루를 넘길 수 없습니다.", HttpStatus.FORBIDDEN);
+    }
+    
+    int etc = mapper.isEtcRoom(req.getRoomId());
+    if (etc > 0 && (req.getMemo() == null || req.getMemo().isBlank())) {
+      throw new AuthException("기타 회의실은 메모가 필수입니다.", HttpStatus.FORBIDDEN);
+    }
+  }
+  
+  private void validateCustomer(VisitScheduleUpsertReq req) {
+    validateCommon(req);
+    if (req.getCustomerId() == null) throw new AuthException("customerId는 필수 입력값입니다.", HttpStatus.FORBIDDEN);
+  }
+  
+  private void validateBlock(VisitScheduleUpsertReq req) {
+    validateCommon(req);
+    if (req.getMemo() == null || req.getMemo().isBlank()) {
+      throw new AuthException("고객이 없는 일정은 반드시 메모를 작성해주시기 바랍니다.", HttpStatus.FORBIDDEN);
+    }
+  }
+  
+  private boolean isSuper(VisitUserContextDto ctx) {
+    return ctx != null && "Y".equalsIgnoreCase(ctx.getIsSuper());
+  }
+  
+  private void requireSuper(VisitUserContextDto ctx) {
+    if (!isSuper(ctx)) throw new AuthException("권한이 없습니다.", HttpStatus.FORBIDDEN);
   }
 }
