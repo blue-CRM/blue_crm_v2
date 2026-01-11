@@ -323,17 +323,15 @@ public class AuthService {
     
     // 권한에 따라 센터/가시권한 초기값 설정
     if ("SUPERADMIN".equals(request.getRole())) { // 본사관리자
-      // TODO 본사 -> 본사 지점 / 본사 팀으로 분할 필요
       user.setCenterId(1L); // 본사
       user.setManagerPhoneAccess("N"); // 가시권한 X
       user.setCanAllocate("Y"); // 분배권한 O
     }
-    else if ("CENTERHEAD".equals(request.getRole()) // 센터장
-        || "EXPERT".equals(request.getRole())) { // 전문가일 경우
-      // TODO 본사 -> 본사 지점 / 본사 팀으로 분할 필요
-      user.setCenterId(1L); // 본사
+    else if ("CENTERHEAD".equals(request.getRole())
+        || "EXPERT".equals(request.getRole())) { // 센터장, 전문가일 경우
       user.setManagerPhoneAccess("N"); // 가시권한 X
       user.setCanAllocate("Y"); // 분배권한 X
+      user.setCenterId(null); // 팀 미할당
     }
     else if ("MANAGER".equals(request.getRole())) { // 팀장
       user.setManagerPhoneAccess("Y"); // 가시권한 O

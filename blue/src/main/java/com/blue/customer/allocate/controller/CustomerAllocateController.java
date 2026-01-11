@@ -27,8 +27,9 @@ public class CustomerAllocateController {
                                                 @RequestParam(required = false) String dateTo,
                                                 @RequestParam(required = false) String category,
                                                 @RequestParam(required = false) String division, // HQ only: '최초'|'유효'
+                                                @RequestParam(required = false) String prevStatus, // 직전상태 필터 (상태 필터는 어차피 없음 아니면 회수라서 필요 없음)
                                                 @RequestParam(required = false) String sort) {
-    return service.list(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, sort);
+    return service.list(auth.getName(), page, size, keyword, dateFrom, dateTo, category, division, prevStatus, sort);
   }
   
   // 본사 분배

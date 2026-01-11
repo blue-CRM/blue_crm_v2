@@ -39,7 +39,8 @@
             <div class="flex items-center gap-2">
               <button
                   v-if="canWrite"
-                  :class="btnSoftPrimary"
+                  :class="[btnSoftPrimary, (lockEnabled && !isSuper) ? 'opacity-50' : '']"
+                  :disabled="lockEnabled && !isSuper"
                   @click="openManualAdd"
               >
                 일정 추가 +
@@ -167,16 +168,17 @@
                     />
                     <!-- 본문 -->
                     <div
-                        class="h-full w-full rounded-md shadow-sm border text-xs flex flex-col justify-between overflow-hidden"
+                        class="h-full w-full rounded-md shadow-sm border text-xs flex flex-col justify-between overflow-hidden dark:border-white/20"
                         :class="eventClass(ev)"
+                        :style="{ backgroundColor: 'var(--ev-bg)', borderColor: 'var(--ev-bd)' }"
                     >
                       <div class="flex items-start justify-between gap-2 px-2 py-1">
                         <div class="min-w-0">
                           <div class="font-semibold truncate">
                             {{ ev.scheduledByName }}
                           </div>
-                          <div class="text-[11px] opacity-80">
-                            {{ ev.customerName }}
+                          <div class="text-[11px] opacity-80 truncate">
+                            {{ ev.customerName ? ev.customerName : ev.memo }}
                           </div>
                         </div>
 
@@ -271,39 +273,81 @@
 
                   <div class="col-span-3 space-y-1">
                     <label class="block text-sm text-gray-600 dark:text-gray-300">시작</label>
-                    <input
-                        v-model="formStartTime"
-                        type="time"
-                        step="1800"
-                        min="08:00"
-                        max="22:30"
-                        :disabled="!modalCanEdit"
-                        class="w-full h-11 rounded-lg border px-3
-                       bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                        @click="(e) => (e.currentTarget as HTMLInputElement).showPicker?.()"
-                        @change="syncPendingFromForm()"
-                    />
+                    <!-- 시작 -->
+                    <div class="relative" ref="startPickerRef">
+                      <button
+                          type="button"
+                          :disabled="!modalCanEdit"
+                          class="w-full h-11 rounded-lg border px-3 text-left
+                               bg-white text-gray-800
+                               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          @click="startOpen = !startOpen"
+                      >
+                        {{ formStartTime || '선택' }}
+                      </button>
+
+                      <div
+                          v-if="startOpen"
+                          class="absolute z-[100001] mt-2 w-full rounded-lg border bg-white shadow-lg
+                                 dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <ul class="max-h-56 overflow-auto py-1">
+                          <li
+                              v-for="t in startTimeOptions"
+                              :key="t"
+                              class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                              @click="
+                                  formStartTime = t;
+                                  startOpen = false;
+                                  syncPendingFromForm();"
+                          >
+                            {{ t }}
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="col-span-3 space-y-1">
                     <label class="block text-sm text-gray-600 dark:text-gray-300">종료</label>
-                    <input
-                        v-model="formEndTime"
-                        type="time"
-                        step="1800"
-                        min="08:00"
-                        max="22:30"
-                        :disabled="!modalCanEdit"
-                        class="w-full h-11 rounded-lg border px-3
-                       bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                        @click="(e) => (e.currentTarget as HTMLInputElement).showPicker?.()"
-                        @change="syncPendingFromForm()"
-                    />
+                    <!-- 종료 -->
+                    <div class="col-span-3 space-y-1">
+                      <div class="relative" ref="endPickerRef">
+                        <button
+                            type="button"
+                            :disabled="!modalCanEdit"
+                            class="w-full h-11 rounded-lg border px-3 text-left
+                                 bg-white text-gray-800
+                                 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                            @click="endOpen = !endOpen"
+                        >
+                          {{ formEndTime || '선택' }}
+                        </button>
+
+                        <div
+                            v-if="endOpen"
+                            class="absolute z-[100001] mt-2 w-full rounded-lg border bg-white shadow-lg
+                                  dark:border-gray-700 dark:bg-gray-900"
+                        >
+                          <ul class="max-h-56 overflow-auto py-1">
+                            <li
+                                v-for="t in endTimeOptions"
+                                :key="t"
+                                class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                                @click="
+                                    formEndTime = t;
+                                    endOpen = false;
+                                    syncPendingFromForm();"
+                            >
+                              {{ t }}
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <p v-if="timeError" class="col-span-12 text-xs text-rose-600">
+                  <p v-if="isOpen && formDate && timeError" class="col-span-12 text-xs text-rose-600">
                     {{ timeError }}
                   </p>
                 </div>
@@ -324,36 +368,42 @@
                   </select>
                 </div>
 
-                <div v-if="isEtcSelected" class="space-y-1">
+                <div v-if="showMemoField" class="space-y-1">
                   <label class="block text-sm text-gray-600 dark:text-gray-300">장소 메모</label>
                   <input
-                      v-model.trim="placeMemo"
+                      v-model.trim="memo"
                       type="text"
                       :disabled="!modalCanEdit"
                       placeholder="예: 외부 미팅 장소, 층/호수 등"
                       class="w-full h-11 rounded-lg border px-3
                        bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                       dark:border-gray-700 dark:bg-gray-800 dark:tvisit_scheduleext-gray-100 dark:text-gray-300"
                   />
                 </div>
 
                 <div class="grid grid-cols-12 items-center gap-3">
-                  <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">담당 프로</div>
-                  <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-sm">
+                  <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">
+                    {{ isBlockMode ? '일정관리자' : '담당 프로' }}
+                  </div>
+                  <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm">
                     {{ editingScheduledByName }}
                   </div>
 
-                  <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">대상 고객</div>
-                  <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-sm">
-                    <span v-if="pickedCustomer">
-                      {{ pickedCustomer.customerName }} <span class="text-gray-400 ml-2">{{ pickedCustomer.customerPhone }}</span>
-                    </span>
-                    <span v-else class="text-gray-400">고객을 선택하세요</span>
-                  </div>
+                  <!-- 대상 고객 -->
+                  <template v-if="!isBlockMode">
+                    <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">대상 고객</div>
+                    <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm">
+                      <span v-if="pickedCustomer">
+                        {{ pickedCustomer.customerName }}
+                        <span class="text-gray-400 ml-2">{{ pickedCustomer.customerPhone }}</span>
+                      </span>
+                      <span v-else class="text-gray-400">고객을 선택하세요</span>
+                    </div>
+                  </template>
                 </div>
 
                 <!-- 고객 검색 -->
-                <div v-if="!isCustomerLocked" class="space-y-2">
+                <div v-if="!isBlockMode && !isCustomerLocked" class="space-y-2">
                   <label class="block text-sm text-gray-600 dark:text-gray-300">고객 검색</label>
 
                   <!-- customerId 고정이면 검색/리스트 숨김 -->
@@ -428,20 +478,20 @@
                 </button>
 
                 <button
-                    class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
-                    :disabled="submitting || !canSave || !modalCanEdit"
-                    @click="saveEvent"
-                >
-                  {{ submitting ? '처리 중...' : (editingEventId ? '수정 저장' : '추가') }}
-                </button>
-
-                <button
                     v-if="editingEventId"
                     class="h-10 px-4 rounded-lg border border-red-500 bg-red-500 text-white text-sm hover:bg-red-600 disabled:opacity-60"
                     :disabled="submitting || !modalCanEdit"
                     @click="deleteEvent(editingEventId)"
                 >
                   삭제
+                </button>
+
+                <button
+                    class="h-10 px-4 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
+                    :disabled="submitting || !canSave || !modalCanEdit"
+                    @click="saveEvent"
+                >
+                  {{ submitting ? '처리 중...' : (editingEventId ? '수정 저장' : '추가') }}
                 </button>
               </div>
             </div>
@@ -456,7 +506,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
-import axios from '@/plugins/axios'
+import axios from '@/plugins/axios.js'
 import { useAuthStore } from "@/stores/auth.js";
 import { useRoute } from 'vue-router'
 import {RefreshIcon} from "@/icons";
@@ -490,11 +540,77 @@ const modalCanEdit = computed(() => {
 const auth = useAuthStore();
 const route = useRoute()
 const role = computed(() => auth.grants.role)
-const canWrite = computed(() => role.value === 'MANAGER' || role.value === 'STAFF')
+
+const isSuper = computed(() => !!auth.grants?.isSuper)
+const canWrite = computed(() =>
+    isSuper.value || role.value === 'MANAGER' || role.value === 'STAFF'
+)
+const editingEv = computed(() => findEventById(editingEventId.value))
+// 블럭(고객없음) 모달 상태
+const isBlockMode = computed(() => {
+  // 신규 등록이고 슈퍼면: 고객 없는 일정(블럭) 등록 모드
+  if (!editingEventId.value) return isSuper.value && !isCustomerLocked.value
+
+  // 수정/조회: 이벤트의 customerId가 null이면 블럭
+  const ev = findEventById(editingEventId.value)
+  return !!ev && (ev.customerId == null)
+})
+
+const showMemoField = computed(() => {
+  // 수정 모달: 블럭 일정이면 누구든 조회 가능
+  if (editingEventId.value) {
+    return (editingEv.value?.customerId == null) || isEtcSelected.value
+  }
+
+  // 신규 등록: etc 선택이면 보여줌, 슈퍼 블럭모드면 보여줌
+  return isEtcSelected.value || isSuper.value
+})
+
 const myUserName = ref<string>('')
 function canEditEvent(ev: ScheduleEvent) {
-  return canWrite.value && myUserId.value != null && ev.scheduledByUserId === myUserId.value
+  return (
+      canWrite.value &&
+      myUserId.value != null &&
+      ev.scheduledByUserId != null &&
+      ev.scheduledByUserId === myUserId.value
+  )
 }
+
+const UI_START_MIN = 8 * 60       // 08:00
+const UI_END_MIN = 23 * 60        // 23:00 (종료 상한)
+const UI_STEP = 30                // 30분
+
+const startOpen = ref(false)
+const endOpen = ref(false)
+
+function minToTimeStr(m: number) {
+  const hh = Math.floor(m / 60)
+  const mm = m % 60
+  return `${pad2(hh)}:${pad2(mm)}`
+}
+
+// 시작 옵션: 08:00 ~ 10:30 (종료가 최소 +30분이라 마지막 시작은 10:30)
+const startTimeOptions = computed(() => {
+  const out: string[] = []
+  // 시작은 마지막이 22:30 (종료 최소 +30분이 23:00까지 가능)
+  for (let m = UI_START_MIN; m <= UI_END_MIN - UI_STEP; m += UI_STEP) {
+    out.push(minToTimeStr(m))
+  }
+  return out
+})
+
+// 종료 옵션: 시작+30분 ~ 11:00
+const endTimeOptions = computed(() => {
+  const sm = parseTimeToMinutes(formStartTime.value) ?? UI_START_MIN
+  const minEnd = sm + UI_STEP
+
+  const out: string[] = []
+  const startEnd = Math.max(UI_START_MIN + UI_STEP, minEnd) // 최소 08:30
+  for (let m = startEnd; m <= UI_END_MIN; m += UI_STEP) {
+    out.push(minToTimeStr(m))
+  }
+  return out
+})
 
 // 버튼 색상
 const btnSoft =
@@ -541,6 +657,48 @@ const placeMemo = ref('') // 기타 회의실일 때만 보이는 장소 메모
 const formDate = ref('')       // YYYY-MM-DD
 const formStartTime = ref('')  // HH:mm
 const formEndTime = ref('')    // HH:mm
+
+// 시작 바꾸면 종료가 범위 밖이면 자동 보정
+watch(formStartTime, () => {
+  const sm = parseTimeToMinutes(formStartTime.value)
+  if (sm == null) return
+
+  const em = parseTimeToMinutes(formEndTime.value)
+  const minEnd = sm + UI_STEP
+
+  if (em == null || em < minEnd || em > UI_END_MIN) {
+    formEndTime.value = minToTimeStr(Math.min(minEnd, UI_END_MIN))
+  }
+  syncPendingFromForm()
+})
+
+const startPickerRef = ref<HTMLElement | null>(null)
+const endPickerRef = ref<HTMLElement | null>(null)
+
+function onDocPointerDown(e: PointerEvent) {
+  const t = e.target as Node | null
+
+  // 시작 열려있는데, 시작 피커 바깥 클릭이면 닫기
+  if (startOpen.value) {
+    const root = startPickerRef.value
+    if (root && t && !root.contains(t)) startOpen.value = false
+  }
+
+  // 종료 열려있는데, 종료 피커 바깥 클릭이면 닫기
+  if (endOpen.value) {
+    const root = endPickerRef.value
+    if (root && t && !root.contains(t)) endOpen.value = false
+  }
+}
+
+onMounted(() => {
+  // capture로 걸면 내부 stop 때문에 안 잡히는 케이스도 커버됨
+  document.addEventListener('pointerdown', onDocPointerDown, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onDocPointerDown, true)
+})
 
 function maxScrollLeft(el: HTMLElement) {
   return Math.max(0, el.scrollWidth - el.clientWidth)
@@ -772,7 +930,8 @@ watch(weekStart, async () => {
   await loadSchedules()
 
   const target =
-      (focusDayKey.value && days.value.some(d => d.key === focusDayKey.value)) ? focusDayKey.value
+      (followCustomerFocus.value && focusDayKey.value && days.value.some(d => d.key === focusDayKey.value))
+          ? focusDayKey.value
           : (days.value.some(d => d.key === todayKey.value) ? todayKey.value : days.value[0]?.key)
 
   if (target) {
@@ -780,7 +939,7 @@ watch(weekStart, async () => {
       scrollToDay(target)
 
       // ⬇ customerId로 포커스 들어온 경우만 세로 스크롤
-      if (lockedCustomerId.value) {
+      if (followCustomerFocus.value && lockedCustomerId.value) {
         const ev = events.value.find(e => e.customerId === lockedCustomerId.value)
         if (ev) scrollToEventVertical(ev)
       }
@@ -789,6 +948,21 @@ watch(weekStart, async () => {
 })
 
 /** ===== 시간 라벨 / 정오 라인 ===== */
+const isDark = ref(document.documentElement.classList.contains('dark'))
+let darkObs: MutationObserver | null = null
+
+onMounted(() => {
+  darkObs = new MutationObserver(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+  })
+  darkObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+})
+
+onBeforeUnmount(() => {
+  darkObs?.disconnect()
+  darkObs = null
+})
+
 function timeLabel(slotIdx: number) {
   const totalMin = START_MINUTES + slotIdx * SLOT_MINUTES
   const hh = Math.floor(totalMin / 60)
@@ -799,8 +973,13 @@ function timeLabel(slotIdx: number) {
 }
 function rowTopBorderStyle(slotIdx: number) {
   const noonSlot = ((13 * 60) - START_MINUTES) / SLOT_MINUTES
+  const dark = isDark.value
   if (slotIdx === noonSlot) {
-    return { borderTop: '2px solid rgb(209 213 219)' }
+    return {
+      borderTop: dark
+          ? '1px solid rgba(148,163,184,0.58)'
+          : '2px solid rgb(209 213 219)'
+    }
   }
   return {}
 }
@@ -848,6 +1027,7 @@ const selectionRectStyle = computed(() => {
 
 function onCellPointerDown(_e: PointerEvent, colIdx: number, slotIdx: number) {
   if (!canWrite.value) return
+  // if (lockEnabled.value && !isSuper.value) return
 
   selecting.value = true
   selection.colFrom = colIdx
@@ -885,12 +1065,14 @@ function onSelectingPointerUp() {
 }
 
 /** ===== 이벤트 모델 ===== */
-const lockedCustomerId = computed(() => {
+const lockedCustomerIdRaw = computed(() => {
   const raw = route.query.customerId
   const v = Array.isArray(raw) ? raw[0] : raw
   const n = Number(v)
   return Number.isFinite(n) && n > 0 ? n : null
 })
+const lockEnabled = computed(() => !isSuper.value && lockedCustomerIdRaw.value != null)
+const lockedCustomerId = computed(() => (lockEnabled.value ? lockedCustomerIdRaw.value : null))
 const isCustomerLocked = computed(() => lockedCustomerId.value != null)
 
 type CustomerPick = {
@@ -924,9 +1106,18 @@ const pending = reactive({ c1: 0, c2: 0, s1: 0, s2: 0 })
 const canSave = computed(() => {
   if (!pendingDayKey.value) return false
   if (pendingRoom.value == null) return false
-  if (!pickedCustomer.value?.customerId) return false
   if (timeError.value) return false
-  if (isEtcSelected.value && !placeMemo.value.trim()) return false
+
+// 슈퍼 블럭모드: 고객 없이 등록 가능, memo 필수
+  if (isBlockMode.value) {
+    if (!memo.value.trim()) return false
+    return true
+  }
+
+  // 일반모드
+  if (!pickedCustomer.value?.customerId) return false
+  if (isEtcSelected.value && !memo.value.trim()) return false
+
   return true
 })
 
@@ -1030,8 +1221,8 @@ type VisitScheduleRow = {
   customerId: number
   customerName: string
   customerPhone: string
-  scheduledByUserId: number
-  scheduledByName: string
+  scheduledByUserId: number | null
+  scheduledByName: string | null
   centerColor: string | null
   roomId: number | null
   roomName: string | null
@@ -1054,8 +1245,8 @@ type ScheduleEvent = {
   customerName: string
   customerPhone: string
   memo?: string
-  scheduledByUserId: number
-  scheduledByName: string
+  scheduledByUserId: number | null
+  scheduledByName: string | null
 }
 
 function parseLocalDateTime(s: string) {
@@ -1106,6 +1297,12 @@ function initFormFromPending() {
   formDate.value = pendingDayKey.value || ''
   formStartTime.value = slotToTimeStr(pending.s1)
   formEndTime.value = slotToTimeStr(pending.s2 + 1) // end는 exclusive
+  if (!startTimeOptions.value.includes(formStartTime.value)) {
+    formStartTime.value = startTimeOptions.value[0] // 08:00
+  }
+  if (!endTimeOptions.value.includes(formEndTime.value)) {
+    formEndTime.value = endTimeOptions.value[0] // 08:30
+  }
 }
 
 // form -> pending 반영 (유효할 때만 true)
@@ -1118,9 +1315,9 @@ function syncPendingFromForm(): boolean {
   // 30분 단위
   if (sm % SLOT_MINUTES !== 0 || em % SLOT_MINUTES !== 0) return false
 
-  // 경계 08:00~22:30
-  if (sm < START_MINUTES) return false
-  if (em > END_MINUTES_EXCLUSIVE) return false
+  // 경계
+  if (sm < UI_START_MIN) return false
+  if (em > UI_END_MIN) return false
 
   // start < end
   if (sm >= em) return false
@@ -1143,7 +1340,7 @@ const timeError = computed(() => {
   if (!dk) return '날짜를 선택하세요.'
   if (sm == null || em == null) return '시간 형식이 올바르지 않습니다.'
   if (sm % SLOT_MINUTES !== 0 || em % SLOT_MINUTES !== 0) return '시간은 30분 단위만 가능합니다.'
-  if (sm < START_MINUTES || em > END_MINUTES_EXCLUSIVE) return '시간 범위는 08:00~22:30 입니다.'
+  if (sm < UI_START_MIN || em > UI_END_MIN) return '시간 범위는 08:00~23:00 입니다.'
   if (sm >= em) return '시작 시간이 종료 시간보다 빨라야 합니다.'
   return ''
 })
@@ -1181,8 +1378,8 @@ function toEvent(r: VisitScheduleRow): ScheduleEvent | null {
     customerName: r.customerName,
     customerPhone: r.customerPhone,
     memo: r.memo ?? '',
-    scheduledByUserId: r.scheduledByUserId,
-    scheduledByName: r.scheduledByName
+    scheduledByUserId: r.scheduledByUserId ?? null,
+    scheduledByName: r.scheduledByName ?? '회수됨'
   }
 }
 
@@ -1260,6 +1457,7 @@ function eventStyle(ev: ScheduleEvent) {
   const left = colIdx * COL_WIDTH
   const top = ev.startSlot * ROW_HEIGHT
   const height = Math.max(ROW_HEIGHT, (ev.endSlot - ev.startSlot) * ROW_HEIGHT)
+  const dark = isDark.value
 
   return {
     left: `${left}px`,
@@ -1270,8 +1468,8 @@ function eventStyle(ev: ScheduleEvent) {
     cursor: canEditEvent(ev)
         ? (dragging.value?.id === ev.id ? 'grabbing' : 'grab')
         : 'default',
-    backgroundColor: hexToRgba(ev.centerColor, 0.10),
-    borderColor: hexToRgba(ev.centerColor, 0.45),
+    '--ev-bg': hexToRgba(ev.centerColor, dark ? 0.20 : 0.10),
+    '--ev-bd': hexToRgba(ev.centerColor, dark ? 0.75 : 0.45),
   } as any
 }
 
@@ -1300,21 +1498,33 @@ function closeModal() {
 
   if (!isCustomerLocked.value) pickedCustomer.value = null
 
+  startOpen.value = false
+  endOpen.value = false
   clearSelection()
 }
 
 async function openManualAdd() {
+  if (!canWrite.value) return
+  // if (lockEnabled.value && !isSuper.value) return
+
   await ensureLockedPicked()
+
+  // 신규 등록은 항상 오늘로 시작
+  const today = new Date()
+  const dk = ymd(today)
+  pendingDayKey.value = dk
+  pendingDayLabel.value = dayLabelOfKey(dk)
 
   pending.c1 = 0
   pending.c2 = 0
   pending.s1 = 2
   pending.s2 = 2
+  pendingRoom.value = roomListForGrid.value[0]?.room ?? null
   editingEventId.value = null
   editingScheduledByName.value = myUserName.value
   isOpen.value = true
   customerQuery.value = ''
-  if (!isCustomerLocked.value) await searchCustomers()
+  if (!isSuper.value && !isCustomerLocked.value) await searchCustomers()
   placeMemo.value = ''
   initFormFromPending()
 }
@@ -1355,7 +1565,7 @@ async function openEditEvent(ev: any) {
   await nextTick()
   modalRoot.value?.focus?.()
   customerQuery.value = ''
-  if (!isCustomerLocked.value) await searchCustomers()
+  if (!isSuper.value && !isCustomerLocked.value) await searchCustomers()
   placeMemo.value = ''
   initFormFromPending()
 }
@@ -1381,7 +1591,7 @@ async function openModalFromSelection(range: { c1: number; c2: number; s1: numbe
 
   await loadRooms()
 
-  if (isCustomerLocked.value) {
+  if (shouldAutoOpenFocus.value && lockedCustomerId.value) {
     await loadLockedCustomer()
     const exist = events.value.find(e => (e as any).customerId === lockedCustomerId.value)
     if (exist) {
@@ -1396,13 +1606,14 @@ async function openModalFromSelection(range: { c1: number; c2: number; s1: numbe
   await nextTick()
   modalRoot.value?.focus?.()
   customerQuery.value = ''
-  if (!isCustomerLocked.value) await searchCustomers()
+  if (!isSuper.value && !isCustomerLocked.value) await searchCustomers()
   placeMemo.value = ''
   initFormFromPending()
 }
 
 async function saveEvent() {
   if (!editingEventId.value && !canWrite.value) return
+  // if (!editingEventId.value && (lockEnabled.value && !isSuper.value)) return
   if (editingEventId.value && !modalCanEdit.value) return
   if (!canSave.value) return
 
@@ -1414,12 +1625,11 @@ async function saveEvent() {
     const endAt = slotToLdt(pendingDayKey.value, pending.s2 + 1)
 
     const payload: any = {
-      customerId: pickedCustomer.value!.customerId,
+      customerId: isBlockMode.value ? null : pickedCustomer.value!.customerId,
       roomId: pendingRoom.value!,
       startAt,
       endAt,
-      memo: memo.value.trim() || null,
-      placeMemo: isEtcSelected.value ? (placeMemo.value.trim() || null) : null
+      memo: memo.value.trim() || null
     }
 
     if (editingEventId.value) await axios.put(`/api/work/visit/schedules/${editingEventId.value}`, payload)
@@ -1427,6 +1637,9 @@ async function saveEvent() {
 
     await loadSchedules()
     closeModal()
+  } catch (e: any) {
+    console.error(e)
+    alert(e?.response?.data ?? e?.message ?? '등록 중 오류가 발생했습니다.')
   } finally {
     submitting.value = false
   }
@@ -1437,11 +1650,16 @@ async function deleteEvent(id: string | null) {
   const ev = events.value.find(e => e.id === id)
   if (!ev || !canEditEvent(ev)) return
 
+  if (!confirm('정말 일정을 삭제하시겠습니까?')) return
+
   submitting.value = true
   try {
     await axios.delete(`/api/work/visit/schedules/${id}`)
     await loadSchedules()
     if (editingEventId.value === id) closeModal()
+  } catch (e: any) {
+    console.error(e)
+    alert(e?.response?.data ?? e?.message ?? '삭제 중 오류가 발생했습니다.')
   } finally {
     submitting.value = false
   }
@@ -1659,6 +1877,9 @@ function goPrevWeek() { weekStart.value = addDays(weekStart.value, -7) }
 function goNextWeek() { weekStart.value = addDays(weekStart.value, 7) }
 function goToday() {
   todayKey.value = ymd(new Date())
+  focusDayKey.value = null
+  followCustomerFocus.value = false
+  shouldAutoOpenFocus.value = false
   weekStart.value = startOfWeek(new Date())
 }
 
@@ -1702,7 +1923,8 @@ async function loadRooms() {
 }
 
 async function loadLockedCustomer() {
-  if (!isCustomerLocked.value) return
+  if (!lockEnabled.value) return
+  if (!lockedCustomerId.value) return
   if (pickedCustomer.value?.customerId === lockedCustomerId.value) return
 
   try {
@@ -1714,7 +1936,7 @@ async function loadLockedCustomer() {
 }
 
 async function ensureLockedPicked() {
-  if (!isCustomerLocked.value) return
+  if (!lockEnabled.value) return
   await loadLockedCustomer()
 }
 
@@ -1728,6 +1950,8 @@ function mapCustomer(c: any): CustomerPick {
 }
 
 async function searchCustomers() {
+  if (isSuper.value) return  // 슈퍼계정은 고객 검색 자체 금지
+
   try {
     const params: any = {}
     if (customerQuery.value.trim()) params.keyword = customerQuery.value.trim()
@@ -1749,8 +1973,10 @@ type VisitFocusResp = {
   visitEndAt: string
 }
 
+// 자동스크롤 포커스 토글 변수
+const followCustomerFocus = ref(false)
 async function loadFocusIfLocked() {
-  if (!lockedCustomerId.value) return
+  if (!lockEnabled.value) return
 
   try {
     const { data } = await axios.get<VisitFocusResp>('/api/work/visit/schedules/focus', {
@@ -1759,6 +1985,7 @@ async function loadFocusIfLocked() {
 
     const dt = parseLocalDateTime(data.visitAt)
     if (dt) {
+      followCustomerFocus.value = true
       focusDayKey.value = ymd(dt)
       weekStart.value = startOfWeek(dt)   // 여기서 주가 바뀜
       shouldAutoOpenFocus.value = true
@@ -1766,6 +1993,7 @@ async function loadFocusIfLocked() {
   } catch {
     // 예약이 없으면(404) 그냥 현재 주 유지
     focusDayKey.value = null
+    followCustomerFocus.value = false
     shouldAutoOpenFocus.value = false
   }
 }
@@ -1777,6 +2005,7 @@ function debouncedCustomerSearch() {
 }
 
 function toggleCustomer(c: CustomerPick) {
+  if (isSuper.value) return
   if (!modalCanEdit.value) return
   if (isCustomerLocked.value) return
 

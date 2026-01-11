@@ -4,7 +4,9 @@ import com.blue.customer.all.dto.UserContextDto;
 import com.blue.customer.common.memo.dto.MemoDetailDto;
 import com.blue.customer.common.memo.dto.MemoUpdateDto;
 import com.blue.customer.common.memo.mapper.MemoMapper;
+import com.blue.global.exception.AuthException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,28 +20,28 @@ public class MemoService {
   public MemoDetailDto getMemo(Long customerId, String callerEmail) {
     // 권한 체크는 "조회"는 보통 완화하지만, 필요하면 동일 정책으로 제한
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
+    if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.",HttpStatus.GONE);
     
     Integer exists = mapper.existsCustomerById(customerId);
-    if (exists == null || exists == 0) throw new IllegalArgumentException("고객을 찾을 수 없습니다.");
+    if (exists == null || exists == 0) throw new AuthException("고객을 찾을 수 없습니다.",HttpStatus.GONE);
     
     // MANAGER/STAFF는 소유권 검사
     switch (me.getRole()) {
       case "SUPERADMIN" -> {}
       case "MANAGER" -> {
         Integer ownsCenter = mapper.customerOwnedByCenter(customerId, me.getCenterId());
-        if (ownsCenter == null || ownsCenter == 0) throw new IllegalArgumentException("권한이 없습니다.");
+        if (ownsCenter == null || ownsCenter == 0) throw new AuthException("권한이 없습니다.",HttpStatus.GONE);
       }
       case "STAFF" -> {
         Integer ownsSelf = mapper.customerOwnedByUser(customerId, me.getUserId());
-        if (ownsSelf == null || ownsSelf == 0) throw new IllegalArgumentException("권한이 없습니다.");
+        if (ownsSelf == null || ownsSelf == 0) throw new AuthException("권한이 없습니다.",HttpStatus.GONE);
       }
-      default -> throw new IllegalStateException("Unknown role: " + me.getRole());
+      default -> throw new AuthException("Unknown role: " + me.getRole(),HttpStatus.GONE);
     }
     
     // 1) 기본 메모 블록
     MemoDetailDto dto = mapper.selectCustomerMemoBlock(customerId);
-    if (dto == null) throw new IllegalArgumentException("고객을 찾을 수 없습니다.");
+    if (dto == null) throw new AuthException("고객을 찾을 수 없습니다.",HttpStatus.GONE);
     
     // 2) 전화번호로 과거 담당 프로 이력 조회 후 세팅 (resultMap 없이)
     if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
@@ -52,22 +54,22 @@ public class MemoService {
   @Transactional
   public void updateMemo(String callerEmail, Long customerId, MemoUpdateDto dto) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
+    if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.",HttpStatus.GONE);
     
     Integer exists = mapper.existsCustomerById(customerId);
-    if (exists == null || exists == 0) throw new IllegalArgumentException("중복 DB는 수정할 수 없습니다.");
+    if (exists == null || exists == 0) throw new AuthException("중복 DB는 수정할 수 없습니다.",HttpStatus.GONE);
     
     switch (me.getRole()) {
       case "SUPERADMIN" -> {}
       case "MANAGER" -> {
         Integer ownsCenter = mapper.customerOwnedByCenter(customerId, me.getCenterId());
-        if (ownsCenter == null || ownsCenter == 0) throw new IllegalArgumentException("권한이 없습니다.");
+        if (ownsCenter == null || ownsCenter == 0) throw new AuthException("권한이 없습니다.",HttpStatus.GONE);
       }
       case "STAFF" -> {
         Integer ownsSelf = mapper.customerOwnedByUser(customerId, me.getUserId());
-        if (ownsSelf == null || ownsSelf == 0) throw new IllegalArgumentException("권한이 없습니다.");
+        if (ownsSelf == null || ownsSelf == 0) throw new AuthException("권한이 없습니다.",HttpStatus.GONE);
       }
-      default -> throw new IllegalStateException("Unknown role: " + me.getRole());
+      default -> throw new AuthException("Unknown role: " + me.getRole(),HttpStatus.GONE);
     }
     
     // 빈문자열 → null 정규화

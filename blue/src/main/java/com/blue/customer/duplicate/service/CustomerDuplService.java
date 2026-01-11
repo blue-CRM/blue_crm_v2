@@ -4,7 +4,9 @@ import com.blue.customer.all.dto.AllDbRowDto;
 import com.blue.customer.all.dto.PagedResponse;
 import com.blue.customer.all.dto.UserContextDto;
 import com.blue.customer.duplicate.mapper.CustomerDuplMapper;
+import com.blue.global.exception.AuthException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,7 +22,7 @@ public class CustomerDuplService {
       String keyword, String dateFrom, String dateTo, String category
   ) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
+    if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.",HttpStatus.GONE);
     
     int offset = (page - 1) * size;
     List<AllDbRowDto> items;
@@ -47,7 +49,7 @@ public class CustomerDuplService {
         items = mapper.findAllForExpert(offset, size, keyword, dateFrom, dateTo, category, me.getExpertId(), me.getVisible());
         total = mapper.countAllForExpert(keyword, dateFrom, dateTo, category, me.getExpertId(), me.getVisible());
       }
-      default -> throw new IllegalStateException("Unknown role: " + me.getRole());
+      default -> throw new AuthException("Unknown role: " + me.getRole(),HttpStatus.GONE);
     }
     
     // 가시권한 N: 전화번호 마스킹
