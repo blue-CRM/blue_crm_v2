@@ -303,7 +303,7 @@
                     />
                   </div>
 
-                  <p v-if="timeError" class="col-span-12 text-xs text-rose-600">
+                  <p v-if="isOpen && formDate && timeError" class="col-span-12 text-xs text-rose-600">
                     {{ timeError }}
                   </p>
                 </div>
@@ -324,36 +324,42 @@
                   </select>
                 </div>
 
-                <div v-if="isEtcSelected" class="space-y-1">
+                <div v-if="showMemoField" class="space-y-1">
                   <label class="block text-sm text-gray-600 dark:text-gray-300">장소 메모</label>
                   <input
-                      v-model.trim="placeMemo"
+                      v-model.trim="memo"
                       type="text"
                       :disabled="!modalCanEdit"
                       placeholder="예: 외부 미팅 장소, 층/호수 등"
                       class="w-full h-11 rounded-lg border px-3
                        bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                       dark:border-gray-700 dark:bg-gray-800 dark:tvisit_scheduleext-gray-100"
                   />
                 </div>
 
                 <div class="grid grid-cols-12 items-center gap-3">
-                  <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">담당 프로</div>
+                  <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">
+                    {{ isBlockMode ? '일정관리자' : '담당 프로' }}
+                  </div>
                   <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-sm">
                     {{ editingScheduledByName }}
                   </div>
 
-                  <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">대상 고객</div>
-                  <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-sm">
-                    <span v-if="pickedCustomer">
-                      {{ pickedCustomer.customerName }} <span class="text-gray-400 ml-2">{{ pickedCustomer.customerPhone }}</span>
-                    </span>
-                    <span v-else class="text-gray-400">고객을 선택하세요</span>
-                  </div>
+                  <!-- 대상 고객 -->
+                  <template v-if="!isBlockMode">
+                    <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">대상 고객</div>
+                    <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-sm">
+                      <span v-if="pickedCustomer">
+                        {{ pickedCustomer.customerName }}
+                        <span class="text-gray-400 ml-2">{{ pickedCustomer.customerPhone }}</span>
+                      </span>
+                      <span v-else class="text-gray-400">고객을 선택하세요</span>
+                    </div>
+                  </template>
                 </div>
 
                 <!-- 고객 검색 -->
-                <div v-if="!isCustomerLocked" class="space-y-2">
+                <div v-if="!isBlockMode && !isCustomerLocked" class="space-y-2">
                   <label class="block text-sm text-gray-600 dark:text-gray-300">고객 검색</label>
 
                   <!-- customerId 고정이면 검색/리스트 숨김 -->
@@ -456,7 +462,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
-import axios from '@/plugins/axios'
+import axios from '@/plugins/axios.js'
 import { useAuthStore } from "@/stores/auth.js";
 import { useRoute } from 'vue-router'
 import {RefreshIcon} from "@/icons";
@@ -490,7 +496,32 @@ const modalCanEdit = computed(() => {
 const auth = useAuthStore();
 const route = useRoute()
 const role = computed(() => auth.grants.role)
-const canWrite = computed(() => role.value === 'MANAGER' || role.value === 'STAFF')
+
+const isSuper = computed(() => !!auth.grants?.isSuper)
+const canWrite = computed(() =>
+    isSuper.value || role.value === 'MANAGER' || role.value === 'STAFF'
+)
+const editingEv = computed(() => findEventById(editingEventId.value))
+// 블럭(고객없음) 모달 상태
+const isBlockMode = computed(() => {
+  // 신규 등록이고 슈퍼면: 고객 없는 일정(블럭) 등록 모드
+  if (!editingEventId.value) return isSuper.value
+
+  // 수정/조회: 이벤트의 customerId가 null이면 블럭
+  const ev = findEventById(editingEventId.value)
+  return !!ev && (ev.customerId == null)
+})
+
+const showMemoField = computed(() => {
+  // 수정 모달: 블럭 일정이면 누구든 조회 가능
+  if (editingEventId.value) {
+    return (editingEv.value?.customerId == null) || isEtcSelected.value
+  }
+
+  // 신규 등록: etc 선택이면 보여줌, 슈퍼 블럭모드면 보여줌
+  return isEtcSelected.value || isSuper.value
+})
+
 const myUserName = ref<string>('')
 function canEditEvent(ev: ScheduleEvent) {
   return (
@@ -930,9 +961,18 @@ const pending = reactive({ c1: 0, c2: 0, s1: 0, s2: 0 })
 const canSave = computed(() => {
   if (!pendingDayKey.value) return false
   if (pendingRoom.value == null) return false
-  if (!pickedCustomer.value?.customerId) return false
   if (timeError.value) return false
-  if (isEtcSelected.value && !placeMemo.value.trim()) return false
+
+// 슈퍼 블럭모드: 고객 없이 등록 가능, memo 필수
+  if (isBlockMode.value) {
+    if (!memo.value.trim()) return false
+    return true
+  }
+
+  // 일반모드
+  if (!pickedCustomer.value?.customerId) return false
+  if (isEtcSelected.value && !memo.value.trim()) return false
+
   return true
 })
 
@@ -1312,10 +1352,17 @@ function closeModal() {
 async function openManualAdd() {
   await ensureLockedPicked()
 
+  // 신규 등록은 항상 오늘로 시작
+  const today = new Date()
+  const dk = ymd(today)
+  pendingDayKey.value = dk
+  pendingDayLabel.value = dayLabelOfKey(dk)
+
   pending.c1 = 0
   pending.c2 = 0
   pending.s1 = 2
   pending.s2 = 2
+  pendingRoom.value = roomListForGrid.value[0]?.room ?? null
   editingEventId.value = null
   editingScheduledByName.value = myUserName.value
   isOpen.value = true
@@ -1420,12 +1467,11 @@ async function saveEvent() {
     const endAt = slotToLdt(pendingDayKey.value, pending.s2 + 1)
 
     const payload: any = {
-      customerId: pickedCustomer.value!.customerId,
+      customerId: isBlockMode.value ? null : pickedCustomer.value!.customerId,
       roomId: pendingRoom.value!,
       startAt,
       endAt,
-      memo: memo.value.trim() || null,
-      placeMemo: isEtcSelected.value ? (placeMemo.value.trim() || null) : null
+      memo: memo.value.trim() || null
     }
 
     if (editingEventId.value) await axios.put(`/api/work/visit/schedules/${editingEventId.value}`, payload)

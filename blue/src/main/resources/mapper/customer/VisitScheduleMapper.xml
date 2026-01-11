@@ -36,7 +36,7 @@
         vs.visit_end_at          AS visitEndAt,
         vs.memo                  AS memo
         FROM visit_schedule vs
-        JOIN customers cu ON cu.customer_id = vs.customer_id
+        LEFT JOIN customers cu ON cu.customer_id = vs.customer_id
         LEFT JOIN users u      ON u.user_id      = vs.scheduled_by_user_id
         JOIN users viewer ON viewer.user_id = #{viewerUserId}
         LEFT JOIN centers ce       ON ce.center_id = u.center_id
@@ -97,7 +97,8 @@
         SELECT
             user_id   AS userId,
             user_role AS role,
-            user_name AS userName
+            user_name AS userName,
+            is_super  AS isSuper
         FROM users
         WHERE user_email = #{email}
         LIMIT 1
