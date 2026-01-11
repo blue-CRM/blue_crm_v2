@@ -168,16 +168,17 @@
                     />
                     <!-- 본문 -->
                     <div
-                        class="h-full w-full rounded-md shadow-sm border text-xs flex flex-col justify-between overflow-hidden"
+                        class="h-full w-full rounded-md shadow-sm border text-xs flex flex-col justify-between overflow-hidden dark:border-white/20"
                         :class="eventClass(ev)"
+                        :style="{ backgroundColor: 'var(--ev-bg)', borderColor: 'var(--ev-bd)' }"
                     >
                       <div class="flex items-start justify-between gap-2 px-2 py-1">
                         <div class="min-w-0">
                           <div class="font-semibold truncate">
                             {{ ev.scheduledByName }}
                           </div>
-                          <div class="text-[11px] opacity-80">
-                            {{ ev.customerName }}
+                          <div class="text-[11px] opacity-80 truncate">
+                            {{ ev.customerName ? ev.customerName : ev.memo }}
                           </div>
                         </div>
 
@@ -294,7 +295,7 @@
                           <li
                               v-for="t in startTimeOptions"
                               :key="t"
-                              class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                              class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
                               @click="
                                   formStartTime = t;
                                   startOpen = false;
@@ -332,7 +333,7 @@
                             <li
                                 v-for="t in endTimeOptions"
                                 :key="t"
-                                class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                                class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
                                 @click="
                                     formEndTime = t;
                                     endOpen = false;
@@ -376,7 +377,7 @@
                       placeholder="예: 외부 미팅 장소, 층/호수 등"
                       class="w-full h-11 rounded-lg border px-3
                        bg-white text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10
-                       dark:border-gray-700 dark:bg-gray-800 dark:tvisit_scheduleext-gray-100"
+                       dark:border-gray-700 dark:bg-gray-800 dark:tvisit_scheduleext-gray-100 dark:text-gray-300"
                   />
                 </div>
 
@@ -384,14 +385,14 @@
                   <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">
                     {{ isBlockMode ? '일정관리자' : '담당 프로' }}
                   </div>
-                  <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-sm">
+                  <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm">
                     {{ editingScheduledByName }}
                   </div>
 
                   <!-- 대상 고객 -->
                   <template v-if="!isBlockMode">
                     <div class="col-span-3 text-sm text-gray-600 dark:text-gray-300">대상 고객</div>
-                    <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-sm">
+                    <div class="col-span-9 h-11 flex items-center px-2 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm">
                       <span v-if="pickedCustomer">
                         {{ pickedCustomer.customerName }}
                         <span class="text-gray-400 ml-2">{{ pickedCustomer.customerPhone }}</span>
@@ -947,6 +948,21 @@ watch(weekStart, async () => {
 })
 
 /** ===== 시간 라벨 / 정오 라인 ===== */
+const isDark = ref(document.documentElement.classList.contains('dark'))
+let darkObs: MutationObserver | null = null
+
+onMounted(() => {
+  darkObs = new MutationObserver(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+  })
+  darkObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+})
+
+onBeforeUnmount(() => {
+  darkObs?.disconnect()
+  darkObs = null
+})
+
 function timeLabel(slotIdx: number) {
   const totalMin = START_MINUTES + slotIdx * SLOT_MINUTES
   const hh = Math.floor(totalMin / 60)
@@ -957,8 +973,13 @@ function timeLabel(slotIdx: number) {
 }
 function rowTopBorderStyle(slotIdx: number) {
   const noonSlot = ((13 * 60) - START_MINUTES) / SLOT_MINUTES
+  const dark = isDark.value
   if (slotIdx === noonSlot) {
-    return { borderTop: '2px solid rgb(209 213 219)' }
+    return {
+      borderTop: dark
+          ? '1px solid rgba(148,163,184,0.58)'
+          : '2px solid rgb(209 213 219)'
+    }
   }
   return {}
 }
@@ -1006,7 +1027,7 @@ const selectionRectStyle = computed(() => {
 
 function onCellPointerDown(_e: PointerEvent, colIdx: number, slotIdx: number) {
   if (!canWrite.value) return
-  if (lockEnabled.value && !isSuper.value) return
+  // if (lockEnabled.value && !isSuper.value) return
 
   selecting.value = true
   selection.colFrom = colIdx
@@ -1436,6 +1457,7 @@ function eventStyle(ev: ScheduleEvent) {
   const left = colIdx * COL_WIDTH
   const top = ev.startSlot * ROW_HEIGHT
   const height = Math.max(ROW_HEIGHT, (ev.endSlot - ev.startSlot) * ROW_HEIGHT)
+  const dark = isDark.value
 
   return {
     left: `${left}px`,
@@ -1446,8 +1468,8 @@ function eventStyle(ev: ScheduleEvent) {
     cursor: canEditEvent(ev)
         ? (dragging.value?.id === ev.id ? 'grabbing' : 'grab')
         : 'default',
-    backgroundColor: hexToRgba(ev.centerColor, 0.10),
-    borderColor: hexToRgba(ev.centerColor, 0.45),
+    '--ev-bg': hexToRgba(ev.centerColor, dark ? 0.20 : 0.10),
+    '--ev-bd': hexToRgba(ev.centerColor, dark ? 0.75 : 0.45),
   } as any
 }
 
@@ -1483,7 +1505,7 @@ function closeModal() {
 
 async function openManualAdd() {
   if (!canWrite.value) return
-  if (lockEnabled.value && !isSuper.value) return
+  // if (lockEnabled.value && !isSuper.value) return
 
   await ensureLockedPicked()
 
@@ -1502,7 +1524,7 @@ async function openManualAdd() {
   editingScheduledByName.value = myUserName.value
   isOpen.value = true
   customerQuery.value = ''
-  if (!isCustomerLocked.value) await searchCustomers()
+  if (!isSuper.value && !isCustomerLocked.value) await searchCustomers()
   placeMemo.value = ''
   initFormFromPending()
 }
@@ -1543,7 +1565,7 @@ async function openEditEvent(ev: any) {
   await nextTick()
   modalRoot.value?.focus?.()
   customerQuery.value = ''
-  if (!isCustomerLocked.value) await searchCustomers()
+  if (!isSuper.value && !isCustomerLocked.value) await searchCustomers()
   placeMemo.value = ''
   initFormFromPending()
 }
@@ -1584,14 +1606,14 @@ async function openModalFromSelection(range: { c1: number; c2: number; s1: numbe
   await nextTick()
   modalRoot.value?.focus?.()
   customerQuery.value = ''
-  if (!isCustomerLocked.value) await searchCustomers()
+  if (!isSuper.value && !isCustomerLocked.value) await searchCustomers()
   placeMemo.value = ''
   initFormFromPending()
 }
 
 async function saveEvent() {
   if (!editingEventId.value && !canWrite.value) return
-  if (!editingEventId.value && (lockEnabled.value && !isSuper.value)) return
+  // if (!editingEventId.value && (lockEnabled.value && !isSuper.value)) return
   if (editingEventId.value && !modalCanEdit.value) return
   if (!canSave.value) return
 
@@ -1928,6 +1950,8 @@ function mapCustomer(c: any): CustomerPick {
 }
 
 async function searchCustomers() {
+  if (isSuper.value) return  // 슈퍼계정은 고객 검색 자체 금지
+
   try {
     const params: any = {}
     if (customerQuery.value.trim()) params.keyword = customerQuery.value.trim()
@@ -1981,6 +2005,7 @@ function debouncedCustomerSearch() {
 }
 
 function toggleCustomer(c: CustomerPick) {
+  if (isSuper.value) return
   if (!modalCanEdit.value) return
   if (isCustomerLocked.value) return
 
