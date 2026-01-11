@@ -388,7 +388,7 @@
                 <p v-if="sheetNameError" class="mt-1 text-sm text-error-500">{{ sheetNameError }}</p>
               </div>
 
-              <!-- 시작 행 -->
+              <!-- 마지막 행 -->
               <div class="text-sm font-medium text-gray-700 dark:text-gray-300">마지막 행</div>
               <div class="col-start-2">
                 <input
@@ -1068,7 +1068,7 @@
                       />
 
                       <Teleport to="body">
-                        <div v-if="colorOpen" class="fixed inset-0 z-[2147483000]" @mousedown="onBackdropDown">
+                        <div v-if="colorOpen" class="fixed inset-0 z-[3000]" @mousedown="onBackdropDown">
                           <!-- 실제 팝오버 -->
                           <div
                               ref="colorPopoverRef"
@@ -1218,16 +1218,21 @@
                       <td class="px-3 py-3">
                         <template v-if="editingCenterId === c.centerId">
                           <div class="flex items-center gap-2">
-                            <input type="color" v-model="editingCenter.centerColor" class="h-9 w-12 rounded-md border ... p-1" />
-                            <div class="flex flex-wrap gap-1">
-                              <button
-                                  v-for="col in CENTER_COLOR_PRESETS"
-                                  :key="col"
-                                  type="button"
-                                  class="h-6 w-6 rounded-md ring-1 ring-black/10 dark:ring-white/10"
-                                  :style="{ backgroundColor: col }"
-                                  @click="editingCenter.centerColor = col"
-                              />
+                            <!-- 트리거: 현재 색(버튼) -->
+                            <button
+                                type="button"
+                                class="h-11 w-14 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-white dark:bg-gray-800"
+                                :style="{ backgroundColor: (editingCenter.centerColor || '#4B5563') }"
+                                @click.stop="toggleColorPopover($event, 'EDIT')"
+                            />
+
+                            <!-- HEX 표시 -->
+                            <div
+                                class="inline-flex items-center justify-center h-10 px-3 rounded-lg border
+                                       text-xs tabular-nums text-gray-600 dark:text-gray-300
+                                       border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                            >
+                              {{ editingCenter.centerColor || '미지정' }}
                             </div>
                           </div>
                         </template>
@@ -1578,11 +1583,6 @@
                     </tbody>
                   </table>
                 </div>
-              </div>
-
-              <!-- 구분선 -->
-              <div class="col-span-2">
-                <hr class="my-6 border-gray-200 dark:border-gray-700" />
               </div>
 
               <!-- ===== 회의실 관리 ===== -->
@@ -2164,13 +2164,7 @@ function validateSheetName() {
 }
 function validateStartRow() {
   const n = Number(startRow.value || 0)
-  startRowError.value = n >= 1 ? '' : '시작 행은 1 이상의 정수여야 합니다.'
-}
-function resetSheetForm() {
-  sheetId.value = ''
-  startRow.value = 1
-  sheetIdError.value = ''
-  startRowError.value = ''
+  startRowError.value = n >= 1 ? '' : '마지막 행은 1 이상의 정수여야 합니다.'
 }
 async function saveSheetConfig() {
   validateSheetId()
@@ -2456,12 +2450,18 @@ const CENTER_COLOR_PRESETS = [
 ]
 
 const newCenterColor = ref(CENTER_COLOR_PRESETS[0])
+
 const isDark = ref(false)
 let themeObs = null
 
 const colorDraft = ref(newCenterColor.value)   // 팝업 내부 임시값
 const colorOrigin = ref(newCenterColor.value)  // 팝업 열기 전 원본
 
+// 팀색상 수정용
+const editColorPopoverOpen = ref(false)
+const editColorPopoverStyle = ref({})
+
+const colorMode = ref('NEW');
 const colorOpen = ref(false)
 const colorBtnRef = ref(null)
 const colorPopoverRef = ref(null)
@@ -2472,7 +2472,7 @@ const colorPopoverStyle = ref({
 })
 
 function placeColorPopover() {
-  const btn = colorBtnRef.value
+  const btn = currentTargetEl.value;
   if (!btn) return
   const r = btn.getBoundingClientRect()
 
@@ -2503,23 +2503,59 @@ function placeColorPopover() {
   }
 }
 
-async function toggleColorPopover() {
+// 팀색상 모달 열기
+const currentTargetEl = ref(null);
+async function toggleColorPopover(event, mode = 'NEW') {
+  colorMode.value = mode;
+
+  currentTargetEl.value = event?.currentTarget || colorBtnRef.value;
   if (!colorOpen.value) {
-    // 열 때
-    colorOrigin.value = newCenterColor.value
-    colorDraft.value = newCenterColor.value
-    colorOpen.value = true
-    await nextTick()
-    placeColorPopover()
+    // 열 때: 모드에 따라 초기색상 설정
+    const currentVal = (mode === 'EDIT') ? editingCenter.value.centerColor : newCenterColor.value;
+    colorOrigin.value = currentVal || '#4B5563';
+    colorDraft.value = currentVal || '#4B5563';
+
+    colorOpen.value = true;
+    await nextTick();
+
+    // 버튼 위치 계산 (event가 있으면 해당 버튼 기준으로 위치 잡기)
+    const btn = event?.currentTarget || colorBtnRef.value;
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      // ... (기존 placeColorPopover 로직을 여기에 넣거나 호출)
+      placeColorWithTarget(r);
+    }
   } else {
-    // 닫을 때 (X랑 동일)
-    cancelColor()
+    cancelColor();
   }
 }
 
+// 팀색상 모달 위치 계산용 공통 함수
+function placeColorWithTarget(r) {
+  const popW = 288;
+  const popH = 220;
+  const gap = 8;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let left = r.right + gap;
+  let top = r.top;
+  if (left + popW > vw - 8) left = Math.max(8, r.left - gap - popW);
+  if (top + popH > vh - 8) top = Math.max(8, vh - popH - 8);
+
+  colorPopoverStyle.value = {
+    left: `${Math.round(left)}px`,
+    top: `${Math.round(top)}px`,
+  };
+}
+
 function confirmColor() {
-  newCenterColor.value = colorDraft.value
-  colorOpen.value = false
+  if (colorMode.value === 'EDIT') {
+    editingCenter.value.centerColor = colorDraft.value;
+  } else {
+    newCenterColor.value = colorDraft.value;
+  }
+  colorOpen.value = false;
 }
 
 function cancelColor() {
