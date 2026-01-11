@@ -3,7 +3,9 @@ package com.blue.customer.allocate.service;
 import com.blue.customer.all.dto.PagedResponse;
 import com.blue.customer.allocate.dto.*;
 import com.blue.customer.allocate.mapper.CustomerAllocateMapper;
+import com.blue.global.exception.AuthException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
@@ -20,12 +22,11 @@ public class CustomerAllocateService {
   private final CustomerAllocateMapper mapper;
   private final AllocLogMapper allocLogMapper;
   
-  public PagedResponse<AllocateListRowDto> list(String callerEmail,
-                                                int page, int size,
+  public PagedResponse<AllocateListRowDto> list(String callerEmail, int page, int size,
                                                 String keyword, String dateFrom, String dateTo,
-                                                String category, String division, String sort) {
+                                                String category, String division, String prevStatus, String sort) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
+    if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.", HttpStatus.GONE);
     
     int offset = (page - 1) * size;
     List<AllocateListRowDto> items;
@@ -34,30 +35,30 @@ public class CustomerAllocateService {
     switch (me.getRole()) {
       case "SUPERADMIN" -> {
         // HQ 리스트는 "담당 프로 없음 AND 상태 ∈ {없음, 회수}"가 XML에서 강제됨
-        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getVisible());
-        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, me.getVisible());
+        items = mapper.findListForHq(offset, size, keyword, dateFrom, dateTo, category, division, prevStatus, sort, me.getVisible());
+        total = mapper.countListForHq(keyword, dateFrom, dateTo, category, division, prevStatus, me.getVisible());
       }
       case "MANAGER" -> {
         // MANAGER 리스트는 "담당 프로=나 AND 상태=없음"이 XML에서 강제됨
-        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, sort, me.getUserId(), me.getVisible());
-        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, me.getUserId(), me.getVisible());
+        items = mapper.findListForManager(offset, size, keyword, dateFrom, dateTo, category, prevStatus, sort, me.getUserId(), me.getVisible());
+        total = mapper.countListForManager(keyword, dateFrom, dateTo, category, prevStatus, me.getUserId(), me.getVisible());
       }
       case "CENTERHEAD" -> {
         if (!"Y".equals(me.getCanAllocate())) {
           return new PagedResponse<>(Collections.emptyList(), 0, 0);
         }
-        items = mapper.findListForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getUserId(), me.getVisible(), me.getCenterId());
-        total = mapper.countListForCenterHead(keyword, dateFrom, dateTo, category, division, me.getUserId(), me.getVisible(), me.getCenterId());
+        items = mapper.findListForCenterHead(offset, size, keyword, dateFrom, dateTo, category, division, prevStatus, sort, me.getUserId(), me.getVisible(), me.getCenterId());
+        total = mapper.countListForCenterHead(keyword, dateFrom, dateTo, category, division, prevStatus, me.getUserId(), me.getVisible(), me.getCenterId());
       }
       case "EXPERT" -> {
         if (!"Y".equals(me.getCanAllocate())) {
           return new PagedResponse<>(Collections.emptyList(), 0, 0);
         }
-        items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, division, sort, me.getUserId(), me.getVisible(), me.getExpertId());
-        total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, division, me.getUserId(), me.getVisible(), me.getExpertId());
+        items = mapper.findListForExpert(offset, size, keyword, dateFrom, dateTo, category, division, prevStatus, sort, me.getUserId(), me.getVisible(), me.getExpertId());
+        total = mapper.countListForExpert(keyword, dateFrom, dateTo, category, division, prevStatus, me.getUserId(), me.getVisible(), me.getExpertId());
       }
       
-      default -> throw new IllegalArgumentException("권한이 없습니다.");
+      default -> throw new AuthException("권한이 없습니다.", HttpStatus.GONE);
     }
     
     int totalPages = (int) Math.ceil((double) total / size);
@@ -68,22 +69,22 @@ public class CustomerAllocateService {
   public AllocateResult allocateByHq(String callerEmail, AllocateHqReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"SUPERADMIN".equals(me.getRole())) {
-      throw new IllegalArgumentException("권한이 없습니다.");
+      throw new AuthException("권한이 없습니다.", HttpStatus.GONE);
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new AllocateResult(0, 0);
     }
     if (req.getTargetCenterId() == null) {
-      throw new IllegalArgumentException("팀을 선택하세요.");
+      throw new AuthException("팀을 선택하세요.", HttpStatus.GONE);
     }
     if (req.getTargetUserId() == null) {
-      throw new IllegalArgumentException("팀장 또는 직원을 반드시 선택해야 합니다.");
+      throw new AuthException("팀장 또는 직원을 반드시 선택해야 합니다.", HttpStatus.GONE);
     }
     
     Long targetUserId = req.getTargetUserId();
     Integer ok = mapper.userBelongsToCenter(targetUserId, req.getTargetCenterId());
     if (ok == null || ok == 0) {
-      throw new IllegalArgumentException("선택한 직원이 해당 팀 소속이 아닙니다.");
+      throw new AuthException("선택한 직원이 해당 팀 소속이 아닙니다.", HttpStatus.GONE);
     }
     
     String targetRole = mapper.findUserRole(targetUserId);
@@ -130,17 +131,17 @@ public class CustomerAllocateService {
   public AllocateResult allocateByManager(String callerEmail, AllocateMgrReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"MANAGER".equals(me.getRole())) {
-      throw new IllegalArgumentException("권한이 없습니다.");
+      throw new AuthException("권한이 없습니다.", HttpStatus.GONE);
     }
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) {
       return new AllocateResult(0, 0);
     }
     if (req.getTargetUserId() == null) {
-      throw new IllegalArgumentException("직원을 선택하세요.");
+      throw new AuthException("직원을 선택하세요.", HttpStatus.GONE);
     }
     
     Integer ok = mapper.staffInSameCenter(me.getUserId(), req.getTargetUserId());
-    if (ok == null || ok == 0) throw new IllegalArgumentException("같은 팀의 직원만 분배할 수 있습니다.");
+    if (ok == null || ok == 0) throw new AuthException("같은 팀의 직원만 분배할 수 있습니다.", HttpStatus.GONE);
     
     // 조건에 맞는 대상만 잠금(현재담당=팀장 본인 AND 상태=없음)
     List<Long> lockIds = mapper.lockCustomersForManager(req.getCustomerIds(), me.getUserId());
@@ -192,24 +193,24 @@ public class CustomerAllocateService {
   @Transactional
   public AllocateResult allocateByExpertHead(String callerEmail, AllocateHqReq req) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null) throw new IllegalArgumentException("사용자 정보가 없습니다.");
+    if (me == null) throw new AuthException("사용자 정보가 없습니다.", HttpStatus.GONE);
     
     // 1. 권한 체크
     boolean isCenterHead = "CENTERHEAD".equals(me.getRole());
     boolean isExpert = "EXPERT".equals(me.getRole());
     
-    if (!isCenterHead && !isExpert) throw new IllegalArgumentException("권한이 없습니다.");
-    if (!"Y".equals(me.getCanAllocate())) throw new IllegalArgumentException("분배 권한이 없습니다.");
+    if (!isCenterHead && !isExpert) throw new AuthException("권한이 없습니다.", HttpStatus.GONE);
+    if (!"Y".equals(me.getCanAllocate())) throw new AuthException("분배 권한이 없습니다.", HttpStatus.GONE);
     
     // 2. 검증
     if (req.getCustomerIds() == null || req.getCustomerIds().isEmpty()) return new AllocateResult(0, 0);
-    if (req.getTargetCenterId() == null) throw new IllegalArgumentException("팀을 선택하세요.");
-    if (req.getTargetUserId() == null) throw new IllegalArgumentException("팀장 또는 직원을 반드시 선택해야 합니다.");
+    if (req.getTargetCenterId() == null) throw new AuthException("팀을 선택하세요.", HttpStatus.GONE);
+    if (req.getTargetUserId() == null) throw new AuthException("팀장 또는 직원을 반드시 선택해야 합니다.", HttpStatus.GONE);
     
     // 3. 타겟 직원이 "타겟 센터"에 소속되어 있는지는 확인해야 함 (데이터 무결성)
     Integer ok = mapper.userBelongsToCenter(req.getTargetUserId(), req.getTargetCenterId());
     if (ok == null || ok == 0) {
-      throw new IllegalArgumentException("선택한 직원이 해당 팀 소속이 아닙니다.");
+      throw new AuthException("선택한 직원이 해당 팀 소속이 아닙니다.", HttpStatus.GONE);
     }
     
     // 4. 잠금 (Lock) - 내 권한(출처)에 맞는 DB인지 확인
@@ -246,7 +247,7 @@ public class CustomerAllocateService {
   // 직원 검색
   public List<UserPickDto> searchUsersForAllocate(String email, Long centerId, String q) {
     UserContextDto me = mapper.findUserContextByEmail(email);
-    if (me == null) throw new AccessDeniedException("No user");
+    if (me == null) throw new AuthException("No user", HttpStatus.GONE);
     
     Long targetCenterId = null;
     switch (me.getRole()) {
@@ -255,10 +256,10 @@ public class CustomerAllocateService {
       }
       case "MANAGER" -> {
         // 매니저는 항상 본인 팀 강제 (전달 centerId는 무시)
-        if (me.getCenterId() == null) throw new AccessDeniedException("팀이 미배정 상태입니다.");
+        if (me.getCenterId() == null) throw new AuthException("팀이 미배정 상태입니다.", HttpStatus.GONE);
         targetCenterId = me.getCenterId();
       }
-      default -> throw new AccessDeniedException("Forbidden");
+      default -> throw new AuthException("Forbidden", HttpStatus.GONE);
     }
     
     // 같은 팀의 MANAGER/STAFF 모두 반환
@@ -273,7 +274,7 @@ public class CustomerAllocateService {
         !"CENTERHEAD".equals(me.getRole()) &&
         !"EXPERT".equals(me.getRole())
     )) {
-      throw new IllegalArgumentException("권한이 없습니다.");
+      throw new AuthException("권한이 없습니다.", HttpStatus.GONE);
     }
     return mapper.findCentersForAllocate();
   }
@@ -312,7 +313,7 @@ public class CustomerAllocateService {
     // 1. 권한 검사
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
     if (me == null || !"SUPERADMIN".equals(me.getRole())) {
-      throw new AccessDeniedException("권한이 없습니다.");
+      throw new AuthException("권한이 없습니다.", HttpStatus.GONE);
     }
     
     // 2. 유효성 검사

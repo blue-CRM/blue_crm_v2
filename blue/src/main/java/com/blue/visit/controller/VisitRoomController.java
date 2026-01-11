@@ -2,10 +2,7 @@ package com.blue.visit.controller;
 
 import com.blue.auth.dto.MeetingRoomDto;
 import com.blue.auth.service.MeetingRoomService;
-import com.blue.visit.dto.VisitCustomerPickDto;
-import com.blue.visit.dto.VisitScheduleFocusDto;
-import com.blue.visit.dto.VisitScheduleRowDto;
-import com.blue.visit.dto.VisitScheduleUpsertReq;
+import com.blue.visit.dto.*;
 import com.blue.visit.service.VisitScheduleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -70,5 +67,14 @@ public class VisitRoomController {
   public VisitCustomerPickDto customer(Authentication auth,
                                        @PathVariable Long customerId) {
     return visitScheduleService.getCustomerById(auth.getName(), customerId);
+  }
+  
+  @GetMapping("/customers/{customerId}/summary")
+  public VisitSummaryDto visitSummary(
+      Authentication auth,
+      @PathVariable Long customerId
+  ) {
+    String email = (auth == null) ? null : auth.getName();
+    return visitScheduleService.getSummary(email, customerId);
   }
 }

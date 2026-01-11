@@ -9,7 +9,10 @@
             v-if="role === 'SUPERADMIN' || role === 'CENTERHEAD' || role === 'EXPERT'"
             :selects="[
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
-                  '재콜', '내방', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
+                  '재콜', '내방', '내방취소', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'],
+                ['직전상태 전체', '부재1','부재2','부재3','부재4','부재5','기타','결번',
+                   '재콜','내방','내방취소','가망','자연풀','카피','거절']
+                   ]"
             :buttons="hqButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
@@ -37,7 +40,10 @@
             v-else-if="role === 'MANAGER'"
             :selects="[
                 ['상태 전체', '부재1', '부재2', '부재3', '부재4', '부재5', '기타', '결번',
-                  '재콜', '내방', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'] ]"
+                  '재콜', '내방', '내방취소', '신규', '가망', '자연풀', '카피', '거절', '없음', '회수'],
+                ['직전상태 전체', '부재1','부재2','부재3','부재4','부재5','기타','결번',
+                   '재콜','내방','내방취소','가망','자연풀','카피','거절']
+                   ]"
             :buttons="mgrButtons"
             :showRefresh="true"
             :refreshing="isRefreshing"
@@ -105,10 +111,10 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import PsnsTable from '@/components/tables/basic-tables/PsnsTable.vue'
-import { useAuthStore } from '@/stores/auth'
-import { useTableQuery } from '@/composables/useTableQuery'
-import { globalFilters } from '@/composables/globalFilters'
-import axios from '@/plugins/axios'
+import { useAuthStore } from '@/stores/auth.js'
+import { useTableQuery } from '@/composables/useTableQuery.js'
+import { globalFilters } from '@/composables/globalFilters.js'
+import axios from '@/plugins/axios.js'
 
 /** 권한/페이지 타이틀 */
 const auth = useAuthStore()
@@ -121,7 +127,7 @@ const {
 } = useTableQuery({
   url: '/api/work/revoke/list',
   externalFilters: globalFilters,
-  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword', status: 'status', sort: 'sort' },
+  useExternalKeys: { from: 'dateFrom', to: 'dateTo', category: 'category', keyword: 'keyword', status: 'status', prevStatus: 'prevStatus', sort: 'sort' },
   mapper: (res: any) => ({
     items: res.data.items,
     totalPages: res.data.totalPages,
@@ -176,6 +182,7 @@ const hqColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
+  { key: 'prevStatus', label: '직전상태', type: 'badge', hideIfEmpty: true },
   { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
@@ -194,6 +201,7 @@ const mgrColumns = [
   { key: 'source',    label: 'DB출처',   type: 'text' },
   { key: 'content',   label: '내용',     type: 'text', ellipsis: { width: 150 } },
   { key: "status",    label: "상태",     type: "badge" },
+  { key: 'prevStatus', label: '직전상태', type: 'badge', hideIfEmpty: true },
   { key: "",  label: "",   type: "text", ellipsis: { width: 10 } },
   {
     key: "centerName",
@@ -216,6 +224,12 @@ function onSelectChange({ idx, value }: { idx: number; value: string }) {
 
     // useTableQuery의 setFilter를 호출하여 API 재요청
     setFilter('status', filterValue)
+  }
+
+  // 첫 번째 드롭다운(index 1) : '직전상태(prevStatus)' 필터
+  if (idx === 1) {
+    const filterValue = value === '직전상태 전체' ? null : value
+    setFilter('prevStatus', filterValue)
   }
 }
 

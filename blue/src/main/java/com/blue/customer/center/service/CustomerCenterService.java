@@ -6,12 +6,14 @@ import com.blue.customer.center.dto.BranchSimpleDto;
 import com.blue.customer.center.dto.CenterDbRowDto;
 import com.blue.customer.center.dto.CenterSimpleDto;
 import com.blue.customer.center.mapper.CustomerCenterMapper;
+import com.blue.global.exception.AuthException;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -32,9 +34,9 @@ public class CustomerCenterService {
   ========================= */
   private UserContextDto requireMe(String callerEmail) {
     UserContextDto me = mapper.findUserContextByEmail(callerEmail);
-    if (me == null) throw new IllegalArgumentException("인증 사용자 정보를 찾을 수 없습니다.");
+    if (me == null) throw new AuthException("인증 사용자 정보를 찾을 수 없습니다.",HttpStatus.GONE);
     if (!List.of("SUPERADMIN", "CENTERHEAD", "EXPERT").contains(me.getRole())) {
-      throw new IllegalArgumentException("접근 권한이 없습니다.");
+      throw new AuthException("접근 권한이 없습니다.",HttpStatus.GONE);
     }
     return me;
   }
@@ -136,7 +138,7 @@ public class CustomerCenterService {
           );
         }
       }
-      default -> throw new IllegalStateException("Unknown role: " + me.getRole());
+      default -> throw new AuthException("Unknown role: " + me.getRole(),HttpStatus.GONE);
     }
     
     // visible=N: 전화 마스킹 (센터DB 허용 역할 전부 적용)
@@ -206,7 +208,7 @@ public class CustomerCenterService {
           );
         }
       }
-      default -> throw new IllegalStateException("Unknown role: " + me.getRole());
+      default -> throw new AuthException("Unknown role: " + me.getRole(),HttpStatus.GONE);
     }
     
     if ("N".equalsIgnoreCase(me.getVisible())) {
@@ -239,7 +241,7 @@ public class CustomerCenterService {
           .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
           .body(out.toByteArray());
     } catch (Exception e) {
-      throw new RuntimeException("엑셀 생성 실패", e);
+      throw new AuthException("엑셀 생성 실패",HttpStatus.GONE);
     }
   }
   

@@ -26,7 +26,6 @@ public class SecurityConfig {
   
   @Bean
   // 시큐리티 필터
-  // TODO 권한 확장에 따른 수정 필요
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
         .cors(withDefaults())

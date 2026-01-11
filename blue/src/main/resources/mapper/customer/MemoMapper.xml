@@ -80,7 +80,12 @@
         UPDATE customers
         SET customer_memo               = #{memo},
             customer_status             = #{status},
-            customer_promise_time       = #{promiseTime,jdbcType=TIMESTAMP},
+            <if test="status == '내방'">
+                customer_promise_time = NULL,
+            </if>
+            <if test="status == '재콜'">
+                customer_promise_time = #{promiseTime,jdbcType=TIMESTAMP},
+            </if>
             customer_tradingview_id     = #{tradingviewId},
             customer_telegram_nickname  = #{telegramNickname},
             customer_free_room          = #{freeRoom},

@@ -29,6 +29,7 @@ public interface CustomerAllMapper {
                                     @Param("sort") String sort,
                                     @Param("expertName") String expertName,
                                     @Param("status") String status,
+                                    @Param("prevStatus") String prevStatus,
                                     @Param("visible") String visible);
   int countAllForAdmin(@Param("keyword") String keyword,
                        @Param("dateFrom") String dateFrom,
@@ -37,6 +38,7 @@ public interface CustomerAllMapper {
                        @Param("division") String division,
                        @Param("expertName") String expertName,
                        @Param("status") String status,
+                       @Param("prevStatus") String prevStatus,
                        @Param("visible") String visible);
   
   // MANAGER — 자기 센터 소속 직원 담당 고객
@@ -50,6 +52,7 @@ public interface CustomerAllMapper {
                                       @Param("sort") String sort,
                                       @Param("expertName") String expertName,
                                       @Param("pStatus") String status,
+                                      @Param("prevStatus") String prevStatus,
                                       @Param("centerId") Long centerId);
   int countAllForManager(@Param("keyword") String keyword,
                          @Param("dateFrom") String dateFrom,
@@ -58,6 +61,7 @@ public interface CustomerAllMapper {
                          @Param("division") String division,
                          @Param("expertName") String expertName,
                          @Param("pStatus") String status,
+                         @Param("prevStatus") String prevStatus,
                          @Param("centerId") Long centerId);
   
   // STAFF — 본인 담당 고객
@@ -71,6 +75,7 @@ public interface CustomerAllMapper {
                                     @Param("sort") String sort,
                                     @Param("expertName") String expertName,
                                     @Param("pStatus") String status,
+                                    @Param("prevStatus") String prevStatus,
                                     @Param("userId") Long userId);
   int countAllForStaff(@Param("keyword") String keyword,
                        @Param("dateFrom") String dateFrom,
@@ -79,6 +84,7 @@ public interface CustomerAllMapper {
                        @Param("division") String division,
                        @Param("expertName") String expertName,
                        @Param("pStatus") String status,
+                       @Param("prevStatus") String prevStatus,
                        @Param("userId") Long userId);
   
   // CENTERHEAD - 자기 센터 소속 전문가 담당 출처
@@ -93,6 +99,7 @@ public interface CustomerAllMapper {
       @Param("sort") String sort,
       @Param("expertName") String expertName,
       @Param("status") String status,
+      @Param("prevStatus") String prevStatus,
       @Param("visible") String visible,
       @Param("centerId") Long centerId
   );
@@ -104,6 +111,7 @@ public interface CustomerAllMapper {
       @Param("division") String division,
       @Param("expertName") String expertName,
       @Param("status") String status,
+      @Param("prevStatus") String prevStatus,
       @Param("visible") String visible,
       @Param("centerId") Long centerId
   );
@@ -120,6 +128,7 @@ public interface CustomerAllMapper {
       @Param("sort") String sort,
       @Param("expertName") String expertName,
       @Param("status") String status,
+      @Param("prevStatus") String prevStatus,
       @Param("visible") String visible,
       @Param("myExpertId") Long myExpertId
   );
@@ -131,6 +140,7 @@ public interface CustomerAllMapper {
       @Param("division") String division,
       @Param("expertName") String expertName,
       @Param("status") String status,
+      @Param("prevStatus") String prevStatus,
       @Param("visible") String visible,
       @Param("myExpertId") Long myExpertId
   );
@@ -149,8 +159,13 @@ public interface CustomerAllMapper {
   int updateCustomerReservation(@Param("customerId") Long customerId, @Param("when") LocalDateTime when);
   int updateCustomerStatus(@Param("customerId") Long customerId, @Param("status") String status);
   
+  // 현재 상태값 조회
+  String selectStatusOnly(@Param("customerId") Long customerId);
+  
   // 중복 숨김
   int hideDuplicates(@Param("ids") List<Long> duplicateIds);
+  // 일정 존재여부 확인
+  Integer existsVisitSchedule(@Param("customerId") Long customerId);
   
   // 전문가 리스트 조회
   List<ExpertDto> findAllExperts();

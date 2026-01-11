@@ -1,11 +1,13 @@
 package com.blue.user.service;
 
+import com.blue.global.exception.AuthException;
 import com.blue.user.dto.BulkApproveResponse;
 import com.blue.user.dto.CenterDto;
 import com.blue.user.dto.PageResponse;
 import com.blue.user.dto.UserSelectDto;
 import com.blue.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,38 +60,38 @@ public class UserService {
     // 수정 대상 조회
     UserSelectDto target = userMapper.findUserById(userId);
     if (target == null) {
-      throw new IllegalArgumentException("해당 직원을 찾을 수 없습니다.");
+      throw new AuthException("해당 직원을 찾을 수 없습니다.",HttpStatus.GONE);
     }
     
     // 1. 본인 계정 수정 금지
     if (target.getUserEmail().equals(requesterEmail)) {
-      throw new SecurityException("본인 계정은 수정할 수 없습니다.");
+      throw new AuthException("본인 계정은 수정할 수 없습니다.",HttpStatus.GONE);
     }
     
     // 2. 특별 계정이 아닌 경우 → 본사/관리자 계정 수정 불가
     boolean isRestricted = "SUPERADMIN".equals(target.getUserRole()) || "본사".equals(target.getCenterName());
     if (isRestricted && !isRequesterSuper(requesterEmail)) {
-      throw new SecurityException("권한이 없습니다.");
+      throw new AuthException("권한이 없습니다.",HttpStatus.GONE);
     }
     
     boolean requesterIsSuper = isRequesterSuper(requesterEmail);
     String targetRole = target.getUserRole();
     // 3-공통) 가시권한/분배권한은 둘 다 super만 수정 가능
     if (("visible".equals(field) || "allocate".equals(field)) && !requesterIsSuper) {
-      throw new SecurityException("권한이 없습니다.");
+      throw new AuthException("권한이 없습니다.",HttpStatus.GONE);
     }
     
     // 3-1) 가시권한: 대상이 관리자(SUPERADMIN)인 경우만 허용
     if ("visible".equals(field)) {
       if (!"SUPERADMIN".equals(targetRole)) {
-        throw new SecurityException("관리자의 가시권한만 변경할 수 있습니다.");
+        throw new AuthException("관리자의 가시권한만 변경할 수 있습니다.",HttpStatus.GONE);
       }
     }
     
     // 3-2) 분배권한: 대상이 센터장/전문가인 경우만 허용
     if ("allocate".equals(field)) {
       if (!"CENTERHEAD".equals(targetRole) && !"EXPERT".equals(targetRole)) {
-        throw new SecurityException("센터장/전문가의 분배권한만 변경할 수 있습니다.");
+        throw new AuthException("센터장/전문가의 분배권한만 변경할 수 있습니다.",HttpStatus.GONE);
       }
     }
     
@@ -100,7 +102,7 @@ public class UserService {
       if (centerName != null && !"본사".equals(centerName)) {
         int cnt = countManagersInCenter(centerName, userId);
         if (cnt > 0) {
-          throw new IllegalStateException("'" + centerName + "'에는 이미 팀장이 있습니다.");
+          throw new AuthException("'" + centerName + "'에는 이미 팀장이 있습니다.",HttpStatus.GONE);
         }
       }
     }
@@ -119,14 +121,14 @@ public class UserService {
         // 6) 어떤 DB의 소속을 센터로 변경할 경우 → 권한이 센터장/전문가가 아니면 막기
         if (centerType) {
           if (!"CENTERHEAD".equals(targetRole) && !"EXPERT".equals(targetRole)) {
-            throw new IllegalStateException("센터 소속은 센터장/전문가만 가능합니다.");
+            throw new AuthException("센터 소속은 센터장/전문가만 가능합니다.",HttpStatus.GONE);
           }
         }
         
         // 7) 어떤 DB의 소속을 팀으로 변경할 경우 → 권한이 팀장/팀원이 아니면 막기
         if (teamType) {
           if (!"MANAGER".equals(targetRole) && !"STAFF".equals(targetRole)) {
-            throw new IllegalStateException("팀 소속은 팀장/팀원만 가능합니다.");
+            throw new AuthException("팀 소속은 팀장/팀원만 가능합니다.",HttpStatus.GONE);
           }
         }
         
@@ -134,7 +136,7 @@ public class UserService {
         if (targetIsManager && teamType) {
           int cnt = countManagersInCenter(value, userId);
           if (cnt > 0) {
-            throw new IllegalStateException("'" + value + "'에는 이미 팀장이 있습니다.");
+            throw new AuthException("'" + value + "'에는 이미 팀장이 있습니다.",HttpStatus.GONE);
           }
         }
         
@@ -143,7 +145,7 @@ public class UserService {
         if (targetIsCenterHead && centerType) {
           int cnt = userMapper.countCenterHeadsInCenter(value, userId);
           if (cnt > 0) {
-            throw new IllegalStateException("'" + value + "'에는 이미 센터장이 있습니다.");
+            throw new AuthException("'" + value + "'에는 이미 센터장이 있습니다.",HttpStatus.GONE);
           }
         }
       }
@@ -155,7 +157,7 @@ public class UserService {
       if (centerName != null && !"본사".equals(centerName)) {
         int cnt = userMapper.countCenterHeadsInCenter(centerName, userId);
         if (cnt > 0) {
-          throw new IllegalStateException("'" + centerName + "'에는 이미 센터장이 있습니다.");
+          throw new AuthException("'" + centerName + "'에는 이미 센터장이 있습니다.",HttpStatus.GONE);
         }
       }
     }
@@ -163,7 +165,7 @@ public class UserService {
     // 5. 전문가 배지 변경 (experts 테이블 연동) — 다른 필드와 분리 처리
     if ("expert".equals(field)) {
       if (!"CENTERHEAD".equals(targetRole) && !"EXPERT".equals(targetRole)) {
-        throw new SecurityException("권한이 '전문가' 또는 '전문가'인 직원만 전문가를 지정할 수 있습니다.");
+        throw new AuthException("권한이 '전문가' 또는 '전문가'인 직원만 전문가를 지정할 수 있습니다.",HttpStatus.GONE);
       }
     }
     

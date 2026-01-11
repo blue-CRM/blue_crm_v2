@@ -52,12 +52,15 @@
         <if test="status != null and status != ''">
             AND c.customer_status = #{status}
         </if>
+        <if test="prevStatus != null and prevStatus != ''">
+            AND c.customer_prev_status = #{prevStatus}
+        </if>
     </sql>
 
     <sql id="ORDER_DEFAULT">
         <choose>
             <when test="sort == 'status'">
-                ORDER BY FIELD(c.customer_status,'회수','없음','신규','가망','재콜','내방','부재1','부재2','부재3','부재4','부재5','기타','결번','거절','자연풀','카피'),
+                ORDER BY FIELD(c.customer_status,'회수','없음','신규','가망','재콜','내방','내방취소','부재1','부재2','부재3','부재4','부재5','기타','결번','거절','자연풀','카피'),
                 c.customer_created_at DESC
             </when>
             <when test="sort == 'oldest'">
@@ -88,6 +91,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         ctr.center_name       AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -136,6 +140,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -146,6 +151,7 @@
         WHERE c.customer_status != '회수'
             AND c.user_id IS NOT NULL
             AND u.center_id = #{managerCenterId}
+        AND NOT (c.customer_status = '없음' AND c.user_id = #{excludeUserId})
 
         <include refid="LIST_FILTERS_COMMON"/>
         <include refid="ORDER_DEFAULT"/>
@@ -160,6 +166,7 @@
         WHERE c.customer_status != '회수'
             AND c.user_id IS NOT NULL
             AND u.center_id = #{managerCenterId}
+        AND NOT (c.customer_status = '없음' AND c.user_id = #{excludeUserId})
 
         <include refid="LIST_FILTERS_COMMON"/>
     </select>
@@ -183,6 +190,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -248,6 +256,7 @@
         c.customer_division   AS division,
         c.customer_category   AS category,
         c.customer_status     AS status,
+        c.customer_prev_status AS prevStatus,
         (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
         c.customer_source     AS source,
         c.customer_content    AS content,
@@ -302,6 +311,7 @@
           FROM users u
           WHERE u.user_id = c.user_id
             AND u.center_id = #{managerCenterId}
+            AND NOT (c.customer_status = '없음' AND c.user_id = #{excludeUserId})
         )
 
       FOR UPDATE
@@ -346,50 +356,65 @@
 
     <!-- 회수 실행 -->
     <update id="updateToRevoked">
-        UPDATE customers
-        SET customer_status = '회수',
-        user_id = NULL,                      -- 회수시 현재 담당자 초기화
-        customer_promise_time = NULL,        -- 회수시 예약 날짜 초기화
-        initial_price = 0,  upsell_price = 0 -- 회수시 최초/업셀 매출값 초기화
-        WHERE customer_id IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        UPDATE customers c
+        LEFT JOIN visit_schedule vs ON vs.customer_id = c.customer_id
+        SET
+        vs.scheduled_by_user_id = NULL,
+        c. customer_prev_status =
+            CASE
+                WHEN c.customer_status IN ('없음','신규','회수') THEN c.customer_prev_status  -- 없음/신규/회수 상태면 백업하지 않음
+                ELSE c.customer_status         -- 회수 전, 현재상태를 직전상태 칼럼으로 백업
+            END,
+        c.customer_status = '회수',
+        c.user_id = NULL                      -- 회수시 현재 담당자 초기화
+        <!-- , customer_promise_time = NULL 회수시 예약 날짜 초기화 -->
+        <!-- , initial_price = 0, upsell_price = 0  회수시 최초/업셀 매출값 초기화-->
+        WHERE c.customer_id IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </update>
 
     <!-- 매니저 회수(팀장풀로 복귀): 담당자=팀장, 상태=없음, 예약=NULL, 매출=0 -->
     <update id="updateToManagerPool">
-        UPDATE customers
+        UPDATE customers c
+        LEFT JOIN visit_schedule vs ON vs.customer_id = c.customer_id
         SET
-        customer_status       = '없음',
-        user_id               = #{managerId}, -- 회수시 팀장풀로
-        customer_promise_time = NULL,             -- 회수시 예약 날짜 초기화
-        initial_price = 0, upsell_price = 0       -- 회수시 최초/업셀 초기화
-        WHERE customer_id IN
+        vs.scheduled_by_user_id = NULL,
+        c.customer_prev_status =
+            CASE
+                WHEN c.customer_status IN ('없음','신규','회수') THEN c.customer_prev_status -- 없음/신규/회수 상태면 백업하지 않음
+                ELSE c.customer_status         -- 회수 전, 현재상태를 직전상태 칼럼으로 백업
+            END,
+        c.customer_status       = '없음',
+        c.user_id               = #{managerId} -- 회수시 팀장풀로
+        <!-- , customer_promise_time = NULL 회수시 예약 날짜 초기화-->
+        <!-- , initial_price = 0, upsell_price = 0 회수시 최초/업셀 초기화-->
+        WHERE c.customer_id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </update>
 
-    <!-- 회수 후 매출 로그 작성 -->
-    <insert id="insertRevokeSalesLogs">
-        INSERT INTO sales_logs (customer_id, sales_type, amount, created_by, action_at)
-        SELECT
-        customer_id,
-        'RESET',
-        0,
-        #{userId},
-        NOW()
-        FROM customers
-        WHERE customer_id IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-        AND (initial_price > 0 OR upsell_price > 0)
-    </insert>
+<!--    &lt;!&ndash; 회수 후 매출 로그 작성 &ndash;&gt;-->
+<!--    <insert id="insertRevokeSalesLogs">-->
+<!--        INSERT INTO sales_logs (customer_id, sales_type, amount, created_by, action_at)-->
+<!--        SELECT-->
+<!--        customer_id,-->
+<!--        'RESET',-->
+<!--        0,-->
+<!--        #{userId},-->
+<!--        NOW()-->
+<!--        FROM customers-->
+<!--        WHERE customer_id IN-->
+<!--        <foreach collection="ids" item="id" open="(" separator="," close=")">-->
+<!--            #{id}-->
+<!--        </foreach>-->
+<!--        AND (initial_price > 0 OR upsell_price > 0)-->
+<!--    </insert>-->
 
-    <delete id="deleteSchedulesByCustomerIds">
-        DELETE FROM visit_schedule
-        WHERE customer_id IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-    </delete>
+<!--    <delete id="deleteSchedulesByCustomerIds">-->
+<!--        DELETE FROM visit_schedule-->
+<!--        WHERE customer_id IN-->
+<!--        <foreach collection="ids" item="id" open="(" separator="," close=")">-->
+<!--            #{id}-->
+<!--        </foreach>-->
+<!--    </delete>-->
 
 </mapper>

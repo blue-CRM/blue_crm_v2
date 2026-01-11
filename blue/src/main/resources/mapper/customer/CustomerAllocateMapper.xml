@@ -56,12 +56,15 @@
         <if test="category != null and category != ''">
             AND c.customer_category = #{category}
         </if>
+        <if test="prevStatus != null and prevStatus != ''">
+            AND c.customer_prev_status = #{prevStatus}
+        </if>
     </sql>
 
     <sql id="ORDER_DEFAULT">
         <choose>
             <when test="sort == 'status'">
-                ORDER BY FIELD(c.customer_status,'회수','없음','신규','가망','재콜','내방','부재1','부재2','부재3','부재4','부재5','기타','결번','거절','자연풀','카피'),
+                ORDER BY FIELD(c.customer_status,'회수','없음','신규','가망','재콜','내방','내방취소','부재1','부재2','부재3','부재4','부재5','기타','결번','거절','자연풀','카피'),
                 c.customer_created_at DESC
             </when>
             <when test="sort == 'oldest'">
@@ -100,6 +103,7 @@
             c.customer_division     AS division,
             c.customer_category     AS category,
             c.customer_status       AS status,
+            c.customer_prev_status  AS prevStatus,
             ctr.center_name         AS centerName,
             c.customer_source       AS source,
             c.customer_content      AS content,
@@ -140,12 +144,17 @@
             c.customer_name         AS name,
             c.customer_phone        AS phone,
 
-            <!-- 이력은 본사만 노출 -->
-            NULL                    AS paststaff,
+            IFNULL((
+            SELECT GROUP_CONCAT(u2.user_name ORDER BY cpu.past_user_id SEPARATOR ', ')
+            FROM customer_past_users cpu
+            JOIN users u2 ON u2.user_id = cpu.user_id
+            WHERE cpu.customer_phone = c.customer_phone
+            ), '') AS paststaff,
 
             c.customer_division     AS division,
             c.customer_category     AS category,
             c.customer_status       AS status,
+            c.customer_prev_status  AS prevStatus,
             (SELECT center_name FROM centers WHERE center_id = u.center_id) AS centerName,
             c.customer_source       AS source,
             c.customer_content      AS content,
@@ -198,6 +207,7 @@
         c.customer_division     AS division,
         c.customer_category     AS category,
         c.customer_status       AS status,
+        c.customer_prev_status  AS prevStatus,
         ctr.center_name         AS centerName,
         c.customer_source       AS source,
         c.customer_content      AS content,
@@ -269,6 +279,7 @@
         c.customer_division     AS division,
         c.customer_category     AS category,
         c.customer_status       AS status,
+        c.customer_prev_status  AS prevStatus,
         ctr.center_name         AS centerName,
         c.customer_source       AS source,
         c.customer_content      AS content,
@@ -434,11 +445,23 @@
     </update>
 
     <!-- 상태 '신규'로 통일 (HQ→직원, 팀장→본인/직원) -->
+    <!-- 단, 직전상태가 '내방'일 경우 현재상태 '내방'으로 고정 -->
     <update id="updateStatusToNew">
-        UPDATE customers
-        SET customer_status = '신규'
-        WHERE customer_id IN
-            <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        UPDATE customers c
+        LEFT JOIN visit_schedule vs ON vs.customer_id = c.customer_id
+        SET
+        c.customer_status =
+            CASE
+                WHEN c.customer_prev_status = '내방' THEN '내방'
+                ELSE '신규'
+            END,
+        vs.scheduled_by_user_id =
+            CASE
+                WHEN c.customer_prev_status = '내방' THEN c.user_id
+                ELSE vs.scheduled_by_user_id
+            END
+        WHERE c.customer_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </update>
 
     <!-- 본사에서 팀장 분배시: '없음'으로 통일 -->
