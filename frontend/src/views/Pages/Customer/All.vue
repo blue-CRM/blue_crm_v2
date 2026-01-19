@@ -76,6 +76,7 @@
           <Memo
               v-if="memoOpen"
               :row="memoRow"
+              :readOnly="memoReadOnly"
               @close="closeMemo"
               @saved="onMemoSaved"
           />
@@ -130,6 +131,7 @@ import axios from "@/plugins/axios.js"
 const auth = useAuthStore();
 const role = auth.grants.role;
 const isManager = computed(() => role === 'MANAGER');
+const memoReadOnly = computed(() => ['CENTERHEAD', 'EXPERT'].includes(role))
 const mineOnly = ref(false);
 
 const currentPageTitle = ref("전체 고객DB관리");

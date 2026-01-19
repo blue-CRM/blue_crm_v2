@@ -28,6 +28,7 @@ public class MemoService {
     // MANAGER/STAFF는 소유권 검사
     switch (me.getRole()) {
       case "SUPERADMIN" -> {}
+      case "CENTERHEAD", "EXPERT" -> {}
       case "MANAGER" -> {
         Integer ownsCenter = mapper.customerOwnedByCenter(customerId, me.getCenterId());
         if (ownsCenter == null || ownsCenter == 0) throw new AuthException("권한이 없습니다.",HttpStatus.GONE);
