@@ -78,7 +78,7 @@
                     :style="{ gridTemplateColumns: gridTemplateColumns }"
                 >
                   <div
-                      class="sticky left-0 z-50 flex items-center justify-center h-10 border-r border-gray-200
+                      class="sticky left-0 z-50 flex items-center justify-center h-10 border-r border-gray-200 dark:border-gray-800
                            bg-slate-50 text-slate-700 text-xs font-semibold dark:bg-gray-900/60 dark:text-slate-200"
                   >
                     시간
@@ -90,7 +90,7 @@
                         :style="{ gridColumn: `span ${roomsPerDay}` }"
                         :class="[
                         dayHeaderClass(d.key),
-                        dayIdx === days.length - 1 ? '' : 'border-r-2 border-gray-300 dark:border-gray-700'
+                        dayIdx === days.length - 1 ? '' : 'border-r-4 border-gray-300 dark:border-gray-600'
                       ]"
                     >
                       {{ d.label }}
@@ -110,10 +110,10 @@
 
                   <template v-for="(col, colIdx) in columns" :key="col.key">
                     <div
-                        class="h-9 flex items-center justify-center text-xs font-medium border-r border-gray-200 dark:border-gray-800"
+                        class="h-9 flex items-center justify-center text-xs font-medium"
                         :class="[
                         roomHeaderClass(col.dayKey),
-                        col.isDayEnd ? 'border-r-2 border-gray-300 dark:border-gray-700' : ''
+                        col.isDayEnd ? 'border-r-4 border-gray-300 dark:border-gray-600' : 'border-r border-gray-200 dark:border-gray-800'
                       ]"
                     >
                       {{ col.roomLabel }}
@@ -218,13 +218,12 @@
                   <!-- 셀들 -->
                   <template v-for="(col, colIdx) in columns" :key="col.key">
                     <div
-                        class="border-r border-gray-200 dark:border-gray-800"
                         data-cal-cell="1"
                         :data-col="colIdx"
                         :data-slot="slotIdx"
                         :class="[
                         cellBgClass(slotIdx, col.dayKey),
-                        col.isDayEnd ? 'border-r-2 border-gray-300 dark:border-gray-700' : ''
+                        col.isDayEnd ? 'border-r-4 border-gray-300 dark:border-gray-600' : 'border-r border-gray-200 dark:border-gray-800'
                       ]"
                         :style="rowTopBorderStyle(slotIdx)"
                         @pointerdown.stop.prevent="onCellPointerDown($event, colIdx, slotIdx)"
@@ -833,7 +832,7 @@ function cellBgClass(slotIdx: number, dayKey: string) {
 }
 function timeColBgClass(slotIdx: number) {
   return slotIdx % 2 === 0
-      ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+      ? 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200'
       : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
 }
 
@@ -977,8 +976,8 @@ function rowTopBorderStyle(slotIdx: number) {
   if (slotIdx === noonSlot) {
     return {
       borderTop: dark
-          ? '1px solid rgba(148,163,184,0.58)'
-          : '2px solid rgb(209 213 219)'
+          ? '1px solid rgba(148,163,184,0.75)'
+          : '2.5px solid rgb(209 213 219)'
     }
   }
   return {}
